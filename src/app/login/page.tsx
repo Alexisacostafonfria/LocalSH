@@ -8,7 +8,7 @@ import { AuthState, User, DEFAULT_AUTH_STATE, DEFAULT_USERS_STATE } from '@/type
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Briefcase, Loader2, Users as UsersIcon } from 'lucide-react'; // Renamed Users to UsersIcon
+import { Briefcase, Loader2, Users as UsersIcon } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,17 +23,19 @@ export default function LoginPage() {
     if (authState.currentUser) {
       console.log("[LoginPage] currentUser already set, redirecting to /dashboard.");
       router.replace('/dashboard');
-      return; // Stop this effect run
+      return;
     }
 
-    let usersToDisplay = authState.users;
-    if (!usersToDisplay || usersToDisplay.length === 0) {
+    // Initialize default users if none exist
+    if (!authState.users || authState.users.length === 0) {
       console.log("[LoginPage] No users found in authState, initializing with default admin.");
-      usersToDisplay = [...DEFAULT_USERS_STATE];
-      setAuthState(prev => ({ ...prev, users: usersToDisplay, currentUser: null }));
+      const defaultUsers = [...DEFAULT_USERS_STATE];
+      setAvailableUsers(defaultUsers);
+      setAuthState(prev => ({ ...prev, users: defaultUsers, currentUser: null }));
+    } else {
+      setAvailableUsers(authState.users);
     }
-    setAvailableUsers(usersToDisplay);
-  }, [isAuthInitialized, authState, setAuthState, router]);
+  }, [isAuthInitialized, authState.currentUser, authState.users, setAuthState, router]);
 
   const handleLogin = (user: User) => {
     setAuthState(prev => ({ ...prev, currentUser: user }));
@@ -61,9 +63,7 @@ export default function LoginPage() {
           {availableUsers.length === 0 ? (
             <div className="text-center py-6">
               <UsersIcon className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
-              <p className="text-muted-foreground">No hay usuarios configurados.</p>
-              <p className="text-xs text-muted-foreground">Un administrador por defecto será creado.</p>
-              {/* This state should be brief as useEffect will create the default admin */}
+              <p className="text-muted-foreground">Inicializando usuarios...</p>
             </div>
           ) : (
             <div className="space-y-3">
