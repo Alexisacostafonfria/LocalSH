@@ -25,12 +25,12 @@ const quickAccessItems = [
 ];
 
 export default function DashboardPage() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useLocalStorageState<Product[]>('products', []);
   const [sales] = useLocalStorageState<Sale[]>('sales', []);
   const [appSettings] = useLocalStorageState<AppSettings>('appSettings', DEFAULT_APP_SETTINGS);
   const [businessSettings] = useLocalStorageState<BusinessSettings>('businessSettings', DEFAULT_BUSINESS_SETTINGS);
 
-  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true); // Will be set to false in effect
   const [error, setError] = useState<string | null>(null);
   const [todaySales, setTodaySales] = useState<number>(0);
   const [lowStockCount, setLowStockCount] = useState<number>(0);
@@ -39,34 +39,11 @@ export default function DashboardPage() {
 
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      setError(null);
-      setIsLoadingProducts(true);
-      try {
-        const response = await fetch('/api/products');
-        if (!response.ok) {
-          const errorData = await response.json();
-          const detailedMessage = errorData.error ? `${errorData.message} -> Detalle: ${errorData.error}` : errorData.message;
-          throw new Error(detailedMessage || 'Failed to fetch products');
-        }
-        const data = await response.json();
-        setProducts(data);
-      } catch (error) {
-        const errorMessage = (error as Error).message;
-        console.error(errorMessage);
-        setError("No se pudieron cargar los productos. " + errorMessage + ". Por favor, verifica tu archivo .env.local.");
-        toast({
-          title: "Error al Cargar Productos",
-          description: errorMessage,
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoadingProducts(false);
-      }
-    };
-    fetchProducts();
-  }, [toast]);
+   useEffect(() => {
+    // With localStorage, loading is synchronous and instant after the hook initializes.
+    // We can set loading to false immediately.
+    setIsLoadingProducts(false);
+  }, []);
 
 
   useEffect(() => {
@@ -144,7 +121,7 @@ export default function DashboardPage() {
       {error && (
         <Alert variant="destructive">
           <AlertTriangle className="h-5 w-5" />
-          <AlertTitle>Error de Conexión a la Base de Datos</AlertTitle>
+          <AlertTitle>Error</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}

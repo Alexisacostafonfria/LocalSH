@@ -33,7 +33,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export default function SalesPage() {
   const [sales, setSales] = useLocalStorageState<Sale[]>('sales', []);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useLocalStorageState<Product[]>('products', []);
   const [customers, setCustomers] = useLocalStorageState<Customer[]>('customers', []);
   const [appSettings] = useLocalStorageState<AppSettings>('appSettings', DEFAULT_APP_SETTINGS);
   const [businessSettings] = useLocalStorageState<BusinessSettings>('businessSettings', DEFAULT_BUSINESS_SETTINGS);
@@ -60,36 +60,11 @@ export default function SalesPage() {
 
   const { toast } = useToast();
 
-  const fetchProducts = useCallback(async () => {
-    setIsLoadingProducts(true);
-    setFetchError(null);
-    try {
-        const response = await fetch('/api/products');
-        if (!response.ok) {
-          const errorData = await response.json();
-          const detailedMessage = errorData.error ? `${errorData.message} -> Detalle: ${errorData.error}` : errorData.message;
-          throw new Error(detailedMessage || 'Failed to fetch products');
-        }
-        const data = await response.json();
-        setProducts(data);
-    } catch (error) {
-        const errorMessage = (error as Error).message;
-        console.error(errorMessage);
-        setFetchError("No se pudieron cargar los productos. " + errorMessage);
-        toast({
-            title: "Error de Red",
-            description: errorMessage,
-            variant: "destructive",
-        });
-    } finally {
-        setIsLoadingProducts(false);
-    }
-  }, [toast]);
-
   useEffect(() => {
     setIsClientMounted(true);
-    fetchProducts();
-  }, [fetchProducts]);
+    // Data is loaded from localStorage, so loading is "instant" after mount.
+    setIsLoadingProducts(false);
+  }, []);
 
   // Effect to update filterDateRange if operational day changes after mount
   useEffect(() => {
@@ -107,44 +82,23 @@ export default function SalesPage() {
   }, [accountingSettings.currentOperationalDate, accountingSettings.isDayOpen, filterDateRange]);
 
 
-  const handleAddSale = async (newSale: Sale) => {
-    // Add sale to local storage first
+  const handleAddSale = (newSale: Sale) => {
     setSales(prevSales => [newSale, ...prevSales].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
     
-    // Then, update product stock in the database
-    try {
-      const stockUpdatePromises = newSale.items.map(item => {
-        return fetch(`/api/products/${item.productId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ stockChange: -item.quantity }),
-        });
-      });
-  
-      const responses = await Promise.all(stockUpdatePromises);
-      const failedUpdates = responses.filter(res => !res.ok);
-  
-      if (failedUpdates.length > 0) {
-        toast({
-          title: "Error al actualizar stock",
-          description: "Algunos productos no pudieron ser actualizados. Por favor, revise el inventario manualmente.",
-          variant: "destructive",
-        });
-        const errorDetails = await Promise.all(failedUpdates.map(r => r.json()));
-        console.error("Failed to update stock for some items:", errorDetails);
-      }
-      
-      // Refetch products to update UI everywhere with latest stock
-      await fetchProducts();
+    // Update product stock in localStorage
+    const updatedProducts = products.map(p => {
+        const itemSold = newSale.items.find(item => item.productId === p.id);
+        if (itemSold) {
+            return { ...p, stock: p.stock - itemSold.quantity };
+        }
+        return p;
+    });
+    setProducts(updatedProducts);
 
-    } catch (error) {
-      console.error("Error during stock update process:", error);
-      toast({
-        title: "Error grave al actualizar stock",
-        description: "No se pudo conectar con el servidor para actualizar el stock.",
-        variant: "destructive",
-      });
-    }
+    toast({
+        title: "Venta Registrada",
+        description: `Venta ${newSale.id.substring(0,8)} completada. Stock actualizado.`,
+    });
   };
 
   const getSaleDateForFilter = useCallback((sale: Sale): Date => {
@@ -224,7 +178,7 @@ export default function SalesPage() {
       {fetchError && (
           <Alert variant="destructive">
             <AlertTriangle className="h-5 w-5" />
-            <AlertTitle>Error al Cargar Productos</AlertTitle>
+            <AlertTitle>Error</AlertTitle>
             <AlertDescription>{fetchError}</AlertDescription>
           </Alert>
       )}

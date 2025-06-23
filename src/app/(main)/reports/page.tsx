@@ -31,7 +31,7 @@ type PaymentMethodFilter = 'all' | 'cash' | 'transfer';
 
 export default function ReportsPage() {
   const [sales] = useLocalStorageState<Sale[]>('sales', []);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products] = useLocalStorageState<Product[]>('products', []);
   const [appSettings] = useLocalStorageState<AppSettings>('appSettings', DEFAULT_APP_SETTINGS);
   const [businessSettings] = useLocalStorageState<BusinessSettings>('businessSettings', DEFAULT_BUSINESS_SETTINGS);
   
@@ -56,33 +56,9 @@ export default function ReportsPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      setIsLoadingProducts(true);
-      setFetchError(null);
-      try {
-        const response = await fetch('/api/products');
-        if (!response.ok) {
-          const errorData = await response.json();
-          const detailedMessage = errorData.error ? `${errorData.message} -> Detalle: ${errorData.error}` : errorData.message;
-          throw new Error(detailedMessage || 'Failed to fetch products');
-        }
-        const data = await response.json();
-        setProducts(data);
-      } catch (error) {
-        const errorMessage = (error as Error).message;
-        console.error(errorMessage);
-        setFetchError("No se pudieron cargar los productos para los reportes. " + errorMessage);
-        toast({
-          title: "Error de Red",
-          description: errorMessage,
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoadingProducts(false);
-      }
-    };
-    fetchProducts();
-  }, [toast]);
+    // With localStorage, loading is synchronous.
+    setIsLoadingProducts(false);
+  }, []);
 
   const getSaleDate = useMemo(() => (sale: Sale): Date => {
     return sale.operationalDate && isValid(parseISO(sale.operationalDate)) 

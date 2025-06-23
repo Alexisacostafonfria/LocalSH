@@ -17,42 +17,16 @@ import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function InventoryPage() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useLocalStorageState<Product[]>('products', []);
   const [appSettings] = useLocalStorageState<AppSettings>('appSettings', DEFAULT_APP_SETTINGS);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const { toast } = useToast();
-
+  
   useEffect(() => {
-    const fetchProducts = async () => {
-      setIsLoading(true);
-      setFetchError(null);
-      try {
-        const response = await fetch('/api/products');
-        if (!response.ok) {
-          const errorData = await response.json();
-          const detailedMessage = errorData.error ? `${errorData.message} -> Detalle: ${errorData.error}` : errorData.message;
-          throw new Error(detailedMessage || 'Failed to fetch products');
-        }
-        const data = await response.json();
-        setProducts(data);
-      } catch (error) {
-        const errorMessage = (error as Error).message;
-        console.error(errorMessage);
-        setFetchError("No se pudieron cargar los productos. " + errorMessage + ". Por favor, verifica tu archivo .env.local.");
-        toast({
-          title: "Error al Cargar Inventario",
-          description: errorMessage,
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchProducts();
-  }, [toast]);
-
+    // With localStorage, data is available synchronously after initial render.
+    setIsLoading(false);
+  }, []);
 
   const inventoryItems: InventoryItem[] = useMemo(() => {
     return products
@@ -91,7 +65,7 @@ export default function InventoryPage() {
       {fetchError && (
         <Alert variant="destructive">
           <AlertTriangle className="h-5 w-5" />
-          <AlertTitle>Error de Conexión a la Base de Datos</AlertTitle>
+          <AlertTitle>Error</AlertTitle>
           <AlertDescription>{fetchError}</AlertDescription>
         </Alert>
       )}
