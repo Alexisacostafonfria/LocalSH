@@ -1,0 +1,179 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'PT Sans', sans-serif; /* Default body font */
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Poppins', sans-serif; /* Headline font */
+}
+
+@layer base {
+  :root {
+    --background: 203 17% 16%; /* #222B30 */
+    --foreground: 210 40% 98%;
+    --card: 203 17% 20%; /* Slightly lighter than background for cards */
+    --card-foreground: 210 40% 98%;
+    --popover: 203 17% 18%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 190 35% 43%; /* #468B97 */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 175 47% 58%; /* Accent #64CCC5 - using as secondary for some elements */
+    --secondary-foreground: 203 17% 10%;
+    --muted: 203 17% 25%;
+    --muted-foreground: 203 17% 65%;
+    --accent: 175 47% 58%; /* #64CCC5 */
+    --accent-foreground: 203 17% 10%; /* Darker text on bright accent */
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 0 0% 98%;
+    --warning: 48 96% 59%; /* Yellow for warning */
+    --warning-foreground: 48 96% 15%; /* Dark text on warning yellow */
+    --warning-border: 210 40% 98%; /* "White" border (using theme foreground) */
+    --border: 203 17% 28%;
+    --input: 203 17% 28%;
+    --ring: 190 35% 53%; /* Lighter primary for ring */
+    --chart-1: 190 35% 43%;
+    --chart-2: 175 47% 58%;
+    --chart-3: 210 30% 60%;
+    --chart-4: 190 35% 63%;
+    --chart-5: 175 47% 78%;
+    --radius: 0.5rem;
+
+    /* Sidebar specific colors, can be same as main if not distinct design */
+    --sidebar-background: 203 17% 14%; /* Slightly darker than main bg */
+    --sidebar-foreground: 210 40% 90%;
+    --sidebar-primary: 190 35% 43%; /* #468B97 */
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 175 47% 58%; /* #64CCC5 */
+    --sidebar-accent-foreground: 203 17% 10%;
+    --sidebar-border: 203 17% 22%;
+    --sidebar-ring: 190 35% 53%;
+  }
+
+  /* Remove .dark class specific overrides as the base theme is dark */
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Print styles */
+@media print {
+  /* --- Reglas Generales para Impresión --- */
+  body {
+    background-color: white !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body > *:not(#printableOperationsReportArea):not(#printable-receipt-area):not(#printableProductListArea):not(#printableMovementsReportArea):not(#printableClosureReportArea) {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* --- SECCIÓN PARA IMPRESIÓN DEL REPORTE DE OPERACIONES, RECIBOS, LISTA DE PRODUCTOS, MOVIMIENTOS Y CIERRE --- */
+  #printableOperationsReportArea,
+  #printable-receipt-area,
+  #printableProductListArea,
+  #printableMovementsReportArea,
+  #printableClosureReportArea {
+    display: block !important;
+    visibility: visible !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    background-color: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    z-index: 999999 !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Estilos comunes para reportes A4 */
+  #printableOperationsReportArea,
+  #printableProductListArea,
+  #printableMovementsReportArea,
+  #printableClosureReportArea {
+    font-size: 10pt !important;
+  }
+  #printableOperationsReportArea *,
+  #printableProductListArea *,
+  #printableMovementsReportArea *,
+  #printableClosureReportArea * {
+    visibility: visible !important;
+    color: black !important;
+    background-color: transparent !important;
+  }
+  #printableOperationsReportArea table, #printableOperationsReportArea th, #printableOperationsReportArea td,
+  #printableProductListArea table, #printableProductListArea th, #printableProductListArea td,
+  #printableMovementsReportArea table, #printableMovementsReportArea th, #printableMovementsReportArea td,
+  #printableClosureReportArea table, #printableClosureReportArea th, #printableClosureReportArea td {
+    border-color: #666 !important;
+  }
+  #printableOperationsReportArea th,
+  #printableProductListArea th,
+  #printableMovementsReportArea th,
+  #printableClosureReportArea th {
+    background-color: #f2f2f2 !important;
+  }
+  #printableOperationsReportArea .break-inside-avoid-page,
+  #printableProductListArea .break-inside-avoid-page,
+  #printableMovementsReportArea .break-inside-avoid-page,
+  #printableClosureReportArea .break-inside-avoid-page {
+    page-break-inside: avoid;
+  }
+  #printableOperationsReportArea .no-print,
+  #printableProductListArea .no-print,
+  #printableMovementsReportArea .no-print,
+  #printableClosureReportArea .no-print {
+      display: none !important;
+  }
+
+  @page operations-report-page { size: A4 portrait; margin: 1cm; }
+  #printableOperationsReportArea { page: operations-report-page; }
+
+  @page product-list-report-page { size: A4 portrait; margin: 1cm; }
+  #printableProductListArea { page: product-list-report-page; }
+
+  @page movements-report-page { size: A4 portrait; margin: 1cm; }
+  #printableMovementsReportArea { page: movements-report-page; }
+
+  @page closure-report-page { size: A4 portrait; margin: 1cm; }
+  #printableClosureReportArea { page: closure-report-page; }
+
+
+  /* Estilos específicos para RECIBOS */
+   #printable-receipt-area {
+    font-size: 9pt !important; /* Tamaño de fuente base para recibos */
+    page: receipt-page; /* Aplicar la página definida al contenedor del recibo */
+  }
+  #printable-receipt-area * {
+    visibility: visible !important;
+    color: black !important;
+    background-color: transparent !important;
+  }
+  #printable-receipt-area hr {
+    border-color: black !important;
+  }
+  @page receipt-page { /* Definición de página para recibos */
+    size: 76mm auto;  /* 76mm de ancho, altura automática */
+    margin: 2mm;      /* Márgenes pequeños (2mm arriba/abajo/izq/der) */
+  }
+}
