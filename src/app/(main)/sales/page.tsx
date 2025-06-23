@@ -4,7 +4,8 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom'; // Import ReactDOM for Portals
-import { PlusCircle, ShoppingCart, Printer, Search, Filter, CalendarIcon, Loader2 } from 'lucide-react';
+import { PlusCircle, ShoppingCart, Printer, Search, Filter, CalendarIcon, Loader2, AlertTriangle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,6 +40,7 @@ export default function SalesPage() {
   const [accountingSettings] = useLocalStorageState<AccountingSettings>('accountingSettings', DEFAULT_ACCOUNTING_SETTINGS);
 
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [isSaleDialogOpen, setIsSaleDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPaymentMethod, setFilterPaymentMethod] = useState<'cash' | 'transfer' | ''>('');
@@ -60,18 +62,23 @@ export default function SalesPage() {
 
   const fetchProducts = useCallback(async () => {
     setIsLoadingProducts(true);
+    setFetchError(null);
     try {
         const response = await fetch('/api/products');
         if (!response.ok) {
-            throw new Error('Failed to fetch products');
+          const errorData = await response.json();
+          const detailedMessage = errorData.error ? `${errorData.message} -> Detalle: ${errorData.error}` : errorData.message;
+          throw new Error(detailedMessage || 'Failed to fetch products');
         }
         const data = await response.json();
         setProducts(data);
     } catch (error) {
-        console.error(error);
+        const errorMessage = (error as Error).message;
+        console.error(errorMessage);
+        setFetchError("No se pudieron cargar los productos. " + errorMessage);
         toast({
             title: "Error de Red",
-            description: "No se pudieron cargar los productos.",
+            description: errorMessage,
             variant: "destructive",
         });
     } finally {
@@ -213,6 +220,14 @@ export default function SalesPage() {
           <PlusCircle className="mr-2 h-5 w-5" /> Registrar Venta
         </Button>
       </PageHeader>
+      
+      {fetchError && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-5 w-5" />
+            <AlertTitle>Error al Cargar Productos</AlertTitle>
+            <AlertDescription>{fetchError}</AlertDescription>
+          </Alert>
+      )}
 
       <Card>
         <CardHeader>
@@ -285,7 +300,11 @@ export default function SalesPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {filteredSales.length === 0 ? (
+          {isLoadingProducts ? (
+              <div className="flex justify-center items-center py-10">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+          ) : filteredSales.length === 0 ? (
             <div className="text-center py-10 text-muted-foreground">
               <ShoppingCart className="mx-auto h-12 w-12 mb-4" />
               <p className="text-lg">No hay ventas registradas para los filtros seleccionados.</p>

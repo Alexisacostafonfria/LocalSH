@@ -103,17 +103,18 @@ export default function ProductsPage() {
         const response = await fetch('/api/products');
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.message || 'Failed to fetch products');
+            const detailedMessage = errorData.error ? `${errorData.message} -> Detalle: ${errorData.error}` : errorData.message;
+            throw new Error(detailedMessage || 'Failed to fetch products');
         }
         const data = await response.json();
         setProducts(data);
     } catch (error) {
         const errorMessage = (error as Error).message;
         console.error(errorMessage);
-        setFetchError("No se pudieron cargar los productos. " + errorMessage + ". Revisa la terminal del servidor (npm run dev) para más detalles y verifica tu archivo .env.local.");
+        setFetchError("No se pudieron cargar los productos. " + errorMessage + ". Por favor, verifica tu archivo .env.local.");
         toast({
             title: "Error al Cargar Productos",
-            description: "No se pudo conectar a la base de datos.",
+            description: errorMessage,
             variant: "destructive",
         });
     } finally {

@@ -13,7 +13,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, isWithinInterval, subDays, subWeeks, subMonths, startOfDay, endOfDay, addWeeks, addMonths, isValid, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import { Download, BarChart3, Coins, ShoppingBag, ArchiveRestore, TrendingUp, PieChart, Search, Filter, Printer, CalendarIcon, Loader2 } from 'lucide-react';
+import { Download, BarChart3, Coins, ShoppingBag, ArchiveRestore, TrendingUp, PieChart, Search, Filter, Printer, CalendarIcon, Loader2, AlertTriangle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +36,7 @@ export default function ReportsPage() {
   const [businessSettings] = useLocalStorageState<BusinessSettings>('businessSettings', DEFAULT_BUSINESS_SETTINGS);
   
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const today = useMemo(() => startOfDay(new Date()), []);
   
   const [chartDateRange, setChartDateRange] = useState<DateRange | undefined>({
@@ -56,16 +58,23 @@ export default function ReportsPage() {
   useEffect(() => {
     const fetchProducts = async () => {
       setIsLoadingProducts(true);
+      setFetchError(null);
       try {
         const response = await fetch('/api/products');
-        if (!response.ok) throw new Error('Failed to fetch products');
+        if (!response.ok) {
+          const errorData = await response.json();
+          const detailedMessage = errorData.error ? `${errorData.message} -> Detalle: ${errorData.error}` : errorData.message;
+          throw new Error(detailedMessage || 'Failed to fetch products');
+        }
         const data = await response.json();
         setProducts(data);
       } catch (error) {
-        console.error(error);
+        const errorMessage = (error as Error).message;
+        console.error(errorMessage);
+        setFetchError("No se pudieron cargar los productos para los reportes. " + errorMessage);
         toast({
           title: "Error de Red",
-          description: "No se pudieron cargar los productos para los reportes.",
+          description: errorMessage,
           variant: "destructive",
         });
       } finally {
@@ -327,7 +336,15 @@ export default function ReportsPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Reportes de Ventas" description="Analiza el rendimiento de tus ventas con gráficos y datos detallados." />
-        
+      
+      {fetchError && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-5 w-5" />
+          <AlertTitle>Error al Cargar Datos</AlertTitle>
+          <AlertDescription>{fetchError}</AlertDescription>
+        </Alert>
+      )}
+
       <Card>
         <CardHeader>
             <CardTitle className="font-headline">KPIs Globales ({chartPeriodDescription})</CardTitle>
