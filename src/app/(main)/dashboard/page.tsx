@@ -14,6 +14,7 @@ import type { Product, Sale, AppSettings, BusinessSettings, SalesDataPoint } fro
 import { DEFAULT_APP_SETTINGS, DEFAULT_BUSINESS_SETTINGS } from '@/types';
 import { salesTrendForecast } from '@/ai/flows/sales-trend-forecast';
 import { format, parseISO, startOfDay, isToday, subDays } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 
 const quickAccessItems = [
   { name: "Nuevo Producto", href: "/products#add", icon: Package, description: "Añadir un nuevo artículo al catálogo." },
@@ -23,16 +24,42 @@ const quickAccessItems = [
 ];
 
 export default function DashboardPage() {
-  const [products] = useLocalStorageState<Product[]>('products', []);
+  const [products, setProducts] = useState<Product[]>([]);
   const [sales] = useLocalStorageState<Sale[]>('sales', []);
   const [appSettings] = useLocalStorageState<AppSettings>('appSettings', DEFAULT_APP_SETTINGS);
   const [businessSettings] = useLocalStorageState<BusinessSettings>('businessSettings', DEFAULT_BUSINESS_SETTINGS);
 
-
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [todaySales, setTodaySales] = useState<number>(0);
   const [lowStockCount, setLowStockCount] = useState<number>(0);
   const [nextWeekForecastText, setNextWeekForecastText] = useState<string>("Cargando...");
   const [isLoadingForecast, setIsLoadingForecast] = useState<boolean>(true);
+
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch('/api/products');
+        if (!response.ok) {
+          throw new Error('Failed to fetch products');
+        }
+        const data = await response.json();
+        setProducts(data);
+      } catch (error) {
+        console.error(error);
+        toast({
+          title: "Error de Red",
+          description: "No se pudieron cargar los productos para el dashboard.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingProducts(false);
+      }
+    };
+    fetchProducts();
+  }, [toast]);
+
 
   useEffect(() => {
     const calculatedTodaySales = sales
@@ -162,6 +189,11 @@ export default function DashboardPage() {
           <CardDescription>Estadísticas clave de tu negocio.</CardDescription>
         </CardHeader>
         <CardContent>
+          {isLoadingProducts ? (
+             <div className="flex justify-center items-center h-24">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+             </div>
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             <div className="p-4 bg-muted/30 rounded-lg shadow">
               <h3 className="text-sm font-medium text-muted-foreground">Ventas Hoy</h3>
@@ -188,10 +220,10 @@ export default function DashboardPage() {
               </p>
             </div>
           </div>
+          )}
         </CardContent>
       </Card>
 
     </div>
   );
 }
-

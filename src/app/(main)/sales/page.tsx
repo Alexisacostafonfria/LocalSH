@@ -4,7 +4,7 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom'; // Import ReactDOM for Portals
-import { PlusCircle, ShoppingCart, Printer, Search, Filter, CalendarIcon } from 'lucide-react';
+import { PlusCircle, ShoppingCart, Printer, Search, Filter, CalendarIcon, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,15 +28,17 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 export default function SalesPage() {
   const [sales, setSales] = useLocalStorageState<Sale[]>('sales', []);
-  const [products, setProducts] = useLocalStorageState<Product[]>('products', []);
+  const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useLocalStorageState<Customer[]>('customers', []);
   const [appSettings] = useLocalStorageState<AppSettings>('appSettings', DEFAULT_APP_SETTINGS);
   const [businessSettings] = useLocalStorageState<BusinessSettings>('businessSettings', DEFAULT_BUSINESS_SETTINGS);
   const [accountingSettings] = useLocalStorageState<AccountingSettings>('accountingSettings', DEFAULT_ACCOUNTING_SETTINGS);
 
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [isSaleDialogOpen, setIsSaleDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPaymentMethod, setFilterPaymentMethod] = useState<'cash' | 'transfer' | ''>('');
@@ -54,39 +56,88 @@ export default function SalesPage() {
   const [isClientMounted, setIsClientMounted] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
 
+  const { toast } = useToast();
+
+  const fetchProducts = useCallback(async () => {
+    setIsLoadingProducts(true);
+    try {
+        const response = await fetch('/api/products');
+        if (!response.ok) {
+            throw new Error('Failed to fetch products');
+        }
+        const data = await response.json();
+        setProducts(data);
+    } catch (error) {
+        console.error(error);
+        toast({
+            title: "Error de Red",
+            description: "No se pudieron cargar los productos.",
+            variant: "destructive",
+        });
+    } finally {
+        setIsLoadingProducts(false);
+    }
+  }, [toast]);
+
   useEffect(() => {
     setIsClientMounted(true);
-  }, []);
+    fetchProducts();
+  }, [fetchProducts]);
 
   // Effect to update filterDateRange if operational day changes after mount
   useEffect(() => {
     if (accountingSettings.isDayOpen && accountingSettings.currentOperationalDate && isValid(parseISO(accountingSettings.currentOperationalDate))) {
       const opDate = startOfDay(parseISO(accountingSettings.currentOperationalDate));
-      // Only update if the current filter isn't already set to this operational day, to avoid loop if user picked another range
       if (!filterDateRange || !filterDateRange.from || !filterDateRange.to || 
           format(filterDateRange.from, 'yyyy-MM-dd') !== format(opDate, 'yyyy-MM-dd') ||
           format(filterDateRange.to, 'yyyy-MM-dd') !== format(opDate, 'yyyy-MM-dd')
          ) {
-          // Only set this as default IF the user hasn't manually selected a different range for the current operational day.
           // This logic might need refinement based on desired UX for "stickiness" of user-selected range vs. auto-switching to new op day.
           // For now, if an operational day starts, it defaults to filtering by it.
           // setFilterDateRange({ from: opDate, to: opDate });
       }
     }
-  }, [accountingSettings.currentOperationalDate, accountingSettings.isDayOpen]);
+  }, [accountingSettings.currentOperationalDate, accountingSettings.isDayOpen, filterDateRange]);
 
 
-  const handleAddSale = (newSale: Sale) => {
+  const handleAddSale = async (newSale: Sale) => {
+    // Add sale to local storage first
     setSales(prevSales => [newSale, ...prevSales].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
     
-    const updatedProducts = products.map(p => {
-      const soldItem = newSale.items.find(item => item.productId === p.id);
-      if (soldItem) {
-        return { ...p, stock: p.stock - soldItem.quantity };
+    // Then, update product stock in the database
+    try {
+      const stockUpdatePromises = newSale.items.map(item => {
+        return fetch(`/api/products/${item.productId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ stockChange: -item.quantity }),
+        });
+      });
+  
+      const responses = await Promise.all(stockUpdatePromises);
+      const failedUpdates = responses.filter(res => !res.ok);
+  
+      if (failedUpdates.length > 0) {
+        toast({
+          title: "Error al actualizar stock",
+          description: "Algunos productos no pudieron ser actualizados. Por favor, revise el inventario manualmente.",
+          variant: "destructive",
+        });
+        const errorDetails = await Promise.all(failedUpdates.map(r => r.json()));
+        console.error("Failed to update stock for some items:", errorDetails);
       }
-      return p;
-    });
-    setProducts(updatedProducts);
+      
+      // Refetch products to update UI everywhere with latest stock
+      await fetchProducts();
+
+    } catch (error) {
+      console.error("Error during stock update process:", error);
+      toast({
+        title: "Error grave al actualizar stock",
+        description: "No se pudo conectar con el servidor para actualizar el stock.",
+        variant: "destructive",
+      });
+    }
   };
 
   const getSaleDateForFilter = useCallback((sale: Sale): Date => {
@@ -314,4 +365,3 @@ export default function SalesPage() {
     </div>
   );
 }
-

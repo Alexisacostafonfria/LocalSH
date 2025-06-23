@@ -4,7 +4,7 @@
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import ReactDOM from 'react-dom';
-import { PlusCircle, Search, Edit2, Trash2, Package, Filter, UploadCloud, Image as ImageIcon, Printer, Tags, LayoutGrid, List, BarChartHorizontalBig, AlertTriangle } from 'lucide-react';
+import { PlusCircle, Search, Edit2, Trash2, Package, Filter, UploadCloud, Image as ImageIcon, Printer, Tags, LayoutGrid, List, BarChartHorizontalBig, AlertTriangle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -65,14 +65,14 @@ const initialProductFormState: ProductFormData = {
 type ViewMode = 'grid' | 'list';
 
 export default function ProductsPage() {
-  const [products, setProducts] = useLocalStorageState<Product[]>('products', []);
+  const [products, setProducts] = useState<Product[]>([]);
   const [sales] = useLocalStorageState<Sale[]>('sales', []); 
   const [appSettings] = useLocalStorageState<AppSettings>('appSettings', DEFAULT_APP_SETTINGS);
   const [businessSettings] = useLocalStorageState<BusinessSettings>('businessSettings', DEFAULT_BUSINESS_SETTINGS);
   const [accountingSettings] = useLocalStorageState<AccountingSettings>('accountingSettings', DEFAULT_ACCOUNTING_SETTINGS);
   const [authState] = useLocalStorageState<AuthState>('authData', DEFAULT_AUTH_STATE);
 
-
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -94,10 +94,32 @@ export default function ProductsPage() {
   const { toast } = useToast();
   const isAdmin = authState.currentUser?.role === 'admin';
 
+  const fetchProducts = useCallback(async () => {
+    setIsLoading(true);
+    try {
+        const response = await fetch('/api/products');
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to fetch products');
+        }
+        const data = await response.json();
+        setProducts(data);
+    } catch (error) {
+        console.error(error);
+        toast({
+            title: "Error al cargar productos",
+            description: (error as Error).message,
+            variant: "destructive",
+        });
+    } finally {
+        setIsLoading(false);
+    }
+  }, [toast]);
+
   useEffect(() => {
     setIsClientMounted(true);
-    // When using useLocalStorageState, data is loaded automatically.
-  }, []);
+    fetchProducts();
+  }, [fetchProducts]);
 
   useEffect(() => {
     if (editingProduct) {
@@ -180,7 +202,7 @@ export default function ProductsPage() {
   };
 
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!isAdmin) {
       toast({ title: "Acceso Denegado", description: "No tienes permiso para realizar esta acción.", variant: "destructive" });
       return;
@@ -203,8 +225,7 @@ export default function ProductsPage() {
       return;
     }
     
-    const productData: Product = {
-      id: editingProduct?.id || productForm.id || crypto.randomUUID(),
+    const productPayload: Omit<Product, 'id'> = {
       name: productForm.name,
       category: productForm.category,
       price: price,
@@ -215,20 +236,50 @@ export default function ProductsPage() {
       description: productForm.description,
     };
     
-    if (editingProduct) {
-        setProducts(prevProducts => prevProducts.map(p => (p.id === editingProduct.id ? productData : p)));
-        toast({ title: "Producto Actualizado", description: `"${productData.name}" ha sido actualizado.` });
-    } else {
-        setProducts(prevProducts => [...prevProducts, productData].sort((a,b) => a.name.localeCompare(b.name)));
-        toast({ title: "Producto Creado", description: `"${productData.name}" ha sido añadido.` });
-    }
+    try {
+        let response;
+        if (editingProduct) {
+            response = await fetch(`/api/products/${editingProduct.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(productPayload),
+            });
+        } else {
+            response = await fetch('/api/products', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(productPayload),
+            });
+        }
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Error al guardar el producto');
+        }
+
+        const savedProduct = await response.json();
+
+        toast({
+            title: editingProduct ? "Producto Actualizado" : "Producto Creado",
+            description: `"${savedProduct.name}" ha sido guardado.`,
+        });
+
+        await fetchProducts();
         
-    setIsDialogOpen(false);
-    setEditingProduct(null);
-    setProductForm(initialProductFormState);
-    setImagePreviewUrl(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+        setIsDialogOpen(false);
+        setEditingProduct(null);
+        setProductForm(initialProductFormState);
+        setImagePreviewUrl(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+    } catch (error) {
+        console.error(error);
+        toast({
+            title: "Error al guardar",
+            description: (error as Error).message,
+            variant: "destructive",
+        });
     }
   };
 
@@ -264,7 +315,7 @@ export default function ProductsPage() {
     setIsDeleteDialogOpen(true);
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!isAdmin) {
       toast({ title: "Acceso Denegado", description: "No tienes permiso para eliminar productos.", variant: "destructive" });
       setIsDeleteDialogOpen(false);
@@ -272,10 +323,29 @@ export default function ProductsPage() {
     }
     if (!productToDelete) return;
     
-    setProducts(prevProducts => prevProducts.filter(p => p.id !== productToDelete.id));
-    toast({ title: "Producto Eliminado", description: `"${productToDelete.name}" ha sido eliminado.`, variant: "default" });
-    setProductToDelete(null);
-    setIsDeleteDialogOpen(false);
+    try {
+        const response = await fetch(`/api/products/${productToDelete.id}`, {
+            method: 'DELETE',
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Error al eliminar el producto');
+        }
+        
+        toast({ title: "Producto Eliminado", description: `"${productToDelete.name}" ha sido eliminado.`, variant: "default" });
+        await fetchProducts(); // Refetch
+        setProductToDelete(null);
+        setIsDeleteDialogOpen(false);
+
+    } catch (error) {
+        console.error(error);
+        toast({
+            title: "Error al eliminar",
+            description: (error as Error).message,
+            variant: "destructive",
+        });
+    }
   };
 
   const categories = useMemo(() => Array.from(new Set(products.map(p => p.category))).sort(), [products]);
@@ -363,7 +433,7 @@ export default function ProductsPage() {
             productId: item.productId,
             productName: productInfo?.name || 'Producto Desconocido',
             quantitySold: item.quantity,
-            remainingStock: productInfo?.stock || 0,
+            remainingStock: productInfo?.stock ?? 0, // Use remaining stock from DB
           };
         }
       });
@@ -470,7 +540,12 @@ export default function ProductsPage() {
 
       <Card className="flex-1 flex flex-col min-h-0">
         <CardContent className="flex-1 overflow-y-auto p-4">
-          {filteredProducts.length === 0 ? (
+          {isLoading ? (
+            <div className="text-center py-10">
+              <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
+              <p className="mt-4 text-muted-foreground">Cargando productos...</p>
+            </div>
+          ) : filteredProducts.length === 0 ? (
             <div className="text-center py-10 text-muted-foreground">
               <Package className="mx-auto h-12 w-12 mb-4" />
               <p className="text-lg">No se encontraron productos.</p>

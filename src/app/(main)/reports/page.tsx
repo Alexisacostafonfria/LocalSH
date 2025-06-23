@@ -13,7 +13,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, isWithinInterval, subDays, subWeeks, subMonths, startOfDay, endOfDay, addWeeks, addMonths, isValid, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import { Download, BarChart3, Coins, ShoppingBag, ArchiveRestore, TrendingUp, PieChart, Search, Filter, Printer, CalendarIcon } from 'lucide-react';
+import { Download, BarChart3, Coins, ShoppingBag, ArchiveRestore, TrendingUp, PieChart, Search, Filter, Printer, CalendarIcon, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -30,10 +30,11 @@ type PaymentMethodFilter = 'all' | 'cash' | 'transfer';
 
 export default function ReportsPage() {
   const [sales] = useLocalStorageState<Sale[]>('sales', []);
-  const [products] = useLocalStorageState<Product[]>('products', []);
+  const [products, setProducts] = useState<Product[]>([]);
   const [appSettings] = useLocalStorageState<AppSettings>('appSettings', DEFAULT_APP_SETTINGS);
   const [businessSettings] = useLocalStorageState<BusinessSettings>('businessSettings', DEFAULT_BUSINESS_SETTINGS);
   
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const today = useMemo(() => startOfDay(new Date()), []);
   
   const [chartDateRange, setChartDateRange] = useState<DateRange | undefined>({
@@ -51,6 +52,28 @@ export default function ReportsPage() {
   const [isPrintingOperationsReport, setIsPrintingOperationsReport] = useState(false);
 
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setIsLoadingProducts(true);
+      try {
+        const response = await fetch('/api/products');
+        if (!response.ok) throw new Error('Failed to fetch products');
+        const data = await response.json();
+        setProducts(data);
+      } catch (error) {
+        console.error(error);
+        toast({
+          title: "Error de Red",
+          description: "No se pudieron cargar los productos para los reportes.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingProducts(false);
+      }
+    };
+    fetchProducts();
+  }, [toast]);
 
   const getSaleDate = useMemo(() => (sale: Sale): Date => {
     return sale.operationalDate && isValid(parseISO(sale.operationalDate)) 
@@ -173,6 +196,7 @@ export default function ReportsPage() {
   }, [salesForChartPeriod]);
 
   const totalCogsValueForChartPeriod = useMemo(() => {
+    if (isLoadingProducts) return 0;
     return salesForChartPeriod.reduce((totalCogs, sale) => {
       const saleCogs = sale.items.reduce((currentSaleCogs, item) => {
         const product = products.find(p => p.id === item.productId);
@@ -181,7 +205,7 @@ export default function ReportsPage() {
       }, 0);
       return totalCogs + saleCogs;
     }, 0);
-  }, [salesForChartPeriod, products]);
+  }, [salesForChartPeriod, products, isLoadingProducts]);
 
   const totalProfitValueForChartPeriod = useMemo(() => {
     return totalSalesValueForChartPeriod - totalCogsValueForChartPeriod;
@@ -310,6 +334,11 @@ export default function ReportsPage() {
             <CardDescription>Indicadores clave basados en el rango seleccionado para el gráfico de ventas.</CardDescription>
         </CardHeader>
         <CardContent>
+            {isLoadingProducts ? (
+              <div className="flex justify-center items-center h-24">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+             </div>
+            ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -354,6 +383,7 @@ export default function ReportsPage() {
                 <CardContent><p className="text-2xl font-bold">{appSettings.currencySymbol}{totalTipsValueForChartPeriod.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p></CardContent>
                 </Card>
             </div>
+            )}
         </CardContent>
       </Card>
 
@@ -597,4 +627,3 @@ export default function ReportsPage() {
     </div>
   );
 }
-

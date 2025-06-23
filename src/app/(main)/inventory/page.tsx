@@ -2,7 +2,7 @@
 // src/app/(main)/inventory/page.tsx
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Product, InventoryItem, AppSettings, DEFAULT_APP_SETTINGS } from '@/types';
 import useLocalStorageState from '@/hooks/useLocalStorageState';
 import { PageHeader } from '@/components/PageHeader';
@@ -10,14 +10,42 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Archive, Search, PackageCheck, PackageX, AlertTriangle } from 'lucide-react';
+import { Archive, Search, PackageCheck, PackageX, AlertTriangle, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 export default function InventoryPage() {
-  const [products] = useLocalStorageState<Product[]>('products', []);
+  const [products, setProducts] = useState<Product[]>([]);
   const [appSettings] = useLocalStorageState<AppSettings>('appSettings', DEFAULT_APP_SETTINGS);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch('/api/products');
+        if (!response.ok) {
+          throw new Error('Failed to fetch products');
+        }
+        const data = await response.json();
+        setProducts(data);
+      } catch (error) {
+        console.error(error);
+        toast({
+          title: "Error al Cargar Inventario",
+          description: "No se pudieron obtener los datos de productos.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchProducts();
+  }, [toast]);
+
 
   const inventoryItems: InventoryItem[] = useMemo(() => {
     return products
@@ -60,7 +88,7 @@ export default function InventoryPage() {
             <Archive className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{products.length}</div>
+            {isLoading ? <Loader2 className="h-6 w-6 animate-spin"/> : <div className="text-2xl font-bold">{products.length}</div>}
             <p className="text-xs text-muted-foreground">Artículos únicos en catálogo</p>
           </CardContent>
         </Card>
@@ -70,7 +98,7 @@ export default function InventoryPage() {
             <PackageCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{appSettings.currencySymbol}{totalStockValue.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            {isLoading ? <Loader2 className="h-6 w-6 animate-spin"/> : <div className="text-2xl font-bold">{appSettings.currencySymbol}{totalStockValue.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>}
             <p className="text-xs text-muted-foreground">Estimación basada en precios actuales</p>
           </CardContent>
         </Card>
@@ -80,7 +108,7 @@ export default function InventoryPage() {
             <AlertTriangle className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{lowStockCount}</div>
+            {isLoading ? <Loader2 className="h-6 w-6 animate-spin"/> : <div className="text-2xl font-bold">{lowStockCount}</div>}
             <p className="text-xs text-muted-foreground">Items que necesitan reposición</p>
           </CardContent>
         </Card>
@@ -90,7 +118,7 @@ export default function InventoryPage() {
             <PackageX className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{outOfStockCount}</div>
+            {isLoading ? <Loader2 className="h-6 w-6 animate-spin"/> : <div className="text-2xl font-bold">{outOfStockCount}</div>}
             <p className="text-xs text-muted-foreground">Items sin stock disponible</p>
           </CardContent>
         </Card>
@@ -114,7 +142,12 @@ export default function InventoryPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {inventoryItems.length === 0 ? (
+          {isLoading ? (
+            <div className="text-center py-10">
+              <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
+              <p className="mt-4 text-muted-foreground">Cargando inventario...</p>
+            </div>
+          ) : inventoryItems.length === 0 ? (
              <div className="text-center py-10 text-muted-foreground">
               <Archive className="mx-auto h-12 w-12 mb-4" />
               <p className="text-lg">No hay productos en el inventario.</p>
@@ -166,4 +199,3 @@ export default function InventoryPage() {
     </div>
   );
 }
-
