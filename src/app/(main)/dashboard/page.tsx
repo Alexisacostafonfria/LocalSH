@@ -7,7 +7,8 @@ import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Package, ShoppingCart, Archive, BarChartBig, Loader2, Briefcase, DollarSign, Info } from "lucide-react";
+import { Package, ShoppingCart, Archive, BarChartBig, Loader2, Briefcase, DollarSign, Info, AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 import useLocalStorageState from '@/hooks/useLocalStorageState';
 import type { Product, Sale, AppSettings, BusinessSettings, SalesDataPoint } from '@/types';
@@ -30,6 +31,7 @@ export default function DashboardPage() {
   const [businessSettings] = useLocalStorageState<BusinessSettings>('businessSettings', DEFAULT_BUSINESS_SETTINGS);
 
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [todaySales, setTodaySales] = useState<number>(0);
   const [lowStockCount, setLowStockCount] = useState<number>(0);
   const [nextWeekForecastText, setNextWeekForecastText] = useState<string>("Cargando...");
@@ -39,18 +41,23 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const fetchProducts = async () => {
+      setError(null);
+      setIsLoadingProducts(true);
       try {
         const response = await fetch('/api/products');
         if (!response.ok) {
-          throw new Error('Failed to fetch products');
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to fetch products');
         }
         const data = await response.json();
         setProducts(data);
       } catch (error) {
-        console.error(error);
+        const errorMessage = (error as Error).message;
+        console.error(errorMessage);
+        setError("No se pudieron cargar los productos. " + errorMessage + ". Revisa la terminal del servidor (npm run dev) para más detalles y verifica tu archivo .env.local.");
         toast({
-          title: "Error de Red",
-          description: "No se pudieron cargar los productos para el dashboard.",
+          title: "Error al Cargar Productos",
+          description: "No se pudo conectar a la base de datos.",
           variant: "destructive",
         });
       } finally {
@@ -132,6 +139,14 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold font-headline tracking-tight">Dashboard</h1>
       </div>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-5 w-5" />
+          <AlertTitle>Error de Conexión a la Base de Datos</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       <Card className="shadow-lg overflow-hidden">
         <CardHeader className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">

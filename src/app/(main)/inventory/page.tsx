@@ -14,29 +14,35 @@ import { Archive, Search, PackageCheck, PackageX, AlertTriangle, Loader2 } from 
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function InventoryPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [appSettings] = useLocalStorageState<AppSettings>('appSettings', DEFAULT_APP_SETTINGS);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     const fetchProducts = async () => {
       setIsLoading(true);
+      setFetchError(null);
       try {
         const response = await fetch('/api/products');
         if (!response.ok) {
-          throw new Error('Failed to fetch products');
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to fetch products');
         }
         const data = await response.json();
         setProducts(data);
       } catch (error) {
-        console.error(error);
+        const errorMessage = (error as Error).message;
+        console.error(errorMessage);
+        setFetchError("No se pudieron cargar los productos. " + errorMessage + ". Revisa la terminal del servidor (npm run dev) para más detalles y verifica tu archivo .env.local.");
         toast({
           title: "Error al Cargar Inventario",
-          description: "No se pudieron obtener los datos de productos.",
+          description: "No se pudo conectar a la base de datos.",
           variant: "destructive",
         });
       } finally {
@@ -80,6 +86,14 @@ export default function InventoryPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Seguimiento de Inventario" description="Visualiza y gestiona los niveles de stock de tus productos." />
+
+      {fetchError && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-5 w-5" />
+          <AlertTitle>Error de Conexión a la Base de Datos</AlertTitle>
+          <AlertDescription>{fetchError}</AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -147,7 +161,7 @@ export default function InventoryPage() {
               <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
               <p className="mt-4 text-muted-foreground">Cargando inventario...</p>
             </div>
-          ) : inventoryItems.length === 0 ? (
+          ) : inventoryItems.length === 0 && !fetchError ? (
              <div className="text-center py-10 text-muted-foreground">
               <Archive className="mx-auto h-12 w-12 mb-4" />
               <p className="text-lg">No hay productos en el inventario.</p>

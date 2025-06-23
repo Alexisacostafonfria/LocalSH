@@ -40,6 +40,7 @@ import ProductMovementsReportPrintLayout, { ProductMovement } from '@/components
 import { format, parseISO, startOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import useLocalStorageState from '@/hooks/useLocalStorageState';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 
 interface ProductFormData extends Omit<Product, 'id' | 'stock' | 'price' | 'costPrice'> {
@@ -73,6 +74,7 @@ export default function ProductsPage() {
   const [authState] = useLocalStorageState<AuthState>('authData', DEFAULT_AUTH_STATE);
 
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -96,6 +98,7 @@ export default function ProductsPage() {
 
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
+    setFetchError(null);
     try {
         const response = await fetch('/api/products');
         if (!response.ok) {
@@ -105,10 +108,12 @@ export default function ProductsPage() {
         const data = await response.json();
         setProducts(data);
     } catch (error) {
-        console.error(error);
+        const errorMessage = (error as Error).message;
+        console.error(errorMessage);
+        setFetchError("No se pudieron cargar los productos. " + errorMessage + ". Revisa la terminal del servidor (npm run dev) para más detalles y verifica tu archivo .env.local.");
         toast({
-            title: "Error al cargar productos",
-            description: (error as Error).message,
+            title: "Error al Cargar Productos",
+            description: "No se pudo conectar a la base de datos.",
             variant: "destructive",
         });
     } finally {
@@ -504,6 +509,14 @@ export default function ProductsPage() {
         </div>
       </PageHeader>
 
+      {fetchError && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-5 w-5" />
+          <AlertTitle>Error de Conexión a la Base de Datos</AlertTitle>
+          <AlertDescription>{fetchError}</AlertDescription>
+        </Alert>
+      )}
+
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-2">
@@ -545,7 +558,7 @@ export default function ProductsPage() {
               <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
               <p className="mt-4 text-muted-foreground">Cargando productos...</p>
             </div>
-          ) : filteredProducts.length === 0 ? (
+          ) : filteredProducts.length === 0 && !fetchError ? (
             <div className="text-center py-10 text-muted-foreground">
               <Package className="mx-auto h-12 w-12 mb-4" />
               <p className="text-lg">No se encontraron productos.</p>
