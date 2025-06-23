@@ -29,6 +29,30 @@ export interface SaleItem {
   totalPrice: number;
 }
 
+export type OrderStatus = 'pending' | 'in-progress' | 'ready' | 'completed' | 'cancelled';
+
+export const ORDER_STATUS_MAP: Record<OrderStatus, string> = {
+  pending: 'Pendiente',
+  'in-progress': 'En Preparación',
+  ready: 'Listo para Retirar',
+  completed: 'Completado',
+  cancelled: 'Cancelado',
+};
+
+export interface Order {
+  id: string; // UUID
+  orderNumber: number; // Sequential number
+  timestamp: string; // ISO string
+  customerId?: string;
+  customerName: string;
+  customerPhone?: string;
+  items: SaleItem[];
+  totalAmount: number;
+  status: OrderStatus;
+  notes?: string;
+}
+
+
 export interface CashPaymentDetails {
   amountReceived: number;
   changeGiven: number;
@@ -174,6 +198,7 @@ export type BackupData = {
   products: Product[];
   sales: Sale[];
   customers: Customer[];
+  orders: Order[];
   appSettings: AppSettings;
   accountingSettings: AccountingSettings;
   businessSettings: BusinessSettings;

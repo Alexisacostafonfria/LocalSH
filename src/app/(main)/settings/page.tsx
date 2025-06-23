@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { AppSettings, DEFAULT_APP_SETTINGS, BusinessSettings, DEFAULT_BUSINESS_SETTINGS, BackupData, AuthState, DEFAULT_AUTH_STATE, DEFAULT_USERS_STATE, DEFAULT_ADMIN_USER_ID } from '@/types';
+import { AppSettings, DEFAULT_APP_SETTINGS, BusinessSettings, DEFAULT_BUSINESS_SETTINGS, BackupData, AuthState, DEFAULT_AUTH_STATE, DEFAULT_USERS_STATE, DEFAULT_ADMIN_USER_ID, Order } from '@/types';
 import useLocalStorageState from '@/hooks/useLocalStorageState';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -50,10 +50,11 @@ const LOCAL_STORAGE_KEYS = {
   products: 'products',
   sales: 'sales',
   customers: 'customers',
+  orders: 'orders',
   appSettings: 'appSettings',
   accountingSettings: 'accountingSettings',
   businessSettings: 'businessSettings',
-  authData: 'authData', // Added authData key
+  authData: 'authData',
 };
 
 const MAX_LOGO_SIZE_MB = 1; // 1MB limit for logo
@@ -196,6 +197,7 @@ export default function SettingsPage() {
         products: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.products) || '[]'),
         sales: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.sales) || '[]'),
         customers: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.customers) || '[]'),
+        orders: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.orders) || '[]'),
         appSettings: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.appSettings) || JSON.stringify(DEFAULT_APP_SETTINGS)),
         accountingSettings: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.accountingSettings) || JSON.stringify(DEFAULT_ACCOUNTING_SETTINGS)),
         businessSettings: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.businessSettings) || JSON.stringify(DEFAULT_BUSINESS_SETTINGS)),
@@ -245,13 +247,14 @@ export default function SettingsPage() {
           !parsedData.products ||
           !parsedData.sales ||
           !parsedData.customers ||
+          !parsedData.orders ||
           !parsedData.appSettings || 
           !parsedData.accountingSettings ||
           !parsedData.businessSettings || 
-          !parsedData.authData || // Check for authData
+          !parsedData.authData ||
           !parsedData.backupTimestamp
         ) {
-          throw new Error("El archivo de copia de seguridad no tiene el formato esperado o le faltan datos esenciales (incluyendo authData).");
+          throw new Error("El archivo de copia de seguridad no tiene el formato esperado o le faltan datos esenciales (incluyendo authData y orders).");
         }
         
         (window as any).__pendingRestoreData = parsedData;
@@ -285,6 +288,7 @@ export default function SettingsPage() {
         localStorage.setItem(LOCAL_STORAGE_KEYS.products, JSON.stringify(parsedData.products || []));
         localStorage.setItem(LOCAL_STORAGE_KEYS.sales, JSON.stringify(parsedData.sales || []));
         localStorage.setItem(LOCAL_STORAGE_KEYS.customers, JSON.stringify(parsedData.customers || []));
+        localStorage.setItem(LOCAL_STORAGE_KEYS.orders, JSON.stringify(parsedData.orders || []));
         localStorage.setItem(LOCAL_STORAGE_KEYS.appSettings, JSON.stringify(parsedData.appSettings || DEFAULT_APP_SETTINGS));
         localStorage.setItem(LOCAL_STORAGE_KEYS.accountingSettings, JSON.stringify(parsedData.accountingSettings || DEFAULT_ACCOUNTING_SETTINGS));
         localStorage.setItem(LOCAL_STORAGE_KEYS.businessSettings, JSON.stringify(parsedData.businessSettings || DEFAULT_BUSINESS_SETTINGS));
@@ -480,7 +484,7 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle className="font-headline">Copia de Seguridad y Restauración</CardTitle>
           <CardDescription>
-            Guarda una copia de todos tus datos (productos, ventas, clientes, configuración general, contable, de negocio y usuarios) o restaura desde un archivo previo.
+            Guarda una copia de todos tus datos (productos, ventas, clientes, pedidos, configuración general, contable, de negocio y usuarios) o restaura desde un archivo previo.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -515,7 +519,7 @@ export default function SettingsPage() {
                   <AlertDialogTitle className="font-headline">Confirmar Restauración</AlertDialogTitle>
                   <AlertDialogDescription>
                     ¿Estás seguro de que quieres restaurar los datos desde el archivo seleccionado? 
-                    Todos los datos actuales de la aplicación (productos, ventas, clientes, configuración general, contable, de negocio y usuarios) serán reemplazados. 
+                    Todos los datos actuales (productos, ventas, clientes, pedidos, configuración, usuarios, etc.) serán reemplazados. 
                     Esta acción no se puede deshacer.
                   </AlertDialogDescription>
                 </AlertDialogHeader>

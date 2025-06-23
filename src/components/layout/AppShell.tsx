@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   PanelLeft, Package, ShoppingCart, Archive, BarChartBig, TrendingUp, Settings as SettingsIcon, Menu, X, Briefcase,
-  DollarSign, Users, FileText, Layers, Lightbulb, Wrench, BookOpenCheck, LogOut, Loader2
+  DollarSign, Users, FileText, Layers, Lightbulb, Wrench, BookOpenCheck, LogOut, Loader2, ClipboardList
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -56,6 +56,7 @@ const baseNavItems = [
   { href: "/dashboard", icon: Layers, label: "Dashboard" },
   { href: "/products", icon: Package, label: "Catálogo" },
   { href: "/sales", icon: ShoppingCart, label: "Ventas" },
+  { href: "/orders", icon: ClipboardList, label: "Pedidos" },
   { href: "/inventory", icon: Archive, label: "Inventario" },
   { href: "/reports", icon: BarChartBig, label: "Reportes" },
   { href: "/forecast", icon: TrendingUp, label: "Pronósticos" },
