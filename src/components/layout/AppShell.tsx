@@ -14,7 +14,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import useLocalStorageState from '@/hooks/useLocalStorageState';
-import { AuthState, DEFAULT_AUTH_STATE, User, DEFAULT_ADMIN_USER_ID, DEFAULT_USERS_STATE } from '@/types';
+import { AuthState, DEFAULT_AUTH_STATE, User } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -72,43 +72,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
-  const [authState, setAuthState] = useLocalStorageState<AuthState>('authData', DEFAULT_AUTH_STATE);
-  const [isMounted, setIsMounted] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-
+  const [authState, setAuthState, isAuthInitialized] = useLocalStorageState<AuthState>('authData', DEFAULT_AUTH_STATE);
 
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
-  
-  useEffect(() => {
-    if (isMounted) {
-      let currentUsers = authState.users;
-      let currentLoggedInUser = authState.currentUser;
-      let authStateUpdated = false;
-
-      if (!currentUsers || currentUsers.length === 0) {
-        console.log("[AppShell] Initializing default users in AppShell as authState.users is empty.");
-        currentUsers = [...DEFAULT_USERS_STATE];
-        authStateUpdated = true;
-      }
-      
-      // This effect should not auto-login anyone. It just ensures users list exists.
-      // Login is handled by LoginPage or HomePage redirect.
-      
-      if (authStateUpdated) {
-        setAuthState(prev => ({ ...prev, users: currentUsers, currentUser: currentLoggedInUser })); // currentUser might be null
-      }
-
-      // Authentication check
-      if (!currentLoggedInUser && pathname !== '/login') {
-        console.log("[AppShell] No currentUser, redirecting to /login from pathname:", pathname);
-        router.replace('/login');
-      } else {
-        setIsCheckingAuth(false);
-      }
+    // Wait until the auth state has been loaded from localStorage.
+    if (!isAuthInitialized) {
+      return;
     }
-  }, [isMounted, authState.users, authState.currentUser, setAuthState, router, pathname]);
+
+    // Once state is loaded, perform the authentication check.
+    // If there is no user, redirect to login, unless we are already on the login page.
+    if (!authState.currentUser && pathname !== '/login') {
+      console.log("[AppShell] No currentUser, redirecting to /login from pathname:", pathname);
+      router.replace('/login');
+    }
+  }, [isAuthInitialized, authState.currentUser, pathname, router]);
 
 
   const closeMobileSheet = () => setMobileSheetOpen(false);
@@ -127,7 +105,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     ...adminNavItems.map(item => ({...item, disabled: !isAdmin}))
   ];
 
-  if (isCheckingAuth && !currentUser && pathname !== '/login') {
+  // Show a global loader while we check auth status, but only for protected pages.
+  // The login page can be rendered immediately.
+  if (!isAuthInitialized && pathname !== '/login') {
      return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
@@ -136,14 +116,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
   
-  // If there's no current user and we are not on the login page (already handled by redirect),
-  // or if we are still checking auth, don't render the shell.
-  // This prevents brief flashes of the AppShell if redirection to /login is about to happen.
+  // If after initialization there is still no user, the effect above will have triggered a redirect.
+  // We return null here to prevent a flash of the protected content.
   if (!currentUser && pathname !== '/login') {
-    return null; // Or a global loading indicator
+    return null;
   }
-
-
+  
   const sidebarContent = (
     <ScrollArea className="h-full">
       <div className="flex h-full max-h-screen flex-col gap-2">

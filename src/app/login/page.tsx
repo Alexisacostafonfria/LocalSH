@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import useLocalStorageState from '@/hooks/useLocalStorageState';
-import { AuthState, User, DEFAULT_AUTH_STATE, DEFAULT_USERS_STATE, DEFAULT_ADMIN_USER_ID } from '@/types';
+import { AuthState, User, DEFAULT_AUTH_STATE, DEFAULT_USERS_STATE } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -12,40 +12,35 @@ import { Briefcase, Loader2, Users as UsersIcon } from 'lucide-react'; // Rename
 
 export default function LoginPage() {
   const router = useRouter();
-  const [authState, setAuthState] = useLocalStorageState<AuthState>('authData', DEFAULT_AUTH_STATE);
-  const [isMounted, setIsMounted] = useState(false);
+  const [authState, setAuthState, isAuthInitialized] = useLocalStorageState<AuthState>('authData', DEFAULT_AUTH_STATE);
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (isMounted) {
-      let currentUsersInStorage = authState.users;
-      if (!currentUsersInStorage || currentUsersInStorage.length === 0) {
-        console.log("[LoginPage] No users found in authState, initializing with default admin.");
-        currentUsersInStorage = [...DEFAULT_USERS_STATE];
-        // Important: Update the authState in localStorage immediately
-        setAuthState(prev => ({ ...prev, users: currentUsersInStorage, currentUser: null })); 
-      }
-      setAvailableUsers(currentUsersInStorage);
-
-      // If a user is already logged in (e.g., browser back button), redirect to dashboard
-      if (authState.currentUser) {
-        console.log("[LoginPage] currentUser already set, redirecting to /dashboard.");
-        router.replace('/dashboard');
-      }
+    if (!isAuthInitialized) {
+      return; // Wait for localStorage to be read
     }
-  }, [isMounted, authState.users, authState.currentUser, setAuthState, router]);
+
+    if (authState.currentUser) {
+      console.log("[LoginPage] currentUser already set, redirecting to /dashboard.");
+      router.replace('/dashboard');
+      return; // Stop this effect run
+    }
+
+    let usersToDisplay = authState.users;
+    if (!usersToDisplay || usersToDisplay.length === 0) {
+      console.log("[LoginPage] No users found in authState, initializing with default admin.");
+      usersToDisplay = [...DEFAULT_USERS_STATE];
+      setAuthState(prev => ({ ...prev, users: usersToDisplay, currentUser: null }));
+    }
+    setAvailableUsers(usersToDisplay);
+  }, [isAuthInitialized, authState, setAuthState, router]);
 
   const handleLogin = (user: User) => {
     setAuthState(prev => ({ ...prev, currentUser: user }));
     router.push('/dashboard');
   };
 
-  if (!isMounted || (authState.users.length > 0 && authState.currentUser)) {
-    // Show loader if not mounted or if redirecting due to already logged in user
+  if (!isAuthInitialized || authState.currentUser) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground p-4">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
