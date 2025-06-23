@@ -8,8 +8,11 @@ export async function GET() {
     const [rows] = await pool.query<RowDataPacket[]>('SELECT * FROM products ORDER BY name ASC');
     return NextResponse.json(rows);
   } catch (error) {
-    console.error('Failed to fetch products:', error);
-    return NextResponse.json({ message: 'Error fetching products', error: (error as Error).message }, { status: 500 });
+    console.error('--- DATABASE ERROR: GET /api/products ---');
+    console.error('Failed to fetch products. This is likely an issue with your .env.local file or MySQL server connection.');
+    console.error(error);
+    console.error('--- END DATABASE ERROR ---');
+    return NextResponse.json({ message: 'Error fetching products from database. Check server logs for details.', error: (error as Error).message }, { status: 500 });
   }
 }
 
@@ -27,7 +30,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(newProduct, { status: 201 });
   } catch (error) {
-    console.error('Failed to create product:', error);
-    return NextResponse.json({ message: 'Error creating product', error: (error as Error).message }, { status: 500 });
+    console.error('--- DATABASE ERROR: POST /api/products ---');
+    console.error('Failed to create product. This is likely an issue with your .env.local file or MySQL server connection.');
+    console.error(error);
+    console.error('--- END DATABASE ERROR ---');
+    return NextResponse.json({ message: 'Error creating product. Check server logs for details.', error: (error as Error).message }, { status: 500 });
   }
 }
