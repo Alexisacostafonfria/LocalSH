@@ -4,7 +4,7 @@
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import ReactDOM from 'react-dom';
-import { PlusCircle, Search, Edit2, Trash2, Package, Filter, UploadCloud, Image as ImageIcon, Printer, Tags, LayoutGrid, List, BarChartHorizontalBig, AlertTriangle, Loader2 } from 'lucide-react';
+import { PlusCircle, Search, Edit2, Trash2, Package, Filter, UploadCloud, Image as ImageIcon, Printer, Tags, LayoutGrid, List, BarChartHorizontalBig, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -65,8 +65,7 @@ const initialProductFormState: ProductFormData = {
 type ViewMode = 'grid' | 'list';
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [products, setProducts] = useLocalStorageState<Product[]>('products', []);
   const [sales] = useLocalStorageState<Sale[]>('sales', []); 
   const [appSettings] = useLocalStorageState<AppSettings>('appSettings', DEFAULT_APP_SETTINGS);
   const [businessSettings] = useLocalStorageState<BusinessSettings>('businessSettings', DEFAULT_BUSINESS_SETTINGS);
@@ -97,28 +96,8 @@ export default function ProductsPage() {
 
   useEffect(() => {
     setIsClientMounted(true);
-    const fetchProducts = async () => {
-      setIsLoading(true);
-      try {
-        const response = await fetch('/api/products');
-        if (!response.ok) {
-          throw new Error('Error al cargar los productos');
-        }
-        const data: Product[] = await response.json();
-        setProducts(data);
-      } catch (error) {
-        console.error(error);
-        toast({
-          title: "Error de Carga",
-          description: "No se pudieron cargar los productos desde la base de datos.",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchProducts();
-  }, [toast]);
+    // When using useLocalStorageState, data is loaded automatically.
+  }, []);
 
   useEffect(() => {
     if (editingProduct) {
@@ -201,7 +180,7 @@ export default function ProductsPage() {
   };
 
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!isAdmin) {
       toast({ title: "Acceso Denegado", description: "No tienes permiso para realizar esta acción.", variant: "destructive" });
       return;
@@ -236,40 +215,20 @@ export default function ProductsPage() {
       description: productForm.description,
     };
     
-    try {
-        let updatedProduct: Product;
-        if (editingProduct) {
-            const response = await fetch(`/api/products/${editingProduct.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(productData),
-            });
-            if (!response.ok) throw new Error('Error al actualizar el producto');
-            updatedProduct = await response.json();
-            setProducts(prevProducts => prevProducts.map(p => (p.id === editingProduct.id ? updatedProduct : p)));
-            toast({ title: "Producto Actualizado", description: `"${updatedProduct.name}" ha sido actualizado.` });
-        } else {
-            const response = await fetch('/api/products', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(productData),
-            });
-            if (!response.ok) throw new Error('Error al crear el producto');
-            updatedProduct = await response.json();
-            setProducts(prevProducts => [...prevProducts, updatedProduct].sort((a,b) => a.name.localeCompare(b.name)));
-            toast({ title: "Producto Creado", description: `"${updatedProduct.name}" ha sido añadido.` });
-        }
+    if (editingProduct) {
+        setProducts(prevProducts => prevProducts.map(p => (p.id === editingProduct.id ? productData : p)));
+        toast({ title: "Producto Actualizado", description: `"${productData.name}" ha sido actualizado.` });
+    } else {
+        setProducts(prevProducts => [...prevProducts, productData].sort((a,b) => a.name.localeCompare(b.name)));
+        toast({ title: "Producto Creado", description: `"${productData.name}" ha sido añadido.` });
+    }
         
-        setIsDialogOpen(false);
-        setEditingProduct(null);
-        setProductForm(initialProductFormState);
-        setImagePreviewUrl(null);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = "";
-        }
-    } catch (error) {
-        console.error(error);
-        toast({ title: 'Error', description: 'No se pudo guardar el producto en la base de datos.', variant: 'destructive' });
+    setIsDialogOpen(false);
+    setEditingProduct(null);
+    setProductForm(initialProductFormState);
+    setImagePreviewUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
@@ -305,7 +264,7 @@ export default function ProductsPage() {
     setIsDeleteDialogOpen(true);
   };
 
-  const handleDeleteConfirm = async () => {
+  const handleDeleteConfirm = () => {
     if (!isAdmin) {
       toast({ title: "Acceso Denegado", description: "No tienes permiso para eliminar productos.", variant: "destructive" });
       setIsDeleteDialogOpen(false);
@@ -313,22 +272,10 @@ export default function ProductsPage() {
     }
     if (!productToDelete) return;
     
-    try {
-        const response = await fetch(`/api/products/${productToDelete.id}`, {
-            method: 'DELETE',
-        });
-        if (!response.ok) {
-            throw new Error('Error al eliminar el producto');
-        }
-        setProducts(prevProducts => prevProducts.filter(p => p.id !== productToDelete.id));
-        toast({ title: "Producto Eliminado", description: `"${productToDelete.name}" ha sido eliminado.`, variant: "default" });
-    } catch (error) {
-        console.error(error);
-        toast({ title: 'Error', description: 'No se pudo eliminar el producto de la base de datos.', variant: 'destructive' });
-    } finally {
-        setProductToDelete(null);
-        setIsDeleteDialogOpen(false);
-    }
+    setProducts(prevProducts => prevProducts.filter(p => p.id !== productToDelete.id));
+    toast({ title: "Producto Eliminado", description: `"${productToDelete.name}" ha sido eliminado.`, variant: "default" });
+    setProductToDelete(null);
+    setIsDeleteDialogOpen(false);
   };
 
   const categories = useMemo(() => Array.from(new Set(products.map(p => p.category))).sort(), [products]);
@@ -523,12 +470,7 @@ export default function ProductsPage() {
 
       <Card className="flex-1 flex flex-col min-h-0">
         <CardContent className="flex-1 overflow-y-auto p-4">
-          {isLoading ? (
-             <div className="flex justify-center items-center h-full">
-                <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                <p className="ml-4 text-muted-foreground">Cargando productos...</p>
-             </div>
-          ) : filteredProducts.length === 0 ? (
+          {filteredProducts.length === 0 ? (
             <div className="text-center py-10 text-muted-foreground">
               <Package className="mx-auto h-12 w-12 mb-4" />
               <p className="text-lg">No se encontraron productos.</p>
