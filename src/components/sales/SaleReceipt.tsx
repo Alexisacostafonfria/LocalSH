@@ -60,13 +60,13 @@ const SaleReceipt: React.FC<SaleReceiptProps> = ({ sale, appSettings, businessSe
         {businessSettings.address && <p className="text-xs">{businessSettings.address}</p>}
         {businessSettings.phone && <p className="text-xs">Tel: {businessSettings.phone}</p>}
         {businessSettings.taxId && <p className="text-xs">ID Fiscal: {businessSettings.taxId}</p>}
-        <p className="text-sm mt-1">{sale.paymentMethod === 'invoice' ? 'FACTURA' : 'RECIBO DE VENTA'}</p>
+        <p className="text-sm mt-1 font-bold">{sale.paymentMethod === 'invoice' ? 'FACTURA' : 'RECIBO DE VENTA'}</p>
       </div>
 
       <div className="mb-2">
-        <p>ID Venta: {sale.id.substring(0, 12)}...</p>
+        <p>{sale.paymentMethod === 'invoice' ? 'Factura Nº' : 'ID Venta'}: {sale.id.substring(0, 12)}...</p>
         <p>Fecha: {format(new Date(sale.timestamp), "dd/MM/yyyy HH:mm:ss", { locale: es })}</p>
-        {sale.customerName && <p>Cliente (General): {sale.customerName}</p>}
+        {sale.customerName && <p>Cliente: {sale.customerName}</p>}
       </div>
 
       <hr className="border-dashed border-black my-2" />

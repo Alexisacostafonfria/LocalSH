@@ -43,7 +43,7 @@ export default function SalesPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isSaleDialogOpen, setIsSaleDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterPaymentMethod, setFilterPaymentMethod] = useState<'cash' | 'transfer' | ''>('');
+  const [filterPaymentMethod, setFilterPaymentMethod] = useState<'cash' | 'transfer' | 'invoice' | ''>('');
   
   const [filterDateRange, setFilterDateRange] = useState<DateRange | undefined>(() => {
     const today = startOfDay(new Date());
@@ -85,20 +85,26 @@ export default function SalesPage() {
   const handleAddSale = (newSale: Sale) => {
     setSales(prevSales => [newSale, ...prevSales].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
     
-    // Update product stock in localStorage
-    const updatedProducts = products.map(p => {
-        const itemSold = newSale.items.find(item => item.productId === p.id);
-        if (itemSold) {
-            return { ...p, stock: p.stock - itemSold.quantity };
-        }
-        return p;
-    });
-    setProducts(updatedProducts);
+    // Update product stock in localStorage only for non-invoice sales
+    if (newSale.paymentMethod !== 'invoice') {
+      const updatedProducts = products.map(p => {
+          const itemSold = newSale.items.find(item => item.productId === p.id);
+          if (itemSold) {
+              return { ...p, stock: p.stock - itemSold.quantity };
+          }
+          return p;
+      });
+      setProducts(updatedProducts);
+    }
+
 
     toast({
         title: "Venta Registrada",
         description: `Venta ${newSale.id.substring(0,8)} completada. Stock actualizado.`,
     });
+
+    // Automatically print receipt/invoice
+    handleInitiatePrint(newSale);
   };
 
   const getSaleDateForFilter = useCallback((sale: Sale): Date => {
@@ -239,7 +245,7 @@ export default function SalesPage() {
                 <Filter className="h-5 w-5 text-muted-foreground" />
                 <Select 
                   value={filterPaymentMethod === '' ? 'all' : filterPaymentMethod} 
-                  onValueChange={(value) => setFilterPaymentMethod(value === 'all' ? '' : value as 'cash' | 'transfer' | '')}
+                  onValueChange={(value) => setFilterPaymentMethod(value === 'all' ? '' : value as 'cash' | 'transfer' | 'invoice' | '')}
                 >
                   <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="Método de Pago" />
@@ -248,6 +254,7 @@ export default function SalesPage() {
                     <SelectItem value="all">Todos</SelectItem>
                     <SelectItem value="cash">Efectivo</SelectItem>
                     <SelectItem value="transfer">Transferencia</SelectItem>
+                    <SelectItem value="invoice">Factura</SelectItem>
                   </SelectContent>
                 </Select>
             </div>
@@ -268,7 +275,7 @@ export default function SalesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID Venta</TableHead>
+                  <TableHead>ID Venta/Factura</TableHead>
                   <TableHead>Fecha Venta</TableHead>
                   <TableHead>Fecha Operativa</TableHead>
                   <TableHead>Cliente</TableHead>
@@ -294,12 +301,12 @@ export default function SalesPage() {
                       {appSettings.currencySymbol}{sale.totalAmount.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={sale.paymentMethod === 'cash' ? 'secondary' : 'outline'}>
-                        {sale.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}
+                       <Badge variant={sale.paymentMethod === 'cash' ? 'secondary' : sale.paymentMethod === 'transfer' ? 'outline' : 'default'}>
+                         {sale.paymentMethod.charAt(0).toUpperCase() + sale.paymentMethod.slice(1)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => handleInitiatePrint(sale)} title="Imprimir Recibo">
+                      <Button variant="ghost" size="icon" onClick={() => handleInitiatePrint(sale)} title="Imprimir Recibo/Factura">
                         <Printer className="h-4 w-4" />
                       </Button>
                     </TableCell>
