@@ -7,11 +7,11 @@ import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Package, ShoppingCart, Archive, BarChartBig, Loader2, Briefcase, DollarSign, Info, AlertTriangle } from "lucide-react";
+import { Package, ShoppingCart, Archive, BarChartBig, Loader2, Briefcase, DollarSign, Info, AlertTriangle, ClipboardList, PackageCheck } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 import useLocalStorageState from '@/hooks/useLocalStorageState';
-import type { Product, Sale, AppSettings, BusinessSettings, SalesDataPoint } from '@/types';
+import type { Product, Sale, AppSettings, BusinessSettings, SalesDataPoint, Order } from '@/types';
 import { DEFAULT_APP_SETTINGS, DEFAULT_BUSINESS_SETTINGS } from '@/types';
 import { salesTrendForecast } from '@/ai/flows/sales-trend-forecast';
 import { format, parseISO, startOfDay, isToday, subDays } from 'date-fns';
@@ -27,6 +27,7 @@ const quickAccessItems = [
 export default function DashboardPage() {
   const [products, setProducts] = useLocalStorageState<Product[]>('products', []);
   const [sales] = useLocalStorageState<Sale[]>('sales', []);
+  const [orders] = useLocalStorageState<Order[]>('orders', []);
   const [appSettings] = useLocalStorageState<AppSettings>('appSettings', DEFAULT_APP_SETTINGS);
   const [businessSettings] = useLocalStorageState<BusinessSettings>('businessSettings', DEFAULT_BUSINESS_SETTINGS);
 
@@ -61,6 +62,12 @@ export default function DashboardPage() {
   const totalStockCostValue = useMemo(() => {
     return products.reduce((sum, product) => sum + ((product.costPrice || 0) * product.stock), 0);
   }, [products]);
+  
+  const { activeOrdersCount, readyOrdersCount } = useMemo(() => {
+    const active = orders.filter(o => o.status === 'pending' || o.status === 'in-progress').length;
+    const ready = orders.filter(o => o.status === 'ready').length;
+    return { activeOrdersCount: active, readyOrdersCount: ready };
+  }, [orders]);
 
   const historicalSalesDataForForecast: SalesDataPoint[] = useMemo(() => {
     const sixtyDaysAgo = subDays(startOfDay(new Date()), 59); 
@@ -187,7 +194,7 @@ export default function DashboardPage() {
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
              </div>
           ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="p-4 bg-muted/30 rounded-lg shadow">
               <h3 className="text-sm font-medium text-muted-foreground">Ventas Hoy</h3>
               <p className="text-2xl font-bold">
@@ -198,6 +205,14 @@ export default function DashboardPage() {
             <div className="p-4 bg-muted/30 rounded-lg shadow">
               <h3 className="text-sm font-medium text-muted-foreground">Productos Bajos en Stock</h3>
               <p className="text-2xl font-bold">{lowStockCount}</p>
+            </div>
+             <div className="p-4 bg-muted/30 rounded-lg shadow">
+              <h3 className="text-sm font-medium text-muted-foreground">Pedidos Activos</h3>
+              <p className="text-2xl font-bold">{activeOrdersCount}</p>
+            </div>
+             <div className="p-4 bg-muted/30 rounded-lg shadow">
+              <h3 className="text-sm font-medium text-muted-foreground">Pedidos Listos</h3>
+              <p className="text-2xl font-bold">{readyOrdersCount}</p>
             </div>
             <div className="p-4 bg-muted/30 rounded-lg shadow">
               <h3 className="text-sm font-medium text-muted-foreground">Valor Costo del Stock</h3>
