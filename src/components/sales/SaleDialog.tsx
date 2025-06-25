@@ -1,4 +1,5 @@
 
+
 // src/components/sales/SaleDialog.tsx
 "use client";
 
@@ -423,7 +424,8 @@ export default function SaleDialog({
     const sale: Sale = {
       id: crypto.randomUUID(),
       timestamp: new Date().toISOString(),
-      operationalDate: accountingSettings.currentOperationalDate!, 
+      operationalDate: accountingSettings.currentOperationalDate!,
+      origin: 'pos',
       customerId: currentTransactionCustomer.id, 
       customerName: currentTransactionCustomer.name, 
       items: saleItems,

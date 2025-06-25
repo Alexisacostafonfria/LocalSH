@@ -1,4 +1,5 @@
 
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -79,7 +80,7 @@ h1, h2, h3, h4, h5, h6 {
     padding: 0 !important;
   }
 
-  body > *:not(#printableOperationsReportArea):not(#printable-receipt-area):not(#printableProductListArea):not(#printableMovementsReportArea):not(#printableClosureReportArea) {
+  body > *:not(#printableOperationsReportArea):not(#printable-receipt-area):not(#printableProductListArea):not(#printableMovementsReportArea):not(#printableClosureReportArea):not(#printable-prep-ticket-area) {
     display: none !important;
     visibility: hidden !important;
   }
@@ -89,7 +90,8 @@ h1, h2, h3, h4, h5, h6 {
   #printable-receipt-area,
   #printableProductListArea,
   #printableMovementsReportArea,
-  #printableClosureReportArea {
+  #printableClosureReportArea,
+  #printable-prep-ticket-area {
     display: block !important;
     visibility: visible !important;
     position: absolute !important;
@@ -159,17 +161,20 @@ h1, h2, h3, h4, h5, h6 {
   #printableClosureReportArea { page: closure-report-page; }
 
 
-  /* Estilos específicos para RECIBOS */
-   #printable-receipt-area {
+  /* Estilos específicos para RECIBOS Y TICKETS DE PREPARACIÓN */
+   #printable-receipt-area,
+   #printable-prep-ticket-area {
     font-size: 9pt !important; /* Tamaño de fuente base para recibos */
     page: receipt-page; /* Aplicar la página definida al contenedor del recibo */
   }
-  #printable-receipt-area * {
+  #printable-receipt-area *,
+  #printable-prep-ticket-area * {
     visibility: visible !important;
     color: black !important;
     background-color: transparent !important;
   }
-  #printable-receipt-area hr {
+  #printable-receipt-area hr,
+  #printable-prep-ticket-area hr {
     border-color: black !important;
   }
   @page receipt-page { /* Definición de página para recibos */

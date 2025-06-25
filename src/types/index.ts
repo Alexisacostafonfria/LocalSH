@@ -1,4 +1,5 @@
 
+
 export interface Product {
   id: string;
   name: string;
@@ -74,6 +75,8 @@ export type PaymentDetails = CashPaymentDetails | TransferPaymentDetails;
 export interface Sale {
   id: string;
   timestamp: string; // ISO string
+  orderId?: string; // Link to the original order
+  origin: 'pos' | 'order'; // Where the sale originated from
   customerId?: string;
   customerName?: string;
   items: SaleItem[];

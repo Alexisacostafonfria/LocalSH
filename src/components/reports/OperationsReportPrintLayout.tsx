@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React from 'react';
@@ -54,6 +55,10 @@ const OperationsReportPrintLayout: React.FC<OperationsReportPrintLayoutProps> = 
       }, 0)
     : 0;
 
+  const totalPosSales = operations.filter(s => s.origin === 'pos').reduce((sum, s) => sum + s.totalAmount, 0);
+  const totalOrderSales = operations.filter(s => s.origin === 'order').reduce((sum, s) => sum + s.totalAmount, 0);
+
+
   return (
     <div className="p-4 bg-white text-black text-sm font-sans">
       <header className="mb-6 border-b pb-4">
@@ -87,7 +92,7 @@ const OperationsReportPrintLayout: React.FC<OperationsReportPrintLayoutProps> = 
           <tr className="bg-gray-100">
             <th className="border p-2 text-left font-semibold">ID Venta</th>
             <th className="border p-2 text-left font-semibold">Fecha Venta</th>
-            <th className="border p-2 text-left font-semibold">Fecha Op.</th>
+            <th className="border p-2 text-left font-semibold">Origen</th>
             <th className="border p-2 text-left font-semibold">Cliente</th>
             <th className="border p-2 text-center font-semibold">Items</th>
             <th className="border p-2 text-right font-semibold">Total</th>
@@ -106,7 +111,7 @@ const OperationsReportPrintLayout: React.FC<OperationsReportPrintLayoutProps> = 
               <tr key={sale.id} className="break-inside-avoid-page">
                 <td className="border p-2 align-top">{sale.id.substring(0, 8)}...</td>
                 <td className="border p-2 align-top">{formatDateSafe(sale.timestamp, "dd MMM yy, HH:mm")}</td>
-                <td className="border p-2 align-top">{formatDateSafe(sale.operationalDate)}</td>
+                <td className="border p-2 align-top">{sale.origin === 'pos' ? 'POS' : 'Pedido'}</td>
                 <td className="border p-2 align-top">{sale.customerName || 'N/A'}</td>
                 <td className="border p-2 align-top text-center">{sale.items.reduce((sum, item) => sum + item.quantity, 0)}</td>
                 <td className="border p-2 align-top text-right">
@@ -124,41 +129,50 @@ const OperationsReportPrintLayout: React.FC<OperationsReportPrintLayoutProps> = 
           <tfoot className="bg-gray-100 font-semibold">
             <tr>
               <td colSpan={5} className="border p-2 text-right">Ingresos Totales:</td>
-              <td className="border p-2 text-right">
+              <td colSpan={2} className="border p-2 text-right">
                 {appSettings.currencySymbol}
                 {totalRevenue.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </td>
-              <td className="border p-2"></td>
             </tr>
             <tr>
               <td colSpan={5} className="border p-2 text-right">Total Transacciones:</td>
-              <td className="border p-2 text-right">{numberOfTransactions}</td>
-              <td className="border p-2"></td>
+              <td colSpan={2} className="border p-2 text-right">{numberOfTransactions}</td>
+            </tr>
+             <tr>
+              <td colSpan={5} className="border p-2 text-right">Total Ventas Directas (POS):</td>
+              <td colSpan={2} className="border p-2 text-right">
+                {appSettings.currencySymbol}
+                {totalPosSales.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </td>
+            </tr>
+            <tr>
+              <td colSpan={5} className="border p-2 text-right">Total Ventas por Pedidos:</td>
+              <td colSpan={2} className="border p-2 text-right">
+                {appSettings.currencySymbol}
+                {totalOrderSales.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </td>
             </tr>
             <tr>
               <td colSpan={5} className="border p-2 text-right">Total Ventas Efectivo:</td>
-              <td className="border p-2 text-right">
+              <td colSpan={2} className="border p-2 text-right">
                 {appSettings.currencySymbol}
                 {totalCashSales.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </td>
-              <td className="border p-2"></td>
             </tr>
             <tr>
               <td colSpan={5} className="border p-2 text-right">Total Ventas Transferencia:</td>
-              <td className="border p-2 text-right">
+              <td colSpan={2} className="border p-2 text-right">
                 {appSettings.currencySymbol}
                 {totalTransferSales.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </td>
-              <td className="border p-2"></td>
             </tr>
             {appSettings.allowTips && (
               <tr>
                 <td colSpan={5} className="border p-2 text-right">Total Propinas Recaudadas (Efectivo):</td>
-                <td className="border p-2 text-right">
+                <td colSpan={2} className="border p-2 text-right">
                   {appSettings.currencySymbol}
                   {totalTipsCollected.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </td>
-                <td className="border p-2"></td>
               </tr>
             )}
           </tfoot>

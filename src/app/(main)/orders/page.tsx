@@ -10,12 +10,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Order, Product, Customer, AppSettings, BusinessSettings, OrderStatus, ORDER_STATUS_MAP } from '@/types';
+import { Order, Product, Customer, AppSettings, BusinessSettings, OrderStatus, ORDER_STATUS_MAP, PaymentDetails, Sale, AccountingSettings, DEFAULT_ACCOUNTING_SETTINGS } from '@/types';
 import useLocalStorageState from '@/hooks/useLocalStorageState';
 import OrderDialog from '@/components/orders/OrderDialog';
+import PaymentDialog from '@/components/orders/PaymentDialog'; // New
 import OrderTicket from '@/components/orders/OrderTicket';
+import SaleReceipt from '@/components/sales/SaleReceipt'; // For final receipt
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, MoreVertical, Printer, Package, ClipboardList, Loader2, CheckCircle, Ban, Truck } from 'lucide-react';
+import { PlusCircle, MoreVertical, Printer, Package, ClipboardList, Loader2, CheckCircle, Ban, Truck, CreditCard, CookingPot } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -34,15 +36,23 @@ const statusColors: Record<OrderStatus, string> = {
 export default function OrdersPage() {
   const [orders, setOrders] = useLocalStorageState<Order[]>('orders', []);
   const [products, setProducts] = useLocalStorageState<Product[]>('products', []);
+  const [sales, setSales] = useLocalStorageState<Sale[]>('sales', []);
   const [customers, setCustomers] = useLocalStorageState<Customer[]>('customers', []);
   const [appSettings] = useLocalStorageState<AppSettings>('appSettings', DEFAULT_APP_SETTINGS);
   const [businessSettings] = useLocalStorageState<BusinessSettings>('businessSettings', DEFAULT_BUSINESS_SETTINGS);
+  const [accountingSettings] = useLocalStorageState<AccountingSettings>('accountingSettings', DEFAULT_ACCOUNTING_SETTINGS);
 
   const [isMounted, setIsMounted] = useState(false);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
-  const [orderToPrint, setOrderToPrint] = useState<Order | null>(null);
+  
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [orderToPay, setOrderToPay] = useState<Order | null>(null);
+
+  const [orderToPrintPrep, setOrderToPrintPrep] = useState<Order | null>(null);
+  const [saleToPrint, setSaleToPrint] = useState<Sale | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
+  
   const [orderToConfirm, setOrderToConfirm] = useState<{ order: Order, newStatus: OrderStatus } | null>(null);
 
   const { toast } = useToast();
@@ -71,21 +81,6 @@ export default function OrdersPage() {
         toast({ title: 'Acción no permitida', description: 'No se puede cambiar el estado de un pedido completado o cancelado.', variant: 'destructive' });
         return;
     }
-    
-    if (newStatus === 'completed') {
-      const stockIssues = order.items.filter(item => {
-        const product = products.find(p => p.id === item.productId);
-        return !product || product.stock < item.quantity;
-      });
-      if (stockIssues.length > 0) {
-        toast({
-          title: 'Stock Insuficiente',
-          description: `No se puede completar. Productos con stock insuficiente: ${stockIssues.map(i => i.productName).join(', ')}`,
-          variant: 'destructive',
-        });
-        return;
-      }
-    }
     setOrderToConfirm({ order, newStatus });
   };
   
@@ -93,45 +88,105 @@ export default function OrdersPage() {
     if (!orderToConfirm) return;
     const { order, newStatus } = orderToConfirm;
 
-    let stockAdjusted = false;
-    if (newStatus === 'completed') {
-        const updatedProducts = products.map(p => {
-            const itemInOrder = order.items.find(item => item.productId === p.id);
-            if (itemInOrder) {
-                return { ...p, stock: p.stock - itemInOrder.quantity };
-            }
-            return p;
-        });
-        setProducts(updatedProducts);
-        stockAdjusted = true;
-    }
-
     const updatedOrders = orders.map(o => o.id === order.id ? { ...o, status: newStatus } : o);
     setOrders(updatedOrders);
     
     toast({
         title: `Pedido ${ORDER_STATUS_MAP[newStatus]}`,
-        description: `El pedido #${order.orderNumber} ahora está ${ORDER_STATUS_MAP[newStatus]}. ${stockAdjusted ? 'El stock ha sido actualizado.' : ''}`
+        description: `El pedido #${order.orderNumber} ahora está ${ORDER_STATUS_MAP[newStatus]}.`
     });
+
+    if (newStatus === 'in-progress') {
+        initiatePrint(order, 'prep');
+    }
+    
     setOrderToConfirm(null);
   };
+  
+  const handleOpenPaymentDialog = (order: Order) => {
+    const stockIssues = order.items.filter(item => {
+      const product = products.find(p => p.id === item.productId);
+      return !product || product.stock < item.quantity;
+    });
+
+    if (stockIssues.length > 0) {
+      toast({
+        title: 'Stock Insuficiente',
+        description: `No se puede procesar el pago. Productos con stock insuficiente: ${stockIssues.map(i => i.productName).join(', ')}`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    setOrderToPay(order);
+    setIsPaymentDialogOpen(true);
+  };
+
+  const handleCompleteOrder = (completedOrder: Order, paymentDetails: PaymentDetails) => {
+    // 1. Create Sale Object
+    const newSale: Sale = {
+      id: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+      operationalDate: accountingSettings.currentOperationalDate!,
+      orderId: completedOrder.id,
+      origin: 'order',
+      customerId: completedOrder.customerId,
+      customerName: completedOrder.customerName,
+      items: completedOrder.items,
+      subTotal: completedOrder.totalAmount,
+      totalAmount: completedOrder.totalAmount,
+      paymentMethod: paymentDetails.hasOwnProperty('amountReceived') ? 'cash' : 'transfer',
+      paymentDetails: paymentDetails,
+    };
+    
+    // 2. Update Sales
+    setSales(prev => [newSale, ...prev].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+
+    // 3. Update Product Stock
+    const updatedProducts = products.map(p => {
+        const itemInOrder = completedOrder.items.find(item => item.productId === p.id);
+        if (itemInOrder) {
+            return { ...p, stock: p.stock - itemInOrder.quantity };
+        }
+        return p;
+    });
+    setProducts(updatedProducts);
+    
+    // 4. Update Order Status
+    const updatedOrders = orders.map(o => o.id === completedOrder.id ? { ...o, status: 'completed' } : o);
+    setOrders(updatedOrders);
+
+    // 5. Trigger Final Receipt Print
+    initiatePrint(newSale, 'sale');
+    
+    toast({ title: 'Pedido Completado y Venta Registrada', description: `La venta para el pedido #${completedOrder.orderNumber} se ha creado. Stock actualizado.` });
+    setIsPaymentDialogOpen(false);
+    setOrderToPay(null);
+  };
+
 
   const openDialog = (order: Order | null = null) => {
     setEditingOrder(order);
-    setIsDialogOpen(true);
+    setIsOrderDialogOpen(true);
   };
   
-  const initiatePrint = (order: Order) => {
-    setOrderToPrint(order);
+  const initiatePrint = (data: Order | Sale, type: 'prep' | 'sale') => {
+    if (type === 'prep') {
+        setOrderToPrintPrep(data as Order);
+        setSaleToPrint(null);
+    } else {
+        setSaleToPrint(data as Sale);
+        setOrderToPrintPrep(null);
+    }
     setIsPrinting(true);
   };
   
   useEffect(() => {
-    if (isPrinting && orderToPrint) {
+    if (isPrinting && (orderToPrintPrep || saleToPrint)) {
       const timer = setTimeout(() => window.print(), 500);
       const handleAfterPrint = () => {
         setIsPrinting(false);
-        setOrderToPrint(null);
+        setOrderToPrintPrep(null);
+        setSaleToPrint(null);
         window.removeEventListener('afterprint', handleAfterPrint);
       };
       window.addEventListener('afterprint', handleAfterPrint);
@@ -140,7 +195,7 @@ export default function OrdersPage() {
         window.removeEventListener('afterprint', handleAfterPrint);
       };
     }
-  }, [isPrinting, orderToPrint]);
+  }, [isPrinting, orderToPrintPrep, saleToPrint]);
 
   const sortedOrders = useMemo(() => {
     const active = orders.filter(o => o.status === 'pending' || o.status === 'in-progress').sort((a,b) => a.timestamp.localeCompare(b.timestamp));
@@ -164,7 +219,19 @@ export default function OrdersPage() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onSelect={() => openDialog(order)} disabled={order.status === 'completed' || order.status === 'cancelled'}>Editar Pedido</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => initiatePrint(order)}>Imprimir Ticket</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => initiatePrint(order, 'prep')}>Imprimir Ticket Preparación</DropdownMenuItem>
+            {order.status === 'completed' && 
+                <DropdownMenuItem onSelect={() => {
+                    const linkedSale = sales.find(s => s.orderId === order.id);
+                    if (linkedSale) {
+                        initiatePrint(linkedSale, 'sale');
+                    } else {
+                        toast({title: "Recibo no encontrado", description: "No se encontró una venta vinculada a este pedido completado.", variant: 'destructive'});
+                    }
+                }}>
+                    Re-imprimir Recibo de Venta
+                </DropdownMenuItem>
+            }
           </DropdownMenuContent>
         </DropdownMenu>
       </CardHeader>
@@ -176,9 +243,9 @@ export default function OrdersPage() {
         {order.notes && <p className="text-xs pt-1 border-t border-muted-foreground/20"><strong>Notas:</strong> {order.notes}</p>}
       </CardContent>
       <CardFooter className="flex-col items-stretch gap-2">
-        {order.status === 'pending' && <Button size="sm" onClick={() => handleStatusChange(order, 'in-progress')}>Marcar como "En Preparación"</Button>}
-        {order.status === 'in-progress' && <Button size="sm" onClick={() => handleStatusChange(order, 'ready')}>Marcar como "Listo para Retirar"</Button>}
-        {order.status === 'ready' && <Button size="sm" onClick={() => handleStatusChange(order, 'completed')} className="bg-green-600 hover:bg-green-700 text-white"><CheckCircle className="mr-2 h-4 w-4"/>Marcar como "Completado"</Button>}
+        {order.status === 'pending' && <Button size="sm" onClick={() => handleStatusChange(order, 'in-progress')}><CookingPot className="mr-2 h-4 w-4"/>Marcar como "En Preparación"</Button>}
+        {order.status === 'in-progress' && <Button size="sm" onClick={() => handleStatusChange(order, 'ready')}><Truck className="mr-2 h-4 w-4"/>Marcar como "Listo para Retirar"</Button>}
+        {order.status === 'ready' && <Button size="sm" onClick={() => handleOpenPaymentDialog(order)} className="bg-green-600 hover:bg-green-700 text-white"><CreditCard className="mr-2 h-4 w-4"/>Registrar Pago y Completar</Button>}
         {(order.status === 'pending' || order.status === 'in-progress') && <Button variant="destructive" size="sm" onClick={() => handleStatusChange(order, 'cancelled')}><Ban className="mr-2 h-4 w-4"/>Cancelar Pedido</Button>}
       </CardFooter>
     </Card>
@@ -217,10 +284,10 @@ export default function OrdersPage() {
         </TabsContent>
       </Tabs>
 
-      {isDialogOpen && isMounted && (
+      {isOrderDialogOpen && isMounted && (
         <OrderDialog
-          isOpen={isDialogOpen}
-          onClose={() => setIsDialogOpen(false)}
+          isOpen={isOrderDialogOpen}
+          onClose={() => setIsOrderDialogOpen(false)}
           products={products}
           customers={customers}
           onSave={handleAddOrUpdateOrder}
@@ -228,14 +295,37 @@ export default function OrdersPage() {
           editingOrder={editingOrder}
         />
       )}
+      
+      {isPaymentDialogOpen && isMounted && orderToPay && (
+        <PaymentDialog
+          isOpen={isPaymentDialogOpen}
+          onClose={() => setIsPaymentDialogOpen(false)}
+          order={orderToPay}
+          onConfirm={handleCompleteOrder}
+          appSettings={appSettings}
+        />
+      )}
 
-      {isPrinting && orderToPrint && isMounted && typeof document !== 'undefined' &&
+      {isPrinting && orderToPrintPrep && isMounted && typeof document !== 'undefined' &&
         ReactDOM.createPortal(
-          <div id="printable-receipt-area">
+          <div id="printable-prep-ticket-area">
             <OrderTicket
-              order={orderToPrint}
+              order={orderToPrintPrep}
               appSettings={appSettings}
               businessSettings={businessSettings}
+            />
+          </div>,
+          document.body
+        )
+      }
+
+      {isPrinting && saleToPrint && isMounted && typeof document !== 'undefined' &&
+        ReactDOM.createPortal(
+          <div id="printable-receipt-area">
+            <SaleReceipt 
+              sale={saleToPrint} 
+              appSettings={appSettings}
+              businessSettings={businessSettings} 
             />
           </div>,
           document.body
@@ -248,7 +338,7 @@ export default function OrdersPage() {
             <AlertDialogTitle>Confirmar cambio de estado</AlertDialogTitle>
             <AlertDialogDescription>
               ¿Estás seguro de que quieres marcar el pedido #{orderToConfirm?.order.orderNumber} como "{ORDER_STATUS_MAP[orderToConfirm?.newStatus || 'pending']}"?
-              {orderToConfirm?.newStatus === 'completed' && " Esta acción ajustará el stock y no se puede revertir."}
+              {orderToConfirm?.newStatus === 'in-progress' && " Se imprimirá un ticket de preparación."}
               {orderToConfirm?.newStatus === 'cancelled' && " Esta acción es irreversible."}
             </AlertDialogDescription>
           </AlertDialogHeader>
