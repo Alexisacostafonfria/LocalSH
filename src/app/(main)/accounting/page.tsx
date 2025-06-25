@@ -12,12 +12,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { AccountingSettings, DEFAULT_ACCOUNTING_SETTINGS, Sale, AppSettings, DEFAULT_APP_SETTINGS, CashPaymentDetails, DenominationCount, LastClosureDetails, BusinessSettings, DEFAULT_BUSINESS_SETTINGS, AuthState, DEFAULT_AUTH_STATE } from '@/types';
+import { AccountingSettings, DEFAULT_ACCOUNTING_SETTINGS, Sale, AppSettings, DEFAULT_APP_SETTINGS, CashPaymentDetails, DenominationCount, LastClosureDetails, BusinessSettings, DEFAULT_BUSINESS_SETTINGS, AuthState, DEFAULT_AUTH_STATE, InvoicePaymentRecord } from '@/types';
 import useLocalStorageState from '@/hooks/useLocalStorageState';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, startOfDay, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { CalendarIcon, AlertTriangle, Info, CheckCircle2, Clock, DollarSign, Package, TrendingUp, Coins, Landmark, ClipboardList, Printer, Lock } from 'lucide-react';
+import { CalendarIcon, AlertTriangle, Info, CheckCircle2, Clock, DollarSign, Package, TrendingUp, Coins, Landmark, ClipboardList, Printer, Lock, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import DailyClosureReportPrintLayout from '@/components/accounting/DailyClosureReportPrintLayout';
@@ -34,6 +34,7 @@ export default function AccountingPage() {
   const [appSettings] = useLocalStorageState<AppSettings>('appSettings', DEFAULT_APP_SETTINGS);
   const [businessSettings] = useLocalStorageState<BusinessSettings>('businessSettings', DEFAULT_BUSINESS_SETTINGS);
   const [sales] = useLocalStorageState<Sale[]>('sales', []);
+  const [invoicePayments] = useLocalStorageState<InvoicePaymentRecord[]>('invoicePayments', []);
   const [authState] = useLocalStorageState<AuthState>('authData', DEFAULT_AUTH_STATE);
 
   const [selectedDateForNewDay, setSelectedDateForNewDay] = useState<Date | undefined>(new Date());
@@ -147,6 +148,8 @@ export default function AccountingPage() {
         cashSalesAmount: dailySummary.cashSalesAmount,
         transferSalesAmount: dailySummary.transferSalesAmount,
         totalTips: dailySummary.totalTips,
+        invoicePaymentsInCash: dailySummary.invoicePaymentsInCash,
+        invoicePaymentsInTransfer: dailySummary.invoicePaymentsInTransfer,
     };
 
     setTimeout(() => {
@@ -178,6 +181,11 @@ export default function AccountingPage() {
         return saleDateToCompare === operationalDayStartISO;
     });
 
+    const invoicePaymentsForOperationalDate = invoicePayments.filter(p => {
+        const paymentOpDate = p.operationalDate ? startOfDay(parseISO(p.operationalDate)).toISOString() : startOfDay(parseISO(p.paymentTimestamp)).toISOString();
+        return paymentOpDate === operationalDayStartISO;
+    });
+
     const totalRevenue = salesForOperationalDate.reduce((sum, sale) => sum + sale.totalAmount, 0);
     const totalTransactions = salesForOperationalDate.length;
 
@@ -192,8 +200,11 @@ export default function AccountingPage() {
     const transferSalesAmount = salesForOperationalDate.filter(s => s.paymentMethod === 'transfer').reduce((sum, s) => sum + s.totalAmount, 0);
     
     const totalTips = cashSalesDetails.reduce((sum, details) => sum + (details.tip || 0), 0);
+
+    const invoicePaymentsInCash = invoicePaymentsForOperationalDate.filter(p => p.method === 'cash').reduce((sum, p) => sum + p.amountPaid, 0);
+    const invoicePaymentsInTransfer = invoicePaymentsForOperationalDate.filter(p => p.method === 'transfer').reduce((sum, p) => sum + p.amountPaid, 0);
     
-    const expectedCashInBox = cashSalesAmount + totalTips;
+    const expectedCashInBox = cashSalesAmount + totalTips + invoicePaymentsInCash;
 
 
     return {
@@ -202,9 +213,11 @@ export default function AccountingPage() {
         cashSalesAmount,
         transferSalesAmount,
         totalTips,
+        invoicePaymentsInCash,
+        invoicePaymentsInTransfer,
         expectedCashInBox,
     };
-  }, [currentOperationalDate, sales]);
+  }, [currentOperationalDate, sales, invoicePayments]);
 
   const handleCountedCashBreakdownChange = (denominationKey: string, countStr: string) => {
     const newBreakdownInputs = {
@@ -378,10 +391,18 @@ export default function AccountingPage() {
                             <p className="text-2xl font-bold">{appSettings.currencySymbol}{dailySummary.totalTips.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                         </div>
                     )}
-                     <div className="p-4 bg-green-500/10 rounded-lg shadow border border-green-500/30">
+                    <div className="p-4 bg-muted/30 rounded-lg shadow">
+                        <h3 className="text-sm font-medium text-muted-foreground flex items-center"><FileText className="h-4 w-4 mr-2" />Cobros Facturas (Efectivo)</h3>
+                        <p className="text-2xl font-bold">{appSettings.currencySymbol}{dailySummary.invoicePaymentsInCash.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    </div>
+                     <div className="p-4 bg-muted/30 rounded-lg shadow">
+                        <h3 className="text-sm font-medium text-muted-foreground flex items-center"><FileText className="h-4 w-4 mr-2" />Cobros Facturas (Transfer)</h3>
+                        <p className="text-2xl font-bold">{appSettings.currencySymbol}{dailySummary.invoicePaymentsInTransfer.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    </div>
+                     <div className="p-4 bg-green-500/10 rounded-lg shadow border border-green-500/30 col-span-1 md:col-span-2 lg:col-span-3">
                         <h3 className="text-sm font-medium text-green-600 flex items-center"><ClipboardList className="h-4 w-4 mr-2" />Efectivo Esperado en Caja</h3>
                         <p className="text-2xl font-bold text-green-700">{appSettings.currencySymbol}{dailySummary.expectedCashInBox.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                        <p className="text-xs text-muted-foreground">(Ventas Efectivo + Propinas Efectivo)</p>
+                        <p className="text-xs text-muted-foreground">(Ventas Efectivo + Propinas Efectivo + Cobros Facturas Efectivo)</p>
                     </div>
                 </div>
             </CardContent>

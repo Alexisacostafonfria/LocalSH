@@ -4,7 +4,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { Sale, AppSettings, BusinessSettings, CashPaymentDetails } from '@/types';
+import { Sale, AppSettings, BusinessSettings, CashPaymentDetails, InvoicePaymentDetails } from '@/types';
 import { format, parseISO, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -45,6 +45,10 @@ const OperationsReportPrintLayout: React.FC<OperationsReportPrintLayoutProps> = 
   const totalTransferSales = operations
     .filter(sale => sale.paymentMethod === 'transfer')
     .reduce((sum, sale) => sum + sale.totalAmount, 0);
+  const totalInvoiceSales = operations
+    .filter(sale => sale.paymentMethod === 'invoice')
+    .reduce((sum, sale) => sum + sale.totalAmount, 0);
+
   const totalTipsCollected = appSettings.allowTips 
     ? operations.reduce((sum, sale) => {
         if (sale.paymentMethod === 'cash' && sale.paymentDetails) {
@@ -119,7 +123,8 @@ const OperationsReportPrintLayout: React.FC<OperationsReportPrintLayoutProps> = 
                   {sale.totalAmount.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </td>
                 <td className="border p-2 align-top">
-                  {sale.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}
+                  {sale.paymentMethod.charAt(0).toUpperCase() + sale.paymentMethod.slice(1)}
+                  {sale.paymentMethod === 'invoice' && ` (${(sale.paymentDetails as InvoicePaymentDetails).status})`}
                 </td>
               </tr>
             ))
@@ -128,48 +133,55 @@ const OperationsReportPrintLayout: React.FC<OperationsReportPrintLayoutProps> = 
         {operations.length > 0 && (
           <tfoot className="bg-gray-100 font-semibold">
             <tr>
-              <td colSpan={5} className="border p-2 text-right">Ingresos Totales:</td>
-              <td colSpan={2} className="border p-2 text-right">
+              <td colSpan={6} className="border p-2 text-right">Ingresos Totales:</td>
+              <td className="border p-2 text-right">
                 {appSettings.currencySymbol}
                 {totalRevenue.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </td>
             </tr>
             <tr>
-              <td colSpan={5} className="border p-2 text-right">Total Transacciones:</td>
-              <td colSpan={2} className="border p-2 text-right">{numberOfTransactions}</td>
+              <td colSpan={6} className="border p-2 text-right">Total Transacciones:</td>
+              <td className="border p-2 text-right">{numberOfTransactions}</td>
             </tr>
              <tr>
-              <td colSpan={5} className="border p-2 text-right">Total Ventas Directas (POS):</td>
-              <td colSpan={2} className="border p-2 text-right">
+              <td colSpan={6} className="border p-2 text-right">Total Ventas Directas (POS):</td>
+              <td className="border p-2 text-right">
                 {appSettings.currencySymbol}
                 {totalPosSales.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </td>
             </tr>
             <tr>
-              <td colSpan={5} className="border p-2 text-right">Total Ventas por Pedidos:</td>
-              <td colSpan={2} className="border p-2 text-right">
+              <td colSpan={6} className="border p-2 text-right">Total Ventas por Pedidos:</td>
+              <td className="border p-2 text-right">
                 {appSettings.currencySymbol}
                 {totalOrderSales.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </td>
             </tr>
             <tr>
-              <td colSpan={5} className="border p-2 text-right">Total Ventas Efectivo:</td>
-              <td colSpan={2} className="border p-2 text-right">
+              <td colSpan={6} className="border p-2 text-right">Total Ventas Efectivo:</td>
+              <td className="border p-2 text-right">
                 {appSettings.currencySymbol}
                 {totalCashSales.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </td>
             </tr>
             <tr>
-              <td colSpan={5} className="border p-2 text-right">Total Ventas Transferencia:</td>
-              <td colSpan={2} className="border p-2 text-right">
+              <td colSpan={6} className="border p-2 text-right">Total Ventas Transferencia:</td>
+              <td className="border p-2 text-right">
                 {appSettings.currencySymbol}
                 {totalTransferSales.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </td>
             </tr>
+            <tr>
+              <td colSpan={6} className="border p-2 text-right">Total Ventas a Crédito (Factura):</td>
+              <td className="border p-2 text-right">
+                {appSettings.currencySymbol}
+                {totalInvoiceSales.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </td>
+            </tr>
             {appSettings.allowTips && (
               <tr>
-                <td colSpan={5} className="border p-2 text-right">Total Propinas Recaudadas (Efectivo):</td>
-                <td colSpan={2} className="border p-2 text-right">
+                <td colSpan={6} className="border p-2 text-right">Total Propinas Recaudadas (Efectivo):</td>
+                <td className="border p-2 text-right">
                   {appSettings.currencySymbol}
                   {totalTipsCollected.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </td>

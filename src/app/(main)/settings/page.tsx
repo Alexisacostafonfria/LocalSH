@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { AppSettings, DEFAULT_APP_SETTINGS, BusinessSettings, DEFAULT_BUSINESS_SETTINGS, BackupData, AuthState, DEFAULT_AUTH_STATE, DEFAULT_USERS_STATE, DEFAULT_ADMIN_USER_ID, Order } from '@/types';
+import { AppSettings, DEFAULT_APP_SETTINGS, BusinessSettings, DEFAULT_BUSINESS_SETTINGS, BackupData, AuthState, DEFAULT_AUTH_STATE, DEFAULT_USERS_STATE, DEFAULT_ADMIN_USER_ID, Order, InvoicePaymentRecord } from '@/types';
 import useLocalStorageState from '@/hooks/useLocalStorageState';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -51,6 +51,7 @@ const LOCAL_STORAGE_KEYS = {
   sales: 'sales',
   customers: 'customers',
   orders: 'orders',
+  invoicePayments: 'invoicePayments',
   appSettings: 'appSettings',
   accountingSettings: 'accountingSettings',
   businessSettings: 'businessSettings',
@@ -193,11 +194,12 @@ export default function SettingsPage() {
 
   const handleExportData = () => {
     try {
-      const backupData: BackupData = {
+      const backupData: Omit<BackupData, 'backupTimestamp'> & { backupTimestamp: string } = {
         products: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.products) || '[]'),
         sales: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.sales) || '[]'),
         customers: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.customers) || '[]'),
         orders: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.orders) || '[]'),
+        invoicePayments: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.invoicePayments) || '[]'),
         appSettings: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.appSettings) || JSON.stringify(DEFAULT_APP_SETTINGS)),
         accountingSettings: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.accountingSettings) || JSON.stringify(DEFAULT_ACCOUNTING_SETTINGS)),
         businessSettings: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.businessSettings) || JSON.stringify(DEFAULT_BUSINESS_SETTINGS)),
@@ -243,18 +245,20 @@ export default function SettingsPage() {
         const jsonString = e.target?.result as string;
         const parsedData = JSON.parse(jsonString) as BackupData;
 
-        if (
-          !parsedData.products ||
-          !parsedData.sales ||
-          !parsedData.customers ||
-          !parsedData.orders ||
-          !parsedData.appSettings || 
-          !parsedData.accountingSettings ||
-          !parsedData.businessSettings || 
-          !parsedData.authData ||
-          !parsedData.backupTimestamp
-        ) {
-          throw new Error("El archivo de copia de seguridad no tiene el formato esperado o le faltan datos esenciales (incluyendo authData y orders).");
+        // More robust check
+        const requiredKeys: Array<keyof BackupData> = [
+            'products', 'sales', 'customers', 'orders', 'appSettings', 
+            'accountingSettings', 'businessSettings', 'authData', 'backupTimestamp'
+        ];
+        
+        for (const key of requiredKeys) {
+            if (!(key in parsedData)) {
+                // Check for invoicePayments separately for backward compatibility
+                if (key === 'invoicePayments' && !('invoicePayments' in parsedData)) {
+                    continue; // It's ok if old backups don't have this
+                }
+                throw new Error(`El archivo de copia de seguridad es inválido o le falta la clave: "${key}".`);
+            }
         }
         
         (window as any).__pendingRestoreData = parsedData;
@@ -289,6 +293,7 @@ export default function SettingsPage() {
         localStorage.setItem(LOCAL_STORAGE_KEYS.sales, JSON.stringify(parsedData.sales || []));
         localStorage.setItem(LOCAL_STORAGE_KEYS.customers, JSON.stringify(parsedData.customers || []));
         localStorage.setItem(LOCAL_STORAGE_KEYS.orders, JSON.stringify(parsedData.orders || []));
+        localStorage.setItem(LOCAL_STORAGE_KEYS.invoicePayments, JSON.stringify(parsedData.invoicePayments || [])); // Restore new data
         localStorage.setItem(LOCAL_STORAGE_KEYS.appSettings, JSON.stringify(parsedData.appSettings || DEFAULT_APP_SETTINGS));
         localStorage.setItem(LOCAL_STORAGE_KEYS.accountingSettings, JSON.stringify(parsedData.accountingSettings || DEFAULT_ACCOUNTING_SETTINGS));
         localStorage.setItem(LOCAL_STORAGE_KEYS.businessSettings, JSON.stringify(parsedData.businessSettings || DEFAULT_BUSINESS_SETTINGS));
@@ -484,7 +489,7 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle className="font-headline">Copia de Seguridad y Restauración</CardTitle>
           <CardDescription>
-            Guarda una copia de todos tus datos (productos, ventas, clientes, pedidos, configuración general, contable, de negocio y usuarios) o restaura desde un archivo previo.
+            Guarda una copia de todos tus datos (productos, ventas, clientes, pedidos, pagos de facturas, configuración, etc.) o restaura desde un archivo previo.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

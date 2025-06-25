@@ -14,6 +14,8 @@ interface DailySummaryData {
     cashSalesAmount: number;
     transferSalesAmount: number;
     totalTips: number;
+    invoicePaymentsInCash: number;
+    invoicePaymentsInTransfer: number;
     expectedCashInBox: number;
 }
 
@@ -87,6 +89,12 @@ const DailyClosureReportPrintLayout: React.FC<DailyClosureReportPrintLayoutProps
               <div>{appSettings.currencySymbol}{dailySummary.totalTips.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
             </>
           )}
+          <div className="font-medium pt-2 border-t mt-1">Cobranza Facturas (Efectivo):</div>
+          <div className="pt-2 border-t mt-1">{appSettings.currencySymbol}{dailySummary.invoicePaymentsInCash.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+
+          <div className="font-medium">Cobranza Facturas (Transfer):</div>
+          <div>{appSettings.currencySymbol}{dailySummary.invoicePaymentsInTransfer.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+
         </div>
       </section>
 

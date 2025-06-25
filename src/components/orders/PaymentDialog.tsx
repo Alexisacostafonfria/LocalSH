@@ -8,10 +8,16 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AppSettings, Order, PaymentDetails, CashPaymentDetails, TransferPaymentDetails } from '@/types';
+import { AppSettings, Order, PaymentDetails, CashPaymentDetails, TransferPaymentDetails, InvoicePaymentDetails, Customer } from '@/types';
 import { useToast } from "@/hooks/use-toast";
-import { Coins, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Coins, CheckCircle2, AlertCircle, Calendar as CalendarIcon, FileText, AlertTriangle } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '../ui/calendar';
+import { format, addDays } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
+import useLocalStorageState from '@/hooks/useLocalStorageState';
+
 
 interface PaymentDialogProps {
   isOpen: boolean;
@@ -25,9 +31,12 @@ const initialCashDetails: Omit<CashPaymentDetails, 'changeGiven'> = { amountRece
 const denominations = [1000, 500, 200, 100, 50, 20, 10, 5, 2, 1] as const;
 
 export default function PaymentDialog({ isOpen, onClose, order, onConfirm, appSettings }: PaymentDialogProps) {
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer' | 'invoice'>('cash');
   const [cashDetails, setCashDetails] = useState(initialCashDetails);
   const [transferDetails, setTransferDetails] = useState<Omit<TransferPaymentDetails, 'customerName' | 'personalId' | 'mobileNumber' | 'cardNumber'>>({ reference: '' });
+  const [invoiceDueDate, setInvoiceDueDate] = useState<Date | undefined>(addDays(new Date(), 30));
+  const [customers] = useLocalStorageState<Customer[]>('customers', []);
+  
   const [cashBreakdownInputs, setCashBreakdownInputs] = useState<Record<string, string>>({});
   const [isCashBreakdownPopoverOpen, setIsCashBreakdownPopoverOpen] = useState(false);
   
@@ -35,16 +44,16 @@ export default function PaymentDialog({ isOpen, onClose, order, onConfirm, appSe
 
   const totalAmount = order.totalAmount;
   const changeGiven = Math.max(0, (cashDetails.amountReceived || 0) - totalAmount - (cashDetails.tip || 0));
+  const customerDetails = useMemo(() => customers.find(c => c.id === order.customerId), [customers, order.customerId]);
 
   useEffect(() => {
     if (!isOpen) {
-      // Reset state when dialog is closed
       setPaymentMethod('cash');
       setCashDetails(initialCashDetails);
       setTransferDetails({ reference: '' });
+      setInvoiceDueDate(addDays(new Date(), 30));
       setCashBreakdownInputs({});
     } else {
-      // Pre-fill transfer details if customer info exists on order
       setTransferDetails(prev => ({
           ...prev,
           customerId: order.customerId,
@@ -76,22 +85,34 @@ export default function PaymentDialog({ isOpen, onClose, order, onConfirm, appSe
           toast({ title: "Propina Inválida", description: "La propina no puede ser mayor que el cambio disponible.", variant: 'destructive' });
           return;
       }
-
-      finalPaymentDetails = {
-        amountReceived,
-        changeGiven: amountReceived - totalAmount - (tip || 0),
-        tip: tip || 0,
-        breakdown: cashBreakdownInputs,
-      };
-    } else {
+      finalPaymentDetails = { amountReceived, changeGiven: amountReceived - totalAmount - (tip || 0), tip: tip || 0, breakdown: cashBreakdownInputs };
+    } else if (paymentMethod === 'transfer') {
+      if (!customerDetails?.personalId || !customerDetails?.cardNumber || customerDetails.cardNumber.replace(/[^0-9]/g, "").length !== 16) {
+        toast({ title: "Datos de Cliente Incompletos", description: "Para pago por transferencia, el cliente debe tener un ID Personal y un Nro. de Tarjeta (16 dígitos) válido guardado en su perfil.", variant: 'destructive' });
+        return;
+      }
       finalPaymentDetails = {
         reference: transferDetails.reference,
         customerName: order.customerName,
-        personalId: '', // These fields are not typically on an order, should be added if needed
+        personalId: customerDetails.personalId,
         mobileNumber: order.customerPhone,
-        cardNumber: '', // Not storing full card numbers
+        cardNumber: customerDetails.cardNumber,
         customerId: order.customerId
       };
+    } else { // Invoice
+        if (!order.customerId) {
+            toast({ title: "Cliente Requerido", description: "Se debe seleccionar un cliente registrado para emitir una factura.", variant: 'destructive'});
+            return;
+        }
+        if (!invoiceDueDate) {
+            toast({ title: "Fecha de Vencimiento Requerida", description: "Por favor, seleccione una fecha de vencimiento para la factura.", variant: 'destructive' });
+            return;
+        }
+        finalPaymentDetails = {
+            invoiceNumber: order.id,
+            dueDate: invoiceDueDate.toISOString(),
+            status: 'pending',
+        };
     }
     onConfirm(order, finalPaymentDetails);
   };
@@ -99,7 +120,8 @@ export default function PaymentDialog({ isOpen, onClose, order, onConfirm, appSe
   const hasActiveBreakdown = Object.values(cashBreakdownInputs).some(val => val && parseInt(val) > 0);
 
   const finalizeButtonDisabled = 
-    (paymentMethod === 'cash' && ((cashDetails.amountReceived || 0) < totalAmount || (appSettings.allowTips && (cashDetails.tip || 0) > ((cashDetails.amountReceived || 0) - totalAmount))));
+    (paymentMethod === 'cash' && ((cashDetails.amountReceived || 0) < totalAmount || (appSettings.allowTips && (cashDetails.tip || 0) > ((cashDetails.amountReceived || 0) - totalAmount)))) ||
+    (paymentMethod === 'invoice' && (!order.customerId || !invoiceDueDate));
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -116,16 +138,17 @@ export default function PaymentDialog({ isOpen, onClose, order, onConfirm, appSe
           
           <div className="space-y-1">
             <Label htmlFor="paymentMethod">Método de Pago</Label>
-            <Select value={paymentMethod} onValueChange={(v: 'cash' | 'transfer') => setPaymentMethod(v)}>
+            <Select value={paymentMethod} onValueChange={(v: 'cash' | 'transfer' | 'invoice') => setPaymentMethod(v)}>
               <SelectTrigger id="paymentMethod"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="cash">Efectivo</SelectItem>
                 <SelectItem value="transfer">Transferencia</SelectItem>
+                <SelectItem value="invoice">Factura (Cuentas por Cobrar)</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {paymentMethod === 'cash' ? (
+          {paymentMethod === 'cash' && (
             <div className="border p-3 rounded-md space-y-3 bg-muted/30">
               <div className="flex items-end gap-2">
                 <div className="flex-grow">
@@ -164,10 +187,46 @@ export default function PaymentDialog({ isOpen, onClose, order, onConfirm, appSe
                   Cambio: {appSettings.currencySymbol}{changeGiven.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
               </div>
             </div>
-          ) : (
+          )}
+          
+          {paymentMethod === 'transfer' && (
              <div className="border p-3 rounded-md space-y-3 bg-muted/30">
                 <Label htmlFor="reference">Referencia de Pago (Opcional)</Label>
                 <Input id="reference" value={transferDetails.reference || ''} onChange={e => setTransferDetails({...transferDetails, reference: e.target.value})} />
+                 {!customerDetails?.personalId || !customerDetails?.cardNumber || customerDetails.cardNumber.replace(/[^0-9]/g, "").length !== 16 ? (
+                    <Alert variant="warning" className="text-xs">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>Faltan Datos</AlertTitle>
+                        <AlertDescription>
+                        Para completar una transferencia, el cliente debe tener un ID Personal y Nro. de Tarjeta (16 dígitos) válidos en su perfil.
+                        </AlertDescription>
+                    </Alert>
+                ) : null}
+            </div>
+          )}
+
+          {paymentMethod === 'invoice' && (
+            <div className="border p-3 rounded-md space-y-3 bg-muted/30">
+                <FileText className="h-5 w-5 text-muted-foreground mb-2"/>
+                <Label>Fecha de Vencimiento de la Factura</Label>
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !invoiceDueDate && "text-muted-foreground")}>
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {invoiceDueDate ? format(invoiceDueDate, "PPP", {locale: es}) : <span>Seleccionar fecha</span>}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={invoiceDueDate} onSelect={setInvoiceDueDate} initialFocus locale={es} disabled={(date) => date < new Date()} /></PopoverContent>
+                </Popover>
+                 {!order.customerId ? (
+                    <Alert variant="destructive" className="text-xs">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Cliente Anónimo</AlertTitle>
+                        <AlertDescription>
+                        No se puede generar una factura para un cliente anónimo. Edite el pedido y asigne un cliente registrado.
+                        </AlertDescription>
+                    </Alert>
+                ) : null}
             </div>
           )}
         </div>

@@ -70,7 +70,19 @@ export interface TransferPaymentDetails {
   cardNumber?: string;
 }
 
-export type PaymentDetails = CashPaymentDetails | TransferPaymentDetails;
+export type InvoiceStatus = 'pending' | 'paid' | 'overdue';
+
+export interface InvoicePaymentDetails {
+  invoiceNumber: string; // Can be the sale.id
+  dueDate: string; // ISO String
+  status: InvoiceStatus;
+  paidDate?: string; // ISO String
+  paidAmount?: number;
+  paidMethod?: 'cash' | 'transfer';
+  paymentNotes?: string;
+}
+
+export type PaymentDetails = CashPaymentDetails | TransferPaymentDetails | InvoicePaymentDetails;
 
 export interface Sale {
   id: string;
@@ -83,11 +95,22 @@ export interface Sale {
   subTotal: number;
   discount?: number;
   totalAmount: number;
-  paymentMethod: 'cash' | 'transfer';
+  paymentMethod: 'cash' | 'transfer' | 'invoice';
   paymentDetails: PaymentDetails;
   userId?: string; // ID of the user who made the sale
   operationalDate?: string; // ISO string (date part only) for accounting
 }
+
+export interface InvoicePaymentRecord {
+    id: string; // UUID for the payment record itself
+    invoiceSaleId: string; // The ID of the sale that was the invoice
+    paymentTimestamp: string; // Full ISO timestamp of when the payment was recorded
+    operationalDate: string; // Operational day it was received on
+    amountPaid: number;
+    method: 'cash' | 'transfer';
+    reference?: string; // Optional reference for the payment (e.g., transfer ref)
+}
+
 
 export interface AppSettings {
   lowStockThreshold: number;
@@ -139,6 +162,8 @@ export interface LastClosureDetails {
   cashSalesAmount: number;
   transferSalesAmount: number;
   totalTips: number;
+  invoicePaymentsInCash: number;
+  invoicePaymentsInTransfer: number;
 }
 
 export interface AccountingSettings {
@@ -202,6 +227,7 @@ export type BackupData = {
   sales: Sale[];
   customers: Customer[];
   orders: Order[];
+  invoicePayments: InvoicePaymentRecord[];
   appSettings: AppSettings;
   accountingSettings: AccountingSettings;
   businessSettings: BusinessSettings;

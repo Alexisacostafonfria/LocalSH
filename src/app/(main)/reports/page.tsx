@@ -8,13 +8,13 @@ import ReactDOM from 'react-dom';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Product, Sale, AppSettings, DEFAULT_APP_SETTINGS, BusinessSettings, DEFAULT_BUSINESS_SETTINGS, CashPaymentDetails, TransferPaymentDetails } from '@/types';
+import { Product, Sale, AppSettings, DEFAULT_APP_SETTINGS, BusinessSettings, DEFAULT_BUSINESS_SETTINGS, CashPaymentDetails, TransferPaymentDetails, InvoicePaymentDetails } from '@/types';
 import useLocalStorageState from '@/hooks/useLocalStorageState';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, isWithinInterval, subDays, subWeeks, subMonths, startOfDay, endOfDay, addWeeks, addMonths, isValid, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import { Download, BarChart3, Coins, ShoppingBag, ArchiveRestore, TrendingUp, PieChart, Search, Filter, Printer, CalendarIcon, Loader2, AlertTriangle, Package, Layers } from 'lucide-react';
+import { Download, BarChart3, Coins, ShoppingBag, ArchiveRestore, TrendingUp, PieChart, Search, Filter, Printer, CalendarIcon, Loader2, AlertTriangle, Package, Layers, FileText } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -28,7 +28,7 @@ import { cn } from '@/lib/utils';
 
 
 type ChartType = 'bar' | 'line';
-type PaymentMethodFilter = 'all' | 'cash' | 'transfer';
+type PaymentMethodFilter = 'all' | 'cash' | 'transfer' | 'invoice';
 type OriginFilter = 'all' | 'pos' | 'order';
 
 export default function ReportsPage() {
@@ -182,6 +182,11 @@ export default function ReportsPage() {
       return sum;
     }, 0);
   }, [salesForChartPeriod]);
+  
+  const totalAccountsReceivable = useMemo(() => {
+    return sales.filter(s => s.paymentMethod === 'invoice' && (s.paymentDetails as InvoicePaymentDetails).status !== 'paid')
+               .reduce((sum, s) => sum + s.totalAmount, 0);
+  }, [sales]);
 
   const totalCogsValueForChartPeriod = useMemo(() => {
     if (isLoadingProducts) return 0;
@@ -225,12 +230,13 @@ export default function ReportsPage() {
       toast({title: "Nada que Exportar", description:"No hay datos para exportar en el periodo y filtros de tabla seleccionados.", variant: "warning"});
       return;
     }
-    const headers = "ID Venta,Timestamp,Fecha Operativa,Origen,ID Pedido,Cliente,Items (Cantidad Total),SubTotal,Descuento,Total Venta,Metodo Pago,Monto Recibido (Efectivo),Cambio (Efectivo),Propina (Efectivo),Referencia (Transferencia)\n";
+    const headers = "ID Venta,Timestamp,Fecha Operativa,Origen,ID Pedido,Cliente,Items (Cantidad Total),SubTotal,Descuento,Total Venta,Metodo Pago,Monto Recibido (Efectivo),Cambio (Efectivo),Propina (Efectivo),Referencia (Transferencia),Estado Factura,Vencimiento Factura\n";
     const csvRows = detailedOperations.map(sale => {
       const itemsCount = sale.items.reduce((acc, item) => acc + item.quantity, 0);
       const cashDetails = sale.paymentMethod === 'cash' ? sale.paymentDetails as CashPaymentDetails : null;
       const transferDetails = sale.paymentMethod === 'transfer' ? sale.paymentDetails as TransferPaymentDetails : null;
-      
+      const invoiceDetails = sale.paymentMethod === 'invoice' ? sale.paymentDetails as InvoicePaymentDetails : null;
+
       return [
         sale.id,
         format(parseISO(sale.timestamp), "yyyy-MM-dd HH:mm:ss"),
@@ -247,6 +253,8 @@ export default function ReportsPage() {
         cashDetails ? cashDetails.changeGiven.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '',
         cashDetails ? (cashDetails.tip || 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '',
         transferDetails ? `"${transferDetails.reference || ''}"` : '',
+        invoiceDetails ? invoiceDetails.status : '',
+        invoiceDetails ? format(parseISO(invoiceDetails.dueDate), 'yyyy-MM-dd') : '',
       ].join(',');
     });
     const csvString = headers + csvRows.join('\n');
@@ -334,7 +342,7 @@ export default function ReportsPage() {
       <Card>
         <CardHeader>
             <CardTitle className="font-headline">KPIs Globales ({chartPeriodDescription})</CardTitle>
-            <CardDescription>Indicadores clave basados en el rango seleccionado para el gráfico de ventas.</CardDescription>
+            <CardDescription>Indicadores clave basados en el rango seleccionado para el gráfico de ventas. El total de cuentas por cobrar es global.</CardDescription>
         </CardHeader>
         <CardContent>
             {isLoadingProducts ? (
@@ -342,62 +350,41 @@ export default function ReportsPage() {
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
              </div>
             ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card>
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                <Card className="col-span-2 lg:col-span-1">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-sm font-medium">Ventas Totales</CardTitle>
                       <ShoppingBag className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent><p className="text-2xl font-bold">{appSettings.currencySymbol}{totalSalesValueForChartPeriod.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p></CardContent>
                 </Card>
-                <Card>
+                <Card className="col-span-2 lg:col-span-1">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-sm font-medium">Ganancia Total</CardTitle>
                       <TrendingUp className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent><p className="text-2xl font-bold">{appSettings.currencySymbol}{totalProfitValueForChartPeriod.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p></CardContent>
                 </Card>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Ventas Directas (POS)</CardTitle>
-                      <Package className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent><p className="text-2xl font-bold">{appSettings.currencySymbol}{salesFromPos.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p></CardContent>
-                </Card>
-                 <Card>
+                <Card className="col-span-2 lg:col-span-1">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-sm font-medium">Ventas por Pedidos</CardTitle>
                       <Layers className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent><p className="text-2xl font-bold">{appSettings.currencySymbol}{salesFromOrders.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p></CardContent>
                 </Card>
-                <Card>
+                <Card className="col-span-2 lg:col-span-1">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-sm font-medium">Costo Bienes Vendidos</CardTitle>
                       <ArchiveRestore className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent><p className="text-2xl font-bold">{appSettings.currencySymbol}{totalCogsValueForChartPeriod.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p></CardContent>
                 </Card>
-                <Card>
+                <Card className="col-span-2 lg:col-span-1">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Promedio Venta</CardTitle>
-                      <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                      <CardTitle className="text-sm font-medium">Total Cuentas por Cobrar</CardTitle>
+                      <FileText className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent><p className="text-2xl font-bold">{appSettings.currencySymbol}{averageSalesValueForChartPeriod.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p></CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Transacciones</CardTitle>
-                      <PieChart className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent><p className="text-2xl font-bold">{totalTransactionsForChartPeriod}</p></CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Propinas</CardTitle>
-                      <Coins className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent><p className="text-2xl font-bold">{appSettings.currencySymbol}{totalTipsValueForChartPeriod.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p></CardContent>
+                  <CardContent><p className="text-2xl font-bold">{appSettings.currencySymbol}{totalAccountsReceivable.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p></CardContent>
                 </Card>
             </div>
             )}
@@ -572,6 +559,7 @@ export default function ReportsPage() {
                     <SelectItem value="all">Todo Pago</SelectItem>
                     <SelectItem value="cash">Efectivo</SelectItem>
                     <SelectItem value="transfer">Transferencia</SelectItem>
+                    <SelectItem value="invoice">Factura</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select 
@@ -626,8 +614,8 @@ export default function ReportsPage() {
                         {appSettings.currencySymbol}{sale.totalAmount.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={sale.paymentMethod === 'cash' ? 'secondary' : 'outline'}>
-                          {sale.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}
+                        <Badge variant={sale.paymentMethod === 'cash' ? 'secondary' : sale.paymentMethod === 'transfer' ? 'outline' : 'default'}>
+                          {sale.paymentMethod.charAt(0).toUpperCase() + sale.paymentMethod.slice(1)}
                         </Badge>
                       </TableCell>
                     </TableRow>

@@ -11,14 +11,17 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Product, Customer, Sale, SaleItem, AppSettings, CashPaymentDetails, TransferPaymentDetails, AccountingSettings, DEFAULT_ACCOUNTING_SETTINGS } from '@/types';
+import { Product, Customer, Sale, SaleItem, AppSettings, CashPaymentDetails, TransferPaymentDetails, AccountingSettings, DEFAULT_ACCOUNTING_SETTINGS, InvoicePaymentDetails } from '@/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { X, Plus, Trash2, UserPlus, AlertCircle, Coins, ArrowLeft, ArrowRight, CheckCircle2, AlertTriangle, ScanLine } from 'lucide-react';
+import { X, Plus, Trash2, UserPlus, AlertCircle, Coins, ArrowLeft, ArrowRight, CheckCircle2, AlertTriangle, ScanLine, FileText, Calendar as CalendarIcon } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import useLocalStorageState from '@/hooks/useLocalStorageState';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Calendar } from '../ui/calendar';
+import { format, addDays } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 interface SaleDialogProps {
   isOpen: boolean;
@@ -71,9 +74,10 @@ export default function SaleDialog({
   const [barcodeInputValue, setBarcodeInputValue] = useState<string>('');
   const barcodeInputRef = useRef<HTMLInputElement>(null);
   
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer' | 'invoice'>('cash');
   const [cashDetails, setCashDetails] = useState<CashPaymentDetails>(initialCashDetails);
   const [transferDetails, setTransferDetails] = useState<TransferPaymentDetails>(initialTransferDetails);
+  const [invoiceDueDate, setInvoiceDueDate] = useState<Date | undefined>(addDays(new Date(), 30));
   const [cashBreakdownInputs, setCashBreakdownInputs] = useState<Record<string, string>>({});
   const [isCashBreakdownPopoverOpen, setIsCashBreakdownPopoverOpen] = useState(false);
   
@@ -371,6 +375,7 @@ export default function SaleDialog({
 
 
   const handleFinalizeSale = () => {
+    const saleId = crypto.randomUUID();
     if (!isDayEffectivelyOpen) {
         toast({ title: "Día Operativo Cerrado", description: "No se puede registrar la venta. Inicie un nuevo día operativo.", variant: "destructive" });
         return;
@@ -381,6 +386,7 @@ export default function SaleDialog({
     }
     
     const finalTotalAmount = isFinite(totalAmount) ? totalAmount : 0;
+    let finalPaymentDetails: PaymentDetails;
 
     if (paymentMethod === 'cash') {
       const finalAmountReceived = (isFinite(cashDetails.amountReceived) ? cashDetails.amountReceived : 0);
@@ -394,7 +400,14 @@ export default function SaleDialog({
          toast({ title: "Propina Inválida", description: `La propina no puede ser negativa ni mayor que el cambio disponible (${appSettings.currencySymbol}${Math.max(0, finalAmountReceived - finalTotalAmount).toLocaleString('es-ES',{minimumFractionDigits:2, maximumFractionDigits:2})}).`, variant: "destructive" });
          return;
       }
-    } else { 
+      finalPaymentDetails = { 
+          amountReceived: finalAmountReceived,
+          changeGiven: isFinite(cashDetails.changeGiven) ? cashDetails.changeGiven : 0,
+          tip: finalTip,
+          breakdown: cashDetails.breakdown || {} 
+      };
+
+    } else if (paymentMethod === 'transfer') {
         if (!currentTransactionCustomer.name || !currentTransactionCustomer.personalId || !currentTransactionCustomer.phone || !currentTransactionCustomer.cardNumber) {
              toast({ title: "Error de Validación", description: "Para ventas por transferencia, se requiere Nombre, ID Personal, Móvil y Número de Tarjeta del cliente.", variant: "destructive" });
              return;
@@ -403,31 +416,37 @@ export default function SaleDialog({
            toast({ title: "Error de Validación", description: "El número de tarjeta para la transferencia debe tener 16 dígitos.", variant: "destructive" });
            return;
         }
+        finalPaymentDetails = {
+            reference: transferDetails.reference || '', 
+            customerName: currentTransactionCustomer.name,
+            personalId: currentTransactionCustomer.personalId,
+            mobileNumber: currentTransactionCustomer.phone,
+            cardNumber: currentTransactionCustomer.cardNumber,
+            customerId: currentTransactionCustomer.id
+        };
+    } else { // Invoice
+        if (selectedCustomerId === ANONYMOUS_CUSTOMER_VALUE || isAddingNewSystemCustomer) {
+            toast({ title: "Cliente Requerido", description: "Debe seleccionar un cliente registrado del sistema para emitir una factura.", variant: "destructive" });
+            return;
+        }
+        if (!invoiceDueDate) {
+            toast({ title: "Fecha de Vencimiento Requerida", description: "Por favor, seleccione una fecha de vencimiento para la factura.", variant: "destructive" });
+            return;
+        }
+        finalPaymentDetails = {
+            invoiceNumber: saleId,
+            dueDate: invoiceDueDate.toISOString(),
+            status: 'pending'
+        };
     }
     
-    const finalPaymentDetails = paymentMethod === 'cash'
-      ? { 
-          amountReceived: isFinite(cashDetails.amountReceived) ? cashDetails.amountReceived : 0,
-          changeGiven: isFinite(cashDetails.changeGiven) ? cashDetails.changeGiven : 0,
-          tip: isFinite(cashDetails.tip) ? cashDetails.tip : 0,
-          breakdown: cashDetails.breakdown || {} 
-        }
-      : { 
-          reference: transferDetails.reference || '', 
-          customerName: currentTransactionCustomer.name,
-          personalId: currentTransactionCustomer.personalId,
-          mobileNumber: currentTransactionCustomer.phone,
-          cardNumber: currentTransactionCustomer.cardNumber,
-          customerId: currentTransactionCustomer.id 
-        };
-
     const sale: Sale = {
-      id: crypto.randomUUID(),
+      id: saleId,
       timestamp: new Date().toISOString(),
       operationalDate: accountingSettings.currentOperationalDate!,
       origin: 'pos',
       customerId: currentTransactionCustomer.id, 
-      customerName: currentTransactionCustomer.name, 
+      customerName: currentTransactionCustomer.name || 'Consumidor Final', 
       items: saleItems,
       subTotal: isFinite(subTotal) ? subTotal : 0,
       totalAmount: finalTotalAmount,
@@ -448,6 +467,7 @@ export default function SaleDialog({
     setPaymentMethod('cash'); 
     setCashDetails(initialCashDetails);
     setTransferDetails(initialTransferDetails); 
+    setInvoiceDueDate(addDays(new Date(), 30));
     setCashBreakdownInputs({});
     setSelectedCustomerId(ANONYMOUS_CUSTOMER_VALUE);
     setIsAddingNewSystemCustomer(false);
@@ -466,12 +486,12 @@ export default function SaleDialog({
   
   const hasActiveBreakdown = Object.values(cashBreakdownInputs).some(val => val && parseInt(val) > 0);
   
-  const customerStepNextButtonDisabled = paymentMethod === 'transfer' && 
+  const customerStepNextButtonDisabled = (paymentMethod === 'transfer' || paymentMethod === 'invoice') && 
                                           (!currentTransactionCustomer.name || 
-                                           !currentTransactionCustomer.personalId || 
-                                           !currentTransactionCustomer.phone || 
-                                           !currentTransactionCustomer.cardNumber || 
-                                           currentTransactionCustomer.cardNumber.replace(/[^0-9]/g, "").length !== 16);
+                                           !currentTransactionCustomer.id ||
+                                           (paymentMethod === 'transfer' && (!currentTransactionCustomer.personalId || !currentTransactionCustomer.phone || !currentTransactionCustomer.cardNumber || currentTransactionCustomer.cardNumber.replace(/[^0-9]/g, "").length !== 16)) ||
+                                           (paymentMethod === 'invoice' && selectedCustomerId === ANONYMOUS_CUSTOMER_VALUE)
+                                          );
 
   const finalizeSaleButtonDisabled = saleItems.length === 0 ||
     !isDayEffectivelyOpen ||
@@ -485,7 +505,10 @@ export default function SaleDialog({
       !currentTransactionCustomer.personalId ||
       !currentTransactionCustomer.phone ||
       !currentTransactionCustomer.cardNumber ||
-      currentTransactionCustomer.cardNumber.replace(/[^0-9]/g, "").length !== 16
+      currentTransactionCustomer.cardNumber.replace(/[^0-g]/g, "").length !== 16
+    )) ||
+    (paymentMethod === 'invoice' && (
+        selectedCustomerId === ANONYMOUS_CUSTOMER_VALUE || !invoiceDueDate
     ));
 
 
@@ -603,35 +626,27 @@ export default function SaleDialog({
                 <UserPlus className="mr-2 h-4 w-4" /> {isAddingNewSystemCustomer ? 'Cancelar Nuevo Cliente del Sistema' : 'Añadir Nuevo Cliente al Sistema'}
               </Button>
               
-              {(isAddingNewSystemCustomer || paymentMethod === 'transfer') && (
-                <div className={cn("border p-3 rounded-md space-y-2", 
-                                isAddingNewSystemCustomer ? "bg-muted/30" 
-                                : paymentMethod === 'transfer' ? "bg-blue-500/10" : ""
-                )}>
-                  <h4 className="text-sm font-medium">
-                    {isAddingNewSystemCustomer ? "Datos del Nuevo Cliente para el Sistema" 
-                      : (paymentMethod === 'transfer' ? "Datos Requeridos para Transferencia" : "")}
-                  </h4>
+              {(isAddingNewSystemCustomer) && (
+                <div className={cn("border p-3 rounded-md space-y-2", "bg-muted/30")}>
+                  <h4 className="text-sm font-medium">Datos del Nuevo Cliente para el Sistema</h4>
                   <div>
                       <Label htmlFor="txCustomerName">Nombre Completo *</Label>
                       <Input id="txCustomerName" placeholder="Nombre Completo" name="name" value={currentTransactionCustomer.name} onChange={handleTransactionCustomerInputChange} />
                   </div>
                    <div>
-                      <Label htmlFor="txCustomerPhone">Teléfono *</Label>
+                      <Label htmlFor="txCustomerPhone">Teléfono</Label>
                       <Input id="txCustomerPhone" placeholder="Teléfono" name="phone" value={currentTransactionCustomer.phone || ''} onChange={handleTransactionCustomerInputChange} />
                   </div>
-                  {isAddingNewSystemCustomer && (
-                    <div>
-                      <Label htmlFor="txCustomerEmail">Email</Label>
-                      <Input id="txCustomerEmail" placeholder="Email" type="email" name="email" value={currentTransactionCustomer.email || ''} onChange={handleTransactionCustomerInputChange} />
-                    </div>
-                  )}
+                  <div>
+                    <Label htmlFor="txCustomerEmail">Email</Label>
+                    <Input id="txCustomerEmail" placeholder="Email" type="email" name="email" value={currentTransactionCustomer.email || ''} onChange={handleTransactionCustomerInputChange} />
+                  </div>
                    <div>
-                      <Label htmlFor="txCustomerPersonalId">ID Personal (DNI, CUIT, etc.) *</Label>
+                      <Label htmlFor="txCustomerPersonalId">ID Personal (DNI, CUIT, etc.)</Label>
                       <Input id="txCustomerPersonalId" placeholder="ID Personal" name="personalId" value={currentTransactionCustomer.personalId || ''} onChange={handleTransactionCustomerInputChange} />
                   </div>
                   <div>
-                      <Label htmlFor="txCustomerCardNumber">Nro Tarjeta (16 dígitos) *</Label>
+                      <Label htmlFor="txCustomerCardNumber">Nro Tarjeta (16 dígitos)</Label>
                       <Input 
                           id="txCustomerCardNumber"
                           placeholder="XXXX-XXXX-XXXX-XXXX" 
@@ -641,9 +656,7 @@ export default function SaleDialog({
                           maxLength={19}
                       />
                   </div>
-                  {isAddingNewSystemCustomer && (
-                    <Button size="sm" onClick={handleSaveNewSystemCustomer} disabled={!currentTransactionCustomer.name}>Guardar en Sistema</Button>
-                  )}
+                  <Button size="sm" onClick={handleSaveNewSystemCustomer} disabled={!currentTransactionCustomer.name}>Guardar en Sistema</Button>
                 </div>
               )}
             </CardContent>
@@ -659,31 +672,14 @@ export default function SaleDialog({
               </div>
               <div className="space-y-1">
                 <Label htmlFor="paymentMethod">Método de Pago</Label>
-                <Select value={paymentMethod} onValueChange={(value: 'cash' | 'transfer') => {
-                  setPaymentMethod(value);
-                  if (value === 'transfer' && selectedCustomerId !== ANONYMOUS_CUSTOMER_VALUE && !isAddingNewSystemCustomer) {
-                      const cust = customers.find(c => c.id === selectedCustomerId);
-                      if (cust) {
-                        setCurrentTransactionCustomer(prev => ({
-                            ...prev, 
-                            id: cust.id, 
-                            name: prev.name || cust.name, 
-                            phone: prev.phone || cust.phone || '',
-                            email: prev.email || cust.email || '',
-                            personalId: prev.personalId || cust.personalId || '',
-                            cardNumber: prev.cardNumber || cust.cardNumber || '',
-                        }));
-                      }
-                  } else if (value === 'cash' && selectedCustomerId === ANONYMOUS_CUSTOMER_VALUE) {
-                     setCurrentTransactionCustomer(initialTransactionCustomerData);
-                  }
-                }}>
+                <Select value={paymentMethod} onValueChange={(value: 'cash' | 'transfer' | 'invoice') => setPaymentMethod(value)}>
                   <SelectTrigger id="paymentMethod">
                     <SelectValue placeholder="Seleccionar método" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="cash">Efectivo</SelectItem>
                     <SelectItem value="transfer">Transferencia</SelectItem>
+                    <SelectItem value="invoice">Factura (Cuentas por Cobrar)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -784,18 +780,43 @@ export default function SaleDialog({
 
               {paymentMethod === 'transfer' && (
                 <div className="border p-3 rounded-md space-y-3 bg-muted/30">
-                  <h4 className="font-medium text-base">Confirmar Datos del Cliente para Transferencia</h4>
-                     <div className="text-sm space-y-1 bg-background/30 p-2 rounded">
+                  <h4 className="font-medium text-base">Datos para Transferencia</h4>
+                   <div className="text-sm space-y-1 bg-background/30 p-2 rounded">
                         <p><strong>Nombre:</strong> {currentTransactionCustomer.name || <span className="text-destructive">Requerido (ir a paso Cliente)</span>}</p>
                         <p><strong>ID Personal:</strong> {currentTransactionCustomer.personalId || <span className="text-destructive">Requerido (ir a paso Cliente)</span>}</p>
                         <p><strong>Móvil:</strong> {currentTransactionCustomer.phone || <span className="text-destructive">Requerido (ir a paso Cliente)</span>}</p>
                         <p><strong>Nro. Tarjeta:</strong> {currentTransactionCustomer.cardNumber ? (currentTransactionCustomer.cardNumber.replace(/[^0-9]/g,"").length === 16 ? currentTransactionCustomer.cardNumber : <span className="text-destructive">Inválido (16 dígitos - ir a paso Cliente)</span>) : <span className="text-destructive">Requerido (ir a paso Cliente)</span>}</p>
-                     </div>
+                   </div>
                    <div>
                     <Label htmlFor="transferReference">Referencia de Pago (Opcional)</Label>
                     <Input id="transferReference" placeholder="Ej: Orden #123" value={transferDetails.reference || ''} onChange={e => setTransferDetails({...transferDetails, reference: e.target.value})} />
                   </div>
                 </div>
+              )}
+
+              {paymentMethod === 'invoice' && (
+                 <div className="border p-3 rounded-md space-y-3 bg-muted/30">
+                    <h4 className="font-medium text-base">Detalles Factura</h4>
+                    <Label>Fecha de Vencimiento</Label>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !invoiceDueDate && "text-muted-foreground")}>
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {invoiceDueDate ? format(invoiceDueDate, "PPP", {locale: es}) : <span>Seleccionar fecha</span>}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={invoiceDueDate} onSelect={setInvoiceDueDate} initialFocus locale={es} disabled={(date) => date < new Date()} /></PopoverContent>
+                    </Popover>
+                    {(selectedCustomerId === ANONYMOUS_CUSTOMER_VALUE || isAddingNewSystemCustomer) && (
+                        <Alert variant="warning" className="text-xs">
+                            <AlertTriangle className="h-4 w-4"/>
+                            <AlertTitle>Cliente Requerido</AlertTitle>
+                            <AlertDescription>
+                                Debe seleccionar un cliente registrado para emitir una factura. Vuelva al paso anterior para seleccionar uno.
+                            </AlertDescription>
+                        </Alert>
+                    )}
+                 </div>
               )}
             </CardContent>
           </Card>
@@ -808,7 +829,7 @@ export default function SaleDialog({
   const getDialogTitle = () => {
     switch (currentStep) {
       case 'products': return 'Paso 1: Seleccionar Productos';
-      case 'customer': return 'Paso 2: Datos del Cliente (para esta transacción)';
+      case 'customer': return 'Paso 2: Datos del Cliente';
       case 'payment': return 'Paso 3: Registrar Pago';
       default: return 'Registrar Nueva Venta';
     }
@@ -817,7 +838,7 @@ export default function SaleDialog({
   const getDialogDescription = () => {
      switch (currentStep) {
       case 'products': return 'Escanee códigos de barra o añada productos manualmente al carrito.';
-      case 'customer': return 'Seleccione un cliente existente o ingrese los datos para la transacción actual. Los cambios aquí solo afectan esta venta y no se guardan en el sistema a menos que se indique.';
+      case 'customer': return 'Seleccione un cliente o añada uno nuevo al sistema.';
       case 'payment': return 'Seleccione el método de pago y complete los detalles.';
       default: return 'Complete los pasos para registrar una nueva venta.';
     }
@@ -875,7 +896,7 @@ export default function SaleDialog({
               <Button 
                 onClick={() => setCurrentStep('payment')}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                disabled={customerStepNextButtonDisabled || !isDayEffectivelyOpen}
+                disabled={!isDayEffectivelyOpen}
               >
                 Siguiente (Pago) <ArrowRight className="ml-2 h-4 w-4" />
               </Button>

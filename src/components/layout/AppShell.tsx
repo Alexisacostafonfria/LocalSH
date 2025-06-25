@@ -61,6 +61,7 @@ const baseNavItems = [
   { href: "/reports", icon: BarChartBig, label: "Reportes" },
   { href: "/forecast", icon: TrendingUp, label: "Pronósticos" },
   { href: "/accounting", icon: BookOpenCheck, label: "Contabilidad" },
+  { href: "/accounts-receivable", icon: FileText, label: "Cuentas por Cobrar" },
 ];
 
 const adminNavItems = [

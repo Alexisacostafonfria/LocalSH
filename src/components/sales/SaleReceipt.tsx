@@ -4,8 +4,8 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { Sale, AppSettings, BusinessSettings, SaleItem, CashPaymentDetails, TransferPaymentDetails } from '@/types';
-import { format } from 'date-fns';
+import { Sale, AppSettings, BusinessSettings, SaleItem, CashPaymentDetails, TransferPaymentDetails, InvoicePaymentDetails } from '@/types';
+import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 interface SaleReceiptProps {
@@ -60,7 +60,7 @@ const SaleReceipt: React.FC<SaleReceiptProps> = ({ sale, appSettings, businessSe
         {businessSettings.address && <p className="text-xs">{businessSettings.address}</p>}
         {businessSettings.phone && <p className="text-xs">Tel: {businessSettings.phone}</p>}
         {businessSettings.taxId && <p className="text-xs">ID Fiscal: {businessSettings.taxId}</p>}
-        <p className="text-sm mt-1">RECIBO DE VENTA</p>
+        <p className="text-sm mt-1">{sale.paymentMethod === 'invoice' ? 'FACTURA' : 'RECIBO DE VENTA'}</p>
       </div>
 
       <div className="mb-2">
@@ -110,7 +110,7 @@ const SaleReceipt: React.FC<SaleReceiptProps> = ({ sale, appSettings, businessSe
 
       <div className="text-sm">
         <p className="font-semibold">Detalles del Pago:</p>
-        <p>Método: {sale.paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia'}</p>
+        <p>Método: {sale.paymentMethod === 'cash' ? 'Efectivo' : sale.paymentMethod === 'transfer' ? 'Transferencia' : 'Factura'}</p>
         {sale.paymentMethod === 'cash' && sale.paymentDetails && (
           <>
             <p>Recibido: {currencySymbol}{(sale.paymentDetails as CashPaymentDetails).amountReceived.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
@@ -140,6 +140,12 @@ const SaleReceipt: React.FC<SaleReceiptProps> = ({ sale, appSettings, businessSe
               <p>Referencia: {(sale.paymentDetails as TransferPaymentDetails).reference}</p>
             )}
           </>
+        )}
+        {sale.paymentMethod === 'invoice' && sale.paymentDetails && (
+            <>
+                <p>Estado: <span className="font-bold">{(sale.paymentDetails as InvoicePaymentDetails).status.toUpperCase()}</span></p>
+                <p>Fecha Vencimiento: {format(parseISO((sale.paymentDetails as InvoicePaymentDetails).dueDate), 'dd MMM yyyy', {locale: es})}</p>
+            </>
         )}
       </div>
 
