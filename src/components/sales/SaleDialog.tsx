@@ -408,21 +408,26 @@ export default function SaleDialog({
       };
 
     } else if (paymentMethod === 'transfer') {
-        if (!currentTransactionCustomer.name || !currentTransactionCustomer.personalId || !currentTransactionCustomer.phone || !currentTransactionCustomer.cardNumber) {
+        const customerName = currentTransactionCustomer?.name ?? '';
+        const personalId = currentTransactionCustomer?.personalId ?? '';
+        const mobileNumber = currentTransactionCustomer?.phone ?? '';
+        const cardNumber = currentTransactionCustomer?.cardNumber ?? '';
+
+        if (!customerName || !personalId || !mobileNumber || !cardNumber) {
              toast({ title: "Error de Validación", description: "Para ventas por transferencia, se requiere Nombre, ID Personal, Móvil y Número de Tarjeta del cliente.", variant: "destructive" });
              return;
         }
-        if (currentTransactionCustomer.cardNumber.replace(/[^0-9]/g, "").length !== 16) {
+        if (cardNumber.replace(/[^0-9]/g, "").length !== 16) {
            toast({ title: "Error de Validación", description: "El número de tarjeta para la transferencia debe tener 16 dígitos.", variant: "destructive" });
            return;
         }
         finalPaymentDetails = {
             reference: transferDetails.reference || '', 
-            customerName: currentTransactionCustomer.name,
-            personalId: currentTransactionCustomer.personalId,
-            mobileNumber: currentTransactionCustomer.phone,
-            cardNumber: currentTransactionCustomer.cardNumber,
-            customerId: currentTransactionCustomer.id
+            customerName: customerName,
+            personalId: personalId,
+            mobileNumber: mobileNumber,
+            cardNumber: cardNumber,
+            customerId: currentTransactionCustomer?.id
         };
     } else { // Invoice
         if (selectedCustomerId === ANONYMOUS_CUSTOMER_VALUE || isAddingNewSystemCustomer) {
@@ -445,8 +450,8 @@ export default function SaleDialog({
       timestamp: new Date().toISOString(),
       operationalDate: accountingSettings.currentOperationalDate!,
       origin: 'pos',
-      customerId: currentTransactionCustomer.id, 
-      customerName: currentTransactionCustomer.name || 'Consumidor Final', 
+      customerId: currentTransactionCustomer?.id, 
+      customerName: currentTransactionCustomer?.name || 'Consumidor Final', 
       items: saleItems,
       subTotal: isFinite(subTotal) ? subTotal : 0,
       totalAmount: finalTotalAmount,
@@ -487,9 +492,9 @@ export default function SaleDialog({
   const hasActiveBreakdown = Object.values(cashBreakdownInputs).some(val => val && parseInt(val) > 0);
   
   const customerStepNextButtonDisabled = (paymentMethod === 'transfer' || paymentMethod === 'invoice') && 
-                                          (!currentTransactionCustomer.name || 
-                                           !currentTransactionCustomer.id ||
-                                           (paymentMethod === 'transfer' && (!currentTransactionCustomer.personalId || !currentTransactionCustomer.phone || !currentTransactionCustomer.cardNumber || currentTransactionCustomer.cardNumber.replace(/[^0-9]/g, "").length !== 16)) ||
+                                          (!currentTransactionCustomer?.name || 
+                                           !currentTransactionCustomer?.id ||
+                                           (paymentMethod === 'transfer' && (!currentTransactionCustomer?.personalId || !currentTransactionCustomer?.phone || !currentTransactionCustomer?.cardNumber || currentTransactionCustomer.cardNumber.replace(/[^0-9]/g, "").length !== 16)) ||
                                            (paymentMethod === 'invoice' && selectedCustomerId === ANONYMOUS_CUSTOMER_VALUE)
                                           );
 
@@ -501,10 +506,10 @@ export default function SaleDialog({
       (appSettings.allowTips && cashDetails.tip > Math.max(0, (isFinite(cashDetails.amountReceived) ? cashDetails.amountReceived : 0) - (isFinite(totalAmount) ? totalAmount : 0)))
     )) ||
     (paymentMethod === 'transfer' && (
-      !currentTransactionCustomer.name ||
-      !currentTransactionCustomer.personalId ||
-      !currentTransactionCustomer.phone ||
-      !currentTransactionCustomer.cardNumber ||
+      !currentTransactionCustomer?.name ||
+      !currentTransactionCustomer?.personalId ||
+      !currentTransactionCustomer?.phone ||
+      !currentTransactionCustomer?.cardNumber ||
       currentTransactionCustomer.cardNumber.replace(/[^0-g]/g, "").length !== 16
     )) ||
     (paymentMethod === 'invoice' && (
@@ -631,19 +636,19 @@ export default function SaleDialog({
                   <h4 className="text-sm font-medium">Datos del Nuevo Cliente para el Sistema</h4>
                   <div>
                       <Label htmlFor="txCustomerName">Nombre Completo *</Label>
-                      <Input id="txCustomerName" placeholder="Nombre Completo" name="name" value={currentTransactionCustomer.name} onChange={handleTransactionCustomerInputChange} />
+                      <Input id="txCustomerName" placeholder="Nombre Completo" name="name" value={currentTransactionCustomer?.name || ''} onChange={handleTransactionCustomerInputChange} />
                   </div>
                    <div>
                       <Label htmlFor="txCustomerPhone">Teléfono</Label>
-                      <Input id="txCustomerPhone" placeholder="Teléfono" name="phone" value={currentTransactionCustomer.phone || ''} onChange={handleTransactionCustomerInputChange} />
+                      <Input id="txCustomerPhone" placeholder="Teléfono" name="phone" value={currentTransactionCustomer?.phone || ''} onChange={handleTransactionCustomerInputChange} />
                   </div>
                   <div>
                     <Label htmlFor="txCustomerEmail">Email</Label>
-                    <Input id="txCustomerEmail" placeholder="Email" type="email" name="email" value={currentTransactionCustomer.email || ''} onChange={handleTransactionCustomerInputChange} />
+                    <Input id="txCustomerEmail" placeholder="Email" type="email" name="email" value={currentTransactionCustomer?.email || ''} onChange={handleTransactionCustomerInputChange} />
                   </div>
                    <div>
                       <Label htmlFor="txCustomerPersonalId">ID Personal (DNI, CUIT, etc.)</Label>
-                      <Input id="txCustomerPersonalId" placeholder="ID Personal" name="personalId" value={currentTransactionCustomer.personalId || ''} onChange={handleTransactionCustomerInputChange} />
+                      <Input id="txCustomerPersonalId" placeholder="ID Personal" name="personalId" value={currentTransactionCustomer?.personalId || ''} onChange={handleTransactionCustomerInputChange} />
                   </div>
                   <div>
                       <Label htmlFor="txCustomerCardNumber">Nro Tarjeta (16 dígitos)</Label>
@@ -651,12 +656,12 @@ export default function SaleDialog({
                           id="txCustomerCardNumber"
                           placeholder="XXXX-XXXX-XXXX-XXXX" 
                           name="cardNumber" 
-                          value={currentTransactionCustomer.cardNumber || ''} 
+                          value={currentTransactionCustomer?.cardNumber || ''} 
                           onChange={handleCardNumberChange} 
                           maxLength={19}
                       />
                   </div>
-                  <Button size="sm" onClick={handleSaveNewSystemCustomer} disabled={!currentTransactionCustomer.name}>Guardar en Sistema</Button>
+                  <Button size="sm" onClick={handleSaveNewSystemCustomer} disabled={!currentTransactionCustomer?.name}>Guardar en Sistema</Button>
                 </div>
               )}
             </CardContent>
@@ -782,10 +787,10 @@ export default function SaleDialog({
                 <div className="border p-3 rounded-md space-y-3 bg-muted/30">
                   <h4 className="font-medium text-base">Datos para Transferencia</h4>
                    <div className="text-sm space-y-1 bg-background/30 p-2 rounded">
-                        <p><strong>Nombre:</strong> {currentTransactionCustomer.name || <span className="text-destructive">Requerido (ir a paso Cliente)</span>}</p>
-                        <p><strong>ID Personal:</strong> {currentTransactionCustomer.personalId || <span className="text-destructive">Requerido (ir a paso Cliente)</span>}</p>
-                        <p><strong>Móvil:</strong> {currentTransactionCustomer.phone || <span className="text-destructive">Requerido (ir a paso Cliente)</span>}</p>
-                        <p><strong>Nro. Tarjeta:</strong> {currentTransactionCustomer.cardNumber ? (currentTransactionCustomer.cardNumber.replace(/[^0-9]/g,"").length === 16 ? currentTransactionCustomer.cardNumber : <span className="text-destructive">Inválido (16 dígitos - ir a paso Cliente)</span>) : <span className="text-destructive">Requerido (ir a paso Cliente)</span>}</p>
+                        <p><strong>Nombre:</strong> {currentTransactionCustomer?.name || <span className="text-destructive">Requerido (ir a paso Cliente)</span>}</p>
+                        <p><strong>ID Personal:</strong> {currentTransactionCustomer?.personalId || <span className="text-destructive">Requerido (ir a paso Cliente)</span>}</p>
+                        <p><strong>Móvil:</strong> {currentTransactionCustomer?.phone || <span className="text-destructive">Requerido (ir a paso Cliente)</span>}</p>
+                        <p><strong>Nro. Tarjeta:</strong> {currentTransactionCustomer?.cardNumber ? (currentTransactionCustomer.cardNumber.replace(/[^0-9]/g,"").length === 16 ? currentTransactionCustomer.cardNumber : <span className="text-destructive">Inválido (16 dígitos - ir a paso Cliente)</span>) : <span className="text-destructive">Requerido (ir a paso Cliente)</span>}</p>
                    </div>
                    <div>
                     <Label htmlFor="transferReference">Referencia de Pago (Opcional)</Label>
