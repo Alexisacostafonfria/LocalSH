@@ -16,6 +16,7 @@ import { Sale, Product, Customer, AppSettings, DEFAULT_APP_SETTINGS, BusinessSet
 import useLocalStorageState from '@/hooks/useLocalStorageState';
 import SaleDialog from '@/components/sales/SaleDialog';
 import SaleReceipt from '@/components/sales/SaleReceipt';
+import InvoiceContractPrintLayout from '@/components/sales/InvoiceContractPrintLayout'; // Nuevo
 import { format, parseISO, isValid, startOfDay, endOfDay, isWithinInterval, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { DateRange } from "react-day-picker";
@@ -55,6 +56,7 @@ export default function SalesPage() {
   });
   
   const [saleToPrint, setSaleToPrint] = useState<Sale | null>(null);
+  const [contractToPrint, setContractToPrint] = useState<Sale | null>(null); // Nuevo estado
   const [isClientMounted, setIsClientMounted] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
 
@@ -83,9 +85,13 @@ export default function SalesPage() {
 
 
   const handleAddSale = (newSale: Sale) => {
+    // Check if it's the customer's first invoice before saving the sale
+    const isFirstInvoice = newSale.paymentMethod === 'invoice' && newSale.customerId &&
+      !sales.some(s => s.customerId === newSale.customerId && s.paymentMethod === 'invoice');
+
     setSales(prevSales => [newSale, ...prevSales].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
     
-    // Update product stock in localStorage only for non-invoice sales
+    // Update product stock (stock is only affected on paid sales, not new invoices)
     if (newSale.paymentMethod !== 'invoice') {
       const updatedProducts = products.map(p => {
           const itemSold = newSale.items.find(item => item.productId === p.id);
@@ -97,14 +103,16 @@ export default function SalesPage() {
       setProducts(updatedProducts);
     }
 
-
     toast({
         title: "Venta Registrada",
-        description: `Venta ${newSale.id.substring(0,8)} completada. Stock actualizado.`,
+        description: `Venta ${newSale.id.substring(0,8)} completada.`,
     });
 
-    // Automatically print receipt/invoice
-    handleInitiatePrint(newSale);
+    if (isFirstInvoice) {
+        handleInitiateContractPrint(newSale);
+    } else {
+        handleInitiatePrint(newSale);
+    }
   };
 
   const getSaleDateForFilter = useCallback((sale: Sale): Date => {
@@ -139,11 +147,18 @@ export default function SalesPage() {
 
   const handleInitiatePrint = useCallback((sale: Sale) => {
     setSaleToPrint(sale);
+    setContractToPrint(null);
     setIsPrinting(true); 
   }, []);
 
+  const handleInitiateContractPrint = useCallback((sale: Sale) => {
+    setContractToPrint(sale);
+    setSaleToPrint(null);
+    setIsPrinting(true);
+  }, []);
+
   useEffect(() => {
-    if (isPrinting && saleToPrint && isClientMounted) {
+    if (isPrinting && (saleToPrint || contractToPrint) && isClientMounted) {
       const timer = setTimeout(() => {
         window.print();
       }, 750); 
@@ -151,6 +166,7 @@ export default function SalesPage() {
       const handleAfterPrint = () => {
         setIsPrinting(false);
         setSaleToPrint(null);
+        setContractToPrint(null);
         window.removeEventListener('afterprint', handleAfterPrint);
       };
       window.addEventListener('afterprint', handleAfterPrint);
@@ -160,7 +176,7 @@ export default function SalesPage() {
         window.removeEventListener('afterprint', handleAfterPrint);
       };
     }
-  }, [isPrinting, saleToPrint, isClientMounted]);
+  }, [isPrinting, saleToPrint, contractToPrint, isClientMounted]);
   
   const dateFilterDescription = useMemo(() => {
     if (!filterDateRange?.from) return "Todas las fechas";
@@ -335,6 +351,19 @@ export default function SalesPage() {
           <div id="printable-receipt-area">
             <SaleReceipt 
               sale={saleToPrint} 
+              appSettings={appSettings}
+              businessSettings={businessSettings} 
+            />
+          </div>,
+          document.body
+        )
+      }
+
+      {isPrinting && contractToPrint && isClientMounted && typeof document !== 'undefined' &&
+        ReactDOM.createPortal(
+          <div id="printableInvoiceContractArea">
+            <InvoiceContractPrintLayout 
+              sale={contractToPrint} 
               appSettings={appSettings}
               businessSettings={businessSettings} 
             />

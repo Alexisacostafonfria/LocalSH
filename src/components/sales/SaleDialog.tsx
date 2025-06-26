@@ -77,7 +77,7 @@ export default function SaleDialog({
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer' | 'invoice'>('cash');
   const [cashDetails, setCashDetails] = useState<CashPaymentDetails>(initialCashDetails);
   const [transferDetails, setTransferDetails] = useState<TransferPaymentDetails>(initialTransferDetails);
-  const [invoiceDueDate, setInvoiceDueDate] = useState<Date | undefined>(addDays(new Date(), 30));
+  const [invoiceDueDate, setInvoiceDueDate] = useState<Date | undefined>(addDays(new Date(), 15));
   const [cashBreakdownInputs, setCashBreakdownInputs] = useState<Record<string, string>>({});
   const [isCashBreakdownPopoverOpen, setIsCashBreakdownPopoverOpen] = useState(false);
   
@@ -459,7 +459,6 @@ export default function SaleDialog({
       paymentDetails: finalPaymentDetails,
     };
     onAddSale(sale);
-    toast({ title: "Venta Registrada", description: `Venta ${sale.id.substring(0,8)} completada.` });
     resetDialog();
     onClose();
   };
@@ -472,7 +471,7 @@ export default function SaleDialog({
     setPaymentMethod('cash'); 
     setCashDetails(initialCashDetails);
     setTransferDetails(initialTransferDetails); 
-    setInvoiceDueDate(addDays(new Date(), 30));
+    setInvoiceDueDate(addDays(new Date(), 15));
     setCashBreakdownInputs({});
     setSelectedCustomerId(ANONYMOUS_CUSTOMER_VALUE);
     setIsAddingNewSystemCustomer(false);
