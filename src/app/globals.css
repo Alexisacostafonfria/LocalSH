@@ -80,7 +80,7 @@ h1, h2, h3, h4, h5, h6 {
     padding: 0 !important;
   }
 
-  body > *:not(#printableOperationsReportArea):not(#printable-receipt-area):not(#printableProductListArea):not(#printableMovementsReportArea):not(#printableClosureReportArea):not(#printable-prep-ticket-area) {
+  body > *:not(#printableOperationsReportArea):not(#printable-receipt-area):not(#printableProductListArea):not(#printableMovementsReportArea):not(#printableClosureReportArea):not(#printable-prep-ticket-area):not(#printableAccountsReceivableReportArea) {
     display: none !important;
     visibility: hidden !important;
   }
@@ -91,7 +91,8 @@ h1, h2, h3, h4, h5, h6 {
   #printableProductListArea,
   #printableMovementsReportArea,
   #printableClosureReportArea,
-  #printable-prep-ticket-area {
+  #printable-prep-ticket-area,
+  #printableAccountsReceivableReportArea {
     display: block !important;
     visibility: visible !important;
     position: absolute !important;
@@ -112,13 +113,15 @@ h1, h2, h3, h4, h5, h6 {
   #printableOperationsReportArea,
   #printableProductListArea,
   #printableMovementsReportArea,
-  #printableClosureReportArea {
+  #printableClosureReportArea,
+  #printableAccountsReceivableReportArea {
     font-size: 10pt !important;
   }
   #printableOperationsReportArea *,
   #printableProductListArea *,
   #printableMovementsReportArea *,
-  #printableClosureReportArea * {
+  #printableClosureReportArea *,
+  #printableAccountsReceivableReportArea * {
     visibility: visible !important;
     color: black !important;
     background-color: transparent !important;
@@ -126,25 +129,29 @@ h1, h2, h3, h4, h5, h6 {
   #printableOperationsReportArea table, #printableOperationsReportArea th, #printableOperationsReportArea td,
   #printableProductListArea table, #printableProductListArea th, #printableProductListArea td,
   #printableMovementsReportArea table, #printableMovementsReportArea th, #printableMovementsReportArea td,
-  #printableClosureReportArea table, #printableClosureReportArea th, #printableClosureReportArea td {
+  #printableClosureReportArea table, #printableClosureReportArea th, #printableClosureReportArea td,
+  #printableAccountsReceivableReportArea table, #printableAccountsReceivableReportArea th, #printableAccountsReceivableReportArea td {
     border-color: #666 !important;
   }
   #printableOperationsReportArea th,
   #printableProductListArea th,
   #printableMovementsReportArea th,
-  #printableClosureReportArea th {
+  #printableClosureReportArea th,
+  #printableAccountsReceivableReportArea th {
     background-color: #f2f2f2 !important;
   }
   #printableOperationsReportArea .break-inside-avoid-page,
   #printableProductListArea .break-inside-avoid-page,
   #printableMovementsReportArea .break-inside-avoid-page,
-  #printableClosureReportArea .break-inside-avoid-page {
+  #printableClosureReportArea .break-inside-avoid-page,
+  #printableAccountsReceivableReportArea .break-inside-avoid-page {
     page-break-inside: avoid;
   }
   #printableOperationsReportArea .no-print,
   #printableProductListArea .no-print,
   #printableMovementsReportArea .no-print,
-  #printableClosureReportArea .no-print {
+  #printableClosureReportArea .no-print,
+  #printableAccountsReceivableReportArea .no-print {
       display: none !important;
   }
 
@@ -159,6 +166,9 @@ h1, h2, h3, h4, h5, h6 {
 
   @page closure-report-page { size: A4 portrait; margin: 1cm; }
   #printableClosureReportArea { page: closure-report-page; }
+
+  @page accounts-receivable-report-page { size: A4 portrait; margin: 1cm; }
+  #printableAccountsReceivableReportArea { page: accounts-receivable-report-page; }
 
 
   /* Estilos específicos para RECIBOS Y TICKETS DE PREPARACIÓN */

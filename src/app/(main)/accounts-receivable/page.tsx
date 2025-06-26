@@ -3,6 +3,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -10,14 +11,15 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sale, AppSettings, AuthState, InvoicePaymentRecord, Customer, InvoicePaymentDetails, InvoiceStatus } from '@/types';
+import { Sale, AppSettings, AuthState, InvoicePaymentRecord, Customer, InvoicePaymentDetails, InvoiceStatus, BusinessSettings, DEFAULT_BUSINESS_SETTINGS } from '@/types';
 import useLocalStorageState from '@/hooks/useLocalStorageState';
 import { format, parseISO, isBefore, startOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
-import { FileText, Search, Filter, DollarSign, Loader2, AlertTriangle, CheckCircle } from 'lucide-react';
+import { FileText, Search, Filter, DollarSign, Loader2, AlertTriangle, CheckCircle, Printer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import PayInvoiceDialog from '@/components/accounts-receivable/PayInvoiceDialog';
+import AccountsReceivableReportPrintLayout from '@/components/accounts-receivable/AccountsReceivableReportPrintLayout';
 import { DEFAULT_APP_SETTINGS, DEFAULT_AUTH_STATE } from '@/types';
 
 type StatusFilter = "all" | "pending" | "overdue" | "paid";
@@ -27,19 +29,23 @@ export default function AccountsReceivablePage() {
   const [customers] = useLocalStorageState<Customer[]>('customers', []);
   const [invoicePayments, setInvoicePayments] = useLocalStorageState<InvoicePaymentRecord[]>('invoicePayments', []);
   const [appSettings] = useLocalStorageState<AppSettings>('appSettings', DEFAULT_APP_SETTINGS);
+  const [businessSettings] = useLocalStorageState<BusinessSettings>('businessSettings', DEFAULT_BUSINESS_SETTINGS);
   const [authState] = useLocalStorageState<AuthState>('authData', DEFAULT_AUTH_STATE);
   
   const [isLoading, setIsLoading] = useState(true);
+  const [isClientMounted, setIsClientMounted] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending');
   
   const [payingInvoice, setPayingInvoice] = useState<Sale | null>(null);
+  const [isPrinting, setIsPrinting] = useState(false);
 
   const { toast } = useToast();
   const isAdmin = authState.currentUser?.role === 'admin';
 
   useEffect(() => {
     setIsLoading(false);
+    setIsClientMounted(true);
   }, []);
   
   const invoices = useMemo(() => {
@@ -124,6 +130,37 @@ export default function AccountsReceivablePage() {
         return <Badge variant="outline" className="border-orange-500 text-orange-500">Pendiente</Badge>;
     }
   };
+  
+  const handlePrintReport = () => {
+    if (filteredInvoices.length === 0) {
+        toast({ title: "Nada que imprimir", description: "No hay facturas que coincidan con los filtros actuales.", variant: "warning" });
+        return;
+    }
+    setIsPrinting(true);
+  };
+
+  useEffect(() => {
+    if (isPrinting && filteredInvoices.length > 0 && isClientMounted) {
+        const timer = setTimeout(() => window.print(), 300);
+        const handleAfterPrint = () => {
+            setIsPrinting(false);
+            window.removeEventListener('afterprint', handleAfterPrint);
+        };
+        window.addEventListener('afterprint', handleAfterPrint);
+        return () => {
+            clearTimeout(timer);
+            window.removeEventListener('afterprint', handleAfterPrint);
+        };
+    }
+  }, [isPrinting, filteredInvoices, isClientMounted]);
+
+  const reportPeriodDescription = useMemo(() => {
+    let description = `Filtro: ${statusFilter === 'all' ? 'Todos' : statusFilter === 'pending' ? 'Pendientes y Vencidas' : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}`;
+    if (searchTerm) {
+      description += ` | Búsqueda: "${searchTerm}"`;
+    }
+    return description;
+  }, [statusFilter, searchTerm]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -177,7 +214,7 @@ export default function AccountsReceivablePage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Filter className="h-5 w-5 text-muted-foreground" />
               <Select value={statusFilter} onValueChange={(value: StatusFilter) => setStatusFilter(value)}>
                 <SelectTrigger className="w-full sm:w-[180px]">
@@ -190,6 +227,9 @@ export default function AccountsReceivablePage() {
                   <SelectItem value="paid">Pagadas</SelectItem>
                 </SelectContent>
               </Select>
+               <Button onClick={handlePrintReport} variant="outline" size="sm" className="w-full sm:w-auto">
+                 <Printer className="mr-2 h-4 w-4"/>Imprimir Reporte
+               </Button>
             </div>
           </div>
         </CardHeader>
@@ -253,6 +293,21 @@ export default function AccountsReceivablePage() {
           appSettings={appSettings}
         />
       )}
+      
+      {isPrinting && isClientMounted && typeof document !== 'undefined' &&
+        ReactDOM.createPortal(
+          <div id="printableAccountsReceivableReportArea">
+            <AccountsReceivableReportPrintLayout
+              invoices={filteredInvoices as (Sale & { paymentDetails: InvoicePaymentDetails })[]}
+              summary={summary}
+              appSettings={appSettings}
+              businessSettings={businessSettings}
+              reportPeriodDescription={reportPeriodDescription}
+            />
+          </div>,
+          document.body
+        )
+      }
     </div>
   );
 }
