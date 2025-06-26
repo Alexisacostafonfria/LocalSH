@@ -5,7 +5,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { Sale, AppSettings, BusinessSettings, InvoicePaymentDetails, InvoiceStatus } from '@/types';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 interface AccountsReceivableReportPrintLayoutProps {
@@ -32,9 +32,18 @@ const AccountsReceivableReportPrintLayout: React.FC<AccountsReceivableReportPrin
       case 'paid': return 'Pagada';
       case 'overdue': return 'Vencida';
       case 'pending': return 'Pendiente';
-      default: return status;
+      default: return status || 'N/A';
     }
   };
+
+  const safeFormatDate = (dateString: string) => {
+      try {
+        if (!dateString || !isValid(parseISO(dateString))) return 'Fecha Inválida';
+        return format(parseISO(dateString), 'dd MMM yyyy', { locale: es });
+      } catch {
+        return 'Fecha Inválida';
+      }
+  }
 
   return (
     <div className="p-4 bg-white text-black text-sm font-sans">
@@ -58,7 +67,7 @@ const AccountsReceivableReportPrintLayout: React.FC<AccountsReceivableReportPrin
           </div>
           <div className="text-right">
             <h2 className="text-xl font-semibold mb-1">Reporte de Cuentas por Cobrar</h2>
-            <p className="text-gray-600">{reportPeriodDescription}</p>
+            <p className="text-gray-600">{reportPeriodDescription || ''}</p>
             <p className="text-xs text-gray-500">Generado: {format(new Date(), "dd MMM yyyy, HH:mm", { locale: es })}</p>
           </div>
         </div>
@@ -69,15 +78,15 @@ const AccountsReceivableReportPrintLayout: React.FC<AccountsReceivableReportPrin
         <div className="grid grid-cols-3 gap-4 text-xs">
             <div className="bg-gray-100 p-2 rounded-md">
                 <p className="font-semibold">Pendiente de Cobro</p>
-                <p className="text-lg font-bold">{appSettings.currencySymbol}{summary.totalPending.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-lg font-bold">{appSettings.currencySymbol}{(summary.totalPending || 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
             </div>
              <div className="bg-gray-100 p-2 rounded-md">
                 <p className="font-semibold">Total Vencido</p>
-                <p className="text-lg font-bold">{appSettings.currencySymbol}{summary.totalOverdue.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-lg font-bold">{appSettings.currencySymbol}{(summary.totalOverdue || 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
             </div>
              <div className="bg-gray-100 p-2 rounded-md">
                 <p className="font-semibold">Total Cobrado (Histórico)</p>
-                <p className="text-lg font-bold">{appSettings.currencySymbol}{summary.totalPaid.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-lg font-bold">{appSettings.currencySymbol}{(summary.totalPaid || 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
             </div>
         </div>
       </section>
@@ -105,12 +114,12 @@ const AccountsReceivableReportPrintLayout: React.FC<AccountsReceivableReportPrin
             ) : (
                 invoices.map((invoice) => (
                 <tr key={invoice.id} className="break-inside-avoid-page">
-                    <td className="border p-1 align-top">{invoice.id.substring(0, 8)}...</td>
-                    <td className="border p-1 align-top">{invoice.customerName}</td>
-                    <td className="border p-1 align-top">{format(parseISO(invoice.timestamp), 'dd MMM yyyy', { locale: es })}</td>
-                    <td className="border p-1 align-top">{format(parseISO(invoice.paymentDetails.dueDate), 'dd MMM yyyy', { locale: es })}</td>
+                    <td className="border p-1 align-top">{invoice.id ? invoice.id.substring(0, 8) : 'N/A'}...</td>
+                    <td className="border p-1 align-top">{invoice.customerName || 'N/A'}</td>
+                    <td className="border p-1 align-top">{safeFormatDate(invoice.timestamp)}</td>
+                    <td className="border p-1 align-top">{safeFormatDate(invoice.paymentDetails.dueDate)}</td>
                     <td className="border p-1 align-top text-right">
-                    {appSettings.currencySymbol}{invoice.totalAmount.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {appSettings.currencySymbol}{(invoice.totalAmount || 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td className="border p-1 align-top">{getStatusText(invoice.paymentDetails.status)}</td>
                 </tr>

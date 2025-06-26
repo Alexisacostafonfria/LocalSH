@@ -30,13 +30,21 @@ export default function PayInvoiceDialog({ isOpen, onClose, invoice, onConfirm, 
   const [reference, setReference] = useState('');
   const [accountingSettings] = useLocalStorageState<AccountingSettings>('accountingSettings', DEFAULT_ACCOUNTING_SETTINGS);
 
-  const [amountReceived, setAmountReceived] = useState<number>(invoice.totalAmount);
+  const [amountReceived, setAmountReceived] = useState<number>(0);
   const [cashBreakdownInputs, setCashBreakdownInputs] = useState<Record<string, string>>({});
   const [isCashBreakdownPopoverOpen, setIsCashBreakdownPopoverOpen] = useState(false);
 
   const { toast } = useToast();
   const isDayEffectivelyOpen = accountingSettings.isDayOpen && !!accountingSettings.currentOperationalDate;
-  const changeGiven = useMemo(() => Math.max(0, amountReceived - invoice.totalAmount), [amountReceived, invoice.totalAmount]);
+  
+  const invoiceTotal = useMemo(() => {
+      return typeof invoice.totalAmount === 'number' && isFinite(invoice.totalAmount) ? invoice.totalAmount : 0;
+  }, [invoice.totalAmount]);
+
+  const changeGiven = useMemo(() => {
+    const received = typeof amountReceived === 'number' && isFinite(amountReceived) ? amountReceived : 0;
+    return Math.max(0, received - invoiceTotal);
+  }, [amountReceived, invoiceTotal]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -46,9 +54,9 @@ export default function PayInvoiceDialog({ isOpen, onClose, invoice, onConfirm, 
       setCashBreakdownInputs({});
     } else {
       // Pre-fill amount received with invoice total for convenience
-      setAmountReceived(invoice.totalAmount);
+      setAmountReceived(invoiceTotal);
     }
-  }, [isOpen, invoice.totalAmount]);
+  }, [isOpen, invoiceTotal]);
   
   const hasActiveBreakdown = Object.values(cashBreakdownInputs).some(val => val && parseInt(val) > 0);
 
@@ -58,14 +66,19 @@ export default function PayInvoiceDialog({ isOpen, onClose, invoice, onConfirm, 
 
     const newAmountReceived = Object.entries(newBreakdownInputs).reduce((sum, [den, count]) => {
       const val = parseInt(count);
-      return sum + (isNaN(val) ? 0 : val * parseInt(den));
+      const denVal = parseInt(den);
+      if (!isNaN(val) && val > 0 && !isNaN(denVal)) {
+        return sum + (val * denVal);
+      }
+      return sum;
     }, 0);
     setAmountReceived(newAmountReceived);
   };
   
   const handleAmountReceivedChange = (amountStr: string) => {
     setCashBreakdownInputs({});
-    setAmountReceived(parseFloat(amountStr) || 0);
+    const parsedAmount = parseFloat(amountStr);
+    setAmountReceived(isFinite(parsedAmount) ? parsedAmount : 0);
   };
 
   const handleConfirmPayment = () => {
@@ -78,7 +91,7 @@ export default function PayInvoiceDialog({ isOpen, onClose, invoice, onConfirm, 
         return;
     }
 
-    if (paymentMethod === 'cash' && amountReceived < invoice.totalAmount) {
+    if (paymentMethod === 'cash' && amountReceived < invoiceTotal) {
         toast({ title: "Pago Insuficiente", description: "El monto recibido es menor al total de la factura.", variant: "destructive"});
         return;
     }
@@ -88,7 +101,7 @@ export default function PayInvoiceDialog({ isOpen, onClose, invoice, onConfirm, 
       ...(invoice.paymentDetails as InvoicePaymentDetails),
       status: 'paid',
       paidDate: todayISO,
-      paidAmount: invoice.totalAmount,
+      paidAmount: invoiceTotal,
       paidMethod: paymentMethod,
     };
     
@@ -98,7 +111,7 @@ export default function PayInvoiceDialog({ isOpen, onClose, invoice, onConfirm, 
         invoiceSaleId: invoice.id,
         paymentTimestamp: todayISO,
         operationalDate: accountingSettings.currentOperationalDate!,
-        amountPaid: invoice.totalAmount,
+        amountPaid: invoiceTotal,
         method: paymentMethod,
         reference: paymentMethod === 'transfer' ? reference : undefined,
     };
@@ -106,7 +119,7 @@ export default function PayInvoiceDialog({ isOpen, onClose, invoice, onConfirm, 
     onConfirm(updatedInvoice, paymentRecord);
   };
 
-  const isConfirmDisabled = !isDayEffectivelyOpen || (paymentMethod === 'cash' && amountReceived < invoice.totalAmount);
+  const isConfirmDisabled = !isDayEffectivelyOpen || (paymentMethod === 'cash' && amountReceived < invoiceTotal);
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -114,13 +127,13 @@ export default function PayInvoiceDialog({ isOpen, onClose, invoice, onConfirm, 
         <DialogHeader>
           <DialogTitle className="font-headline">Registrar Pago de Factura</DialogTitle>
           <DialogDescription>
-            Confirmar el pago para la factura #{invoice.id.substring(0,8)} del cliente {invoice.customerName}.
+            Confirmar el pago para la factura #{invoice.id ? invoice.id.substring(0,8) : 'N/A'} del cliente {invoice.customerName || 'N/A'}.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="text-3xl font-bold text-right text-primary">
-              Monto a Pagar: {appSettings.currencySymbol}{invoice.totalAmount.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+              Monto a Pagar: {appSettings.currencySymbol}{invoiceTotal.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
           </div>
           
           <div className="space-y-1">

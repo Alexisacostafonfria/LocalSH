@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sale, AppSettings, AuthState, InvoicePaymentRecord, Customer, InvoicePaymentDetails, InvoiceStatus, BusinessSettings, DEFAULT_BUSINESS_SETTINGS } from '@/types';
 import useLocalStorageState from '@/hooks/useLocalStorageState';
-import { format, parseISO, isBefore, startOfDay } from 'date-fns';
+import { format, parseISO, isBefore, startOfDay, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { FileText, Search, Filter, DollarSign, Loader2, AlertTriangle, CheckCircle, Printer } from 'lucide-react';
@@ -50,16 +50,16 @@ export default function AccountsReceivablePage() {
   
   const invoices = useMemo(() => {
     return sales
-      .filter(sale => sale.paymentMethod === 'invoice')
+      .filter(sale => sale.paymentMethod === 'invoice' && sale.paymentDetails && typeof (sale.paymentDetails as InvoicePaymentDetails).dueDate === 'string')
       .map(sale => {
         const details = sale.paymentDetails as InvoicePaymentDetails;
         let effectiveStatus: InvoiceStatus = details.status;
-        if (details.status === 'pending' && isBefore(parseISO(details.dueDate), startOfDay(new Date()))) {
+        if (details.status === 'pending' && isValid(parseISO(details.dueDate)) && isBefore(parseISO(details.dueDate), startOfDay(new Date()))) {
             effectiveStatus = 'overdue';
         }
         return { ...sale, paymentDetails: { ...details, status: effectiveStatus } };
       })
-      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [sales]);
 
   const filteredInvoices = useMemo(() => {
@@ -69,7 +69,7 @@ export default function AccountsReceivablePage() {
       const customer = customers.find(c => c.id === invoice.customerId);
 
       const matchesSearch = searchTermLower === '' ||
-        invoice.id.toLowerCase().includes(searchTermLower) ||
+        (invoice.id && invoice.id.toLowerCase().includes(searchTermLower)) ||
         (invoice.customerName && invoice.customerName.toLowerCase().includes(searchTermLower)) ||
         (customer?.personalId && customer.personalId.toLowerCase().includes(searchTermLower));
         
@@ -78,7 +78,6 @@ export default function AccountsReceivablePage() {
         (statusFilter === 'overdue' && details.status === 'overdue') ||
         (statusFilter === 'paid' && details.status === 'paid');
         
-      // Special case for filtering: pending should also include overdue
       if (statusFilter === 'pending' && details.status === 'overdue') {
         return matchesSearch;
       }
@@ -90,13 +89,13 @@ export default function AccountsReceivablePage() {
   const summary = useMemo(() => {
     const totalPending = invoices
       .filter(inv => (inv.paymentDetails as InvoicePaymentDetails).status !== 'paid')
-      .reduce((sum, inv) => sum + inv.totalAmount, 0);
+      .reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
     const totalOverdue = invoices
       .filter(inv => (inv.paymentDetails as InvoicePaymentDetails).status === 'overdue')
-      .reduce((sum, inv) => sum + inv.totalAmount, 0);
+      .reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
     const totalPaid = invoices
       .filter(inv => (inv.paymentDetails as InvoicePaymentDetails).status === 'paid')
-      .reduce((sum, inv) => sum + inv.totalAmount, 0);
+      .reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
       
     return { totalPending, totalOverdue, totalPaid };
   }, [invoices]);
@@ -173,7 +172,7 @@ export default function AccountsReceivablePage() {
             <DollarSign className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{appSettings.currencySymbol}{summary.totalPending.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</div>
+            <div className="text-2xl font-bold">{appSettings.currencySymbol}{(summary.totalPending || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</div>
             <p className="text-xs text-muted-foreground">Suma de facturas pendientes y vencidas.</p>
           </CardContent>
         </Card>
@@ -183,7 +182,7 @@ export default function AccountsReceivablePage() {
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{appSettings.currencySymbol}{summary.totalOverdue.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</div>
+            <div className="text-2xl font-bold">{appSettings.currencySymbol}{(summary.totalOverdue || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</div>
             <p className="text-xs text-muted-foreground">Facturas cuya fecha de pago ha pasado.</p>
           </CardContent>
         </Card>
@@ -193,7 +192,7 @@ export default function AccountsReceivablePage() {
             <CheckCircle className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{appSettings.currencySymbol}{summary.totalPaid.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</div>
+            <div className="text-2xl font-bold">{appSettings.currencySymbol}{(summary.totalPaid || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</div>
             <p className="text-xs text-muted-foreground">Suma histórica de facturas pagadas.</p>
           </CardContent>
         </Card>
@@ -264,7 +263,7 @@ export default function AccountsReceivablePage() {
                       <TableCell>{format(parseISO(invoice.timestamp), 'dd MMM yyyy', { locale: es })}</TableCell>
                       <TableCell>{format(parseISO(details.dueDate), 'dd MMM yyyy', { locale: es })}</TableCell>
                       <TableCell className="text-right font-semibold">
-                        {appSettings.currencySymbol}{invoice.totalAmount.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+                        {appSettings.currencySymbol}{(invoice.totalAmount || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })}
                       </TableCell>
                       <TableCell>{getStatusBadge(details.status)}</TableCell>
                       <TableCell className="text-right">
