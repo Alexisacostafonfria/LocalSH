@@ -80,12 +80,12 @@ h1, h2, h3, h4, h5, h6 {
     padding: 0 !important;
   }
 
-  body > *:not(#printableOperationsReportArea):not(#printable-receipt-area):not(#printableProductListArea):not(#printableMovementsReportArea):not(#printableClosureReportArea):not(#printable-prep-ticket-area):not(#printableAccountsReceivableReportArea):not(#printableInvoiceContractArea) {
+  body > *:not(#printableOperationsReportArea):not(#printable-receipt-area):not(#printableProductListArea):not(#printableMovementsReportArea):not(#printableClosureReportArea):not(#printable-prep-ticket-area):not(#printableAccountsReceivableReportArea):not(#printableInvoiceContractArea):not(#printableSaleA4Area) {
     display: none !important;
     visibility: hidden !important;
   }
 
-  /* --- SECCIÓN PARA IMPRESIÓN DEL REPORTE DE OPERACIONES, RECIBOS, LISTA DE PRODUCTOS, MOVIMIENTOS Y CIERRE --- */
+  /* --- SECCIÓN PARA IMPRESIÓN --- */
   #printableOperationsReportArea,
   #printable-receipt-area,
   #printableProductListArea,
@@ -93,7 +93,8 @@ h1, h2, h3, h4, h5, h6 {
   #printableClosureReportArea,
   #printable-prep-ticket-area,
   #printableAccountsReceivableReportArea,
-  #printableInvoiceContractArea {
+  #printableInvoiceContractArea,
+  #printableSaleA4Area {
     display: block !important;
     visibility: visible !important;
     position: absolute !important;
@@ -116,7 +117,8 @@ h1, h2, h3, h4, h5, h6 {
   #printableMovementsReportArea,
   #printableClosureReportArea,
   #printableAccountsReceivableReportArea,
-  #printableInvoiceContractArea {
+  #printableInvoiceContractArea,
+  #printableSaleA4Area {
     font-size: 10pt !important;
   }
   #printableOperationsReportArea *,
@@ -124,7 +126,8 @@ h1, h2, h3, h4, h5, h6 {
   #printableMovementsReportArea *,
   #printableClosureReportArea *,
   #printableAccountsReceivableReportArea *,
-  #printableInvoiceContractArea * {
+  #printableInvoiceContractArea *,
+  #printableSaleA4Area * {
     visibility: visible !important;
     color: black !important;
     background-color: transparent !important;
@@ -134,7 +137,8 @@ h1, h2, h3, h4, h5, h6 {
   #printableMovementsReportArea table, #printableMovementsReportArea th, #printableMovementsReportArea td,
   #printableClosureReportArea table, #printableClosureReportArea th, #printableClosureReportArea td,
   #printableAccountsReceivableReportArea table, #printableAccountsReceivableReportArea th, #printableAccountsReceivableReportArea td,
-  #printableInvoiceContractArea table, #printableInvoiceContractArea th, #printableInvoiceContractArea td {
+  #printableInvoiceContractArea table, #printableInvoiceContractArea th, #printableInvoiceContractArea td,
+  #printableSaleA4Area table, #printableSaleA4Area th, #printableSaleA4Area td {
     border-color: #666 !important;
   }
   #printableOperationsReportArea th,
@@ -142,7 +146,8 @@ h1, h2, h3, h4, h5, h6 {
   #printableMovementsReportArea th,
   #printableClosureReportArea th,
   #printableAccountsReceivableReportArea th,
-  #printableInvoiceContractArea th {
+  #printableInvoiceContractArea th,
+  #printableSaleA4Area th {
     background-color: #f2f2f2 !important;
   }
   #printableOperationsReportArea .break-inside-avoid-page,
@@ -150,7 +155,8 @@ h1, h2, h3, h4, h5, h6 {
   #printableMovementsReportArea .break-inside-avoid-page,
   #printableClosureReportArea .break-inside-avoid-page,
   #printableAccountsReceivableReportArea .break-inside-avoid-page,
-  #printableInvoiceContractArea .break-inside-avoid-page {
+  #printableInvoiceContractArea .break-inside-avoid-page,
+  #printableSaleA4Area .break-inside-avoid-page {
     page-break-inside: avoid;
   }
   #printableOperationsReportArea .no-print,
@@ -158,7 +164,8 @@ h1, h2, h3, h4, h5, h6 {
   #printableMovementsReportArea .no-print,
   #printableClosureReportArea .no-print,
   #printableAccountsReceivableReportArea .no-print,
-  #printableInvoiceContractArea .no-print {
+  #printableInvoiceContractArea .no-print,
+  #printableSaleA4Area .no-print {
       display: none !important;
   }
 
@@ -179,7 +186,9 @@ h1, h2, h3, h4, h5, h6 {
   
   @page invoice-contract-page { size: A4 portrait; margin: 1cm; }
   #printableInvoiceContractArea { page: invoice-contract-page; }
-
+  
+  @page sale-a4-page { size: A4 portrait; margin: 1cm; }
+  #printableSaleA4Area { page: sale-a4-page; }
 
   /* Estilos específicos para RECIBOS Y TICKETS DE PREPARACIÓN */
    #printable-receipt-area,

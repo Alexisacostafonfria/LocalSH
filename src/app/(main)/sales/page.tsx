@@ -18,6 +18,8 @@ import useLocalStorageState from '@/hooks/useLocalStorageState';
 import SaleDialog from '@/components/sales/SaleDialog';
 import SaleReceipt from '@/components/sales/SaleReceipt';
 import InvoiceContractPrintLayout from '@/components/sales/InvoiceContractPrintLayout';
+import PrintOptionsDialog from '@/components/sales/PrintOptionsDialog'; // Import new dialog
+import SaleA4Layout from '@/components/sales/SaleA4Layout'; // Import new A4 layout
 import { format, parseISO, isValid, startOfDay, endOfDay, isWithinInterval, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { DateRange } from "react-day-picker";
@@ -53,11 +55,13 @@ export default function SalesPage() {
       const opDate = startOfDay(parseISO(accountingSettings.currentOperationalDate));
       return { from: opDate, to: opDate };
     }
-    return { from: subDays(today, 6), to: today }; // Default to last 7 days if no operational day
+    return { from: subDays(today, 6), to: today };
   });
   
+  const [saleForPrintOptions, setSaleForPrintOptions] = useState<Sale | null>(null);
   const [saleToPrint, setSaleToPrint] = useState<Sale | null>(null);
   const [contractToPrint, setContractToPrint] = useState<{sale: Sale, customer: Customer | undefined} | null>(null);
+  const [printFormat, setPrintFormat] = useState<'a4' | 'receipt' | null>(null);
   const [isClientMounted, setIsClientMounted] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
 
@@ -65,33 +69,16 @@ export default function SalesPage() {
 
   useEffect(() => {
     setIsClientMounted(true);
-    // Data is loaded from localStorage, so loading is "instant" after mount.
     setIsLoadingProducts(false);
   }, []);
 
-  // Effect to update filterDateRange if operational day changes after mount
-  useEffect(() => {
-    if (accountingSettings.isDayOpen && accountingSettings.currentOperationalDate && isValid(parseISO(accountingSettings.currentOperationalDate))) {
-      const opDate = startOfDay(parseISO(accountingSettings.currentOperationalDate));
-      if (!filterDateRange || !filterDateRange.from || !filterDateRange.to || 
-          format(filterDateRange.from, 'yyyy-MM-dd') !== format(opDate, 'yyyy-MM-dd') ||
-          format(filterDateRange.to, 'yyyy-MM-dd') !== format(opDate, 'yyyy-MM-dd')
-         ) {
-          // This logic might need refinement based on desired UX for "stickiness" of user-selected range vs. auto-switching to new op day.
-          // For now, if an operational day starts, it defaults to filtering by it.
-          // setFilterDateRange({ from: opDate, to: opDate });
-      }
-    }
-  }, [accountingSettings.currentOperationalDate, accountingSettings.isDayOpen, filterDateRange]);
-
-
   const handleAddSale = (newSale: Sale) => {
+    // Check if this is the first invoice sale for this customer
     const isFirstInvoice = newSale.paymentMethod === 'invoice' && newSale.customerId &&
-      !sales.some(s => s.customerId === newSale.customerId && s.paymentMethod === 'invoice');
+      !sales.some(s => s.customerId === newSale.customerId && s.paymentMethod === 'invoice' && s.id !== newSale.id);
 
     setSales(prevSales => [newSale, ...prevSales].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
     
-    // Update product stock (stock is only affected on paid sales, not new invoices)
     if (newSale.paymentMethod !== 'invoice') {
       const updatedProducts = products.map(p => {
           const itemSold = newSale.items.find(item => item.productId === p.id);
@@ -111,7 +98,7 @@ export default function SalesPage() {
     if (isFirstInvoice) {
         handleInitiateContractPrint(newSale);
     } else {
-        handleInitiatePrint(newSale);
+        setSaleForPrintOptions(newSale);
     }
   };
 
@@ -125,7 +112,6 @@ export default function SalesPage() {
   const filteredSales = useMemo(() => {
     let salesToFilter = [...sales].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-    // Filter by date range
     if (filterDateRange?.from) {
       const startDate = startOfDay(filterDateRange.from);
       const endDate = filterDateRange.to ? endOfDay(filterDateRange.to) : endOfDay(filterDateRange.from);
@@ -136,7 +122,6 @@ export default function SalesPage() {
       });
     }
 
-    // Filter by search term and payment method
     return salesToFilter.filter(sale =>
       (sale.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (sale.customerName && sale.customerName.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -144,17 +129,20 @@ export default function SalesPage() {
       (filterPaymentMethod === '' || sale.paymentMethod === filterPaymentMethod)
     );
   }, [sales, searchTerm, filterPaymentMethod, filterDateRange, getSaleDateForFilter]);
-
-  const handleInitiatePrint = useCallback((sale: Sale) => {
-    setSaleToPrint(sale);
-    setContractToPrint(null);
-    setIsPrinting(true); 
-  }, []);
+  
+  const handleSelectPrintFormat = (format: 'a4' | 'receipt') => {
+    if (!saleForPrintOptions) return;
+    setPrintFormat(format);
+    setSaleToPrint(saleForPrintOptions);
+    setSaleForPrintOptions(null);
+    setIsPrinting(true);
+  };
 
   const handleInitiateContractPrint = useCallback((sale: Sale) => {
     const customerForContract = customers.find(c => c.id === sale.customerId);
     setContractToPrint({sale, customer: customerForContract});
     setSaleToPrint(null);
+    setPrintFormat(null);
     setIsPrinting(true);
   }, [customers]);
 
@@ -168,6 +156,7 @@ export default function SalesPage() {
         setIsPrinting(false);
         setSaleToPrint(null);
         setContractToPrint(null);
+        setPrintFormat(null);
         window.removeEventListener('afterprint', handleAfterPrint);
       };
       window.addEventListener('afterprint', handleAfterPrint);
@@ -323,7 +312,7 @@ export default function SalesPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => handleInitiatePrint(sale)} title="Imprimir Recibo/Factura">
+                      <Button variant="ghost" size="icon" onClick={() => setSaleForPrintOptions(sale)} title="Imprimir Recibo/Factura">
                         <Printer className="h-4 w-4" />
                       </Button>
                     </TableCell>
@@ -346,30 +335,47 @@ export default function SalesPage() {
           onUpdateCustomers={setCustomers}
         />
       )}
+      
+      {saleForPrintOptions && isClientMounted && (
+        <PrintOptionsDialog
+            isOpen={!!saleForPrintOptions}
+            onClose={() => setSaleForPrintOptions(null)}
+            onSelectFormat={handleSelectPrintFormat}
+        />
+      )}
 
-      {isPrinting && saleToPrint && isClientMounted && typeof document !== 'undefined' &&
+      {isPrinting && isClientMounted && typeof document !== 'undefined' &&
         ReactDOM.createPortal(
-          <div id="printable-receipt-area">
-            <SaleReceipt 
-              sale={saleToPrint} 
-              appSettings={appSettings}
-              businessSettings={businessSettings} 
-            />
-          </div>,
-          document.body
-        )
-      }
-
-      {isPrinting && contractToPrint && isClientMounted && typeof document !== 'undefined' &&
-        ReactDOM.createPortal(
-          <div id="printableInvoiceContractArea">
-            <InvoiceContractPrintLayout 
-              sale={contractToPrint.sale} 
-              customer={contractToPrint.customer}
-              appSettings={appSettings}
-              businessSettings={businessSettings} 
-            />
-          </div>,
+          <>
+            {contractToPrint && (
+              <div id="printableInvoiceContractArea">
+                <InvoiceContractPrintLayout 
+                  sale={contractToPrint.sale} 
+                  customer={contractToPrint.customer}
+                  appSettings={appSettings}
+                  businessSettings={businessSettings} 
+                />
+              </div>
+            )}
+            {saleToPrint && printFormat === 'receipt' && (
+              <div id="printable-receipt-area">
+                <SaleReceipt 
+                  sale={saleToPrint} 
+                  appSettings={appSettings}
+                  businessSettings={businessSettings} 
+                />
+              </div>
+            )}
+            {saleToPrint && printFormat === 'a4' && (
+              <div id="printableSaleA4Area">
+                <SaleA4Layout 
+                  sale={saleToPrint} 
+                  appSettings={appSettings}
+                  businessSettings={businessSettings} 
+                />
+              </div>
+            )}
+          </>,
           document.body
         )
       }

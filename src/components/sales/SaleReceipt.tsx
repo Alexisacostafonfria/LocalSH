@@ -20,25 +20,21 @@ const SaleReceipt: React.FC<SaleReceiptProps> = ({ sale, appSettings, businessSe
   const getMaskedCardNumber = (cardNumber?: string): string => {
     if (!cardNumber) return 'N/A';
     const visibleDigits = 4;
-    const maskedPart = cardNumber.slice(0, -visibleDigits).replace(/[0-9]/g, 'X');
-    const lastDigits = cardNumber.slice(-visibleDigits);
+    const cleanCardNumber = cardNumber.replace(/[^0-9]/g, "");
+    if (cleanCardNumber.length <= visibleDigits) return cardNumber;
     
+    const lastDigits = cleanCardNumber.slice(-visibleDigits);
+    const maskedPart = 'X'.repeat(cleanCardNumber.length - visibleDigits);
+    const combined = maskedPart + lastDigits;
+
     let formattedMasked = "";
-    const originalFormatted = cardNumber.replace(/[^0-9-]/g, ""); 
-    let digitIndex = 0;
-    for(let i = 0; i < originalFormatted.length; i++) {
-        if (originalFormatted[i] === '-') {
-            formattedMasked += '-';
-        } else {
-            if (digitIndex < (originalFormatted.replace(/-/g,"").length - visibleDigits) ) {
-                formattedMasked += 'X';
-            } else {
-                formattedMasked += lastDigits[digitIndex - (originalFormatted.replace(/-/g,"").length - visibleDigits)];
-            }
-            digitIndex++;
+    for (let i = 0; i < combined.length; i++) {
+        if (i > 0 && i % 4 === 0) {
+            formattedMasked += "-";
         }
+        formattedMasked += combined[i];
     }
-    return formattedMasked.length > 19 ? formattedMasked.substring(0,19) : formattedMasked;
+    return formattedMasked;
   };
 
 
