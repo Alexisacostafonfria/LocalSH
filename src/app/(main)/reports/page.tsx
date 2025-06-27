@@ -217,16 +217,16 @@ export default function ReportsPage() {
 
 
   const detailedOperations = useMemo(() => {
-    return salesForTablePeriod // Use salesForTablePeriod here
+    return salesForTablePeriod
       .filter(sale => 
         (detailPaymentMethodFilter === 'all' || sale.paymentMethod === detailPaymentMethodFilter) &&
         (detailOriginFilter === 'all' || sale.origin === detailOriginFilter) &&
         (
           sale.id.toLowerCase().includes(detailSearchTerm.toLowerCase()) ||
           (sale.customerName && sale.customerName.toLowerCase().includes(detailSearchTerm.toLowerCase())) ||
-          sale.items.some(item => item.productName.toLowerCase().includes(detailSearchTerm.toLowerCase())) ||
-          (sale.operationalDate && format(parseISO(sale.operationalDate), "dd/MM/yyyy", { locale: es }).includes(detailSearchTerm)) ||
-          (format(parseISO(sale.timestamp), "dd/MM/yyyy").includes(detailSearchTerm))
+          sale.items.some(item => (item.productName || '').toLowerCase().includes(detailSearchTerm.toLowerCase())) ||
+          (sale.operationalDate && isValid(parseISO(sale.operationalDate)) && format(parseISO(sale.operationalDate), "dd/MM/yyyy", { locale: es }).includes(detailSearchTerm)) ||
+          (isValid(parseISO(sale.timestamp)) && format(parseISO(sale.timestamp), "dd/MM/yyyy").includes(detailSearchTerm))
         )
       )
       .sort((a,b) => getSaleDate(b).getTime() - getSaleDate(a).getTime());
