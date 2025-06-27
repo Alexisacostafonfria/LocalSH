@@ -4,13 +4,13 @@
 import React from 'react';
 import Image from 'next/image';
 import { Order, AppSettings, BusinessSettings, ORDER_STATUS_MAP } from '@/types';
-import { format, parseISO, isValid } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 interface OrdersReportLayoutProps {
   reportTitle: string;
   periodDescription: string;
-  orders: Order[];
+  orders: (Order & { timestampDate: Date })[]; // Updated type
   summary: {
     totalOrders: number;
     totalValue: number;
@@ -30,14 +30,8 @@ const OrdersReportLayout: React.FC<OrdersReportLayoutProps> = ({
   appSettings,
   businessSettings,
 }) => {
-  const formatDateSafe = (dateString: string | undefined | null) => {
-    if (!dateString) return "N/A";
-    try {
-      const parsed = parseISO(dateString);
-      return isValid(parsed) ? format(parsed, "dd MMM yy, HH:mm", { locale: es }) : "Fecha Inválida";
-    } catch {
-      return "Fecha Inválida";
-    }
+  const formatDateSafe = (date: Date) => {
+    return isValid(date) ? format(date, "dd MMM yy, HH:mm", { locale: es }) : "Fecha Inválida";
   };
 
   return (
@@ -111,7 +105,7 @@ const OrdersReportLayout: React.FC<OrdersReportLayoutProps> = ({
               orders.map((order) => (
                 <tr key={order.id} className="break-inside-avoid-page">
                   <td className="border p-1 align-top">{order.orderNumber}</td>
-                  <td className="border p-1 align-top">{formatDateSafe(order.timestamp)}</td>
+                  <td className="border p-1 align-top">{formatDateSafe(order.timestampDate)}</td>
                   <td className="border p-1 align-top">{order.customerName}</td>
                   <td className="border p-1 align-top text-right">{appSettings.currencySymbol}{order.totalAmount.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
                   <td className="border p-1 align-top">{ORDER_STATUS_MAP[order.status]}</td>

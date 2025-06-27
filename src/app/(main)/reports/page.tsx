@@ -1,5 +1,3 @@
-
-
 // src/app/(main)/reports/page.tsx
 "use client";
 
@@ -27,10 +25,6 @@ import { Calendar } from "@/components/ui/calendar";
 import type { DateRange } from "react-day-picker";
 import { cn } from '@/lib/utils';
 
-type ChartType = 'bar' | 'line';
-type PaymentMethodFilter = 'all' | 'cash' | 'transfer' | 'invoice';
-type OriginFilter = 'all' | 'pos' | 'order';
-
 // Helper function to safely parse a date string. Returns null if invalid.
 const getSafeDate = (dateString: string | undefined | null): Date | null => {
   if (!dateString) return null;
@@ -49,6 +43,14 @@ type ValidatedSale = Omit<Sale, 'timestamp' | 'operationalDate'> & {
   totalAmount: number;
   items: NonNullable<Sale['items']>;
   id: NonNullable<Sale['id']>;
+};
+
+// Define a type for our clean, validated order object
+type ValidatedOrder = Omit<Order, 'timestamp'> & {
+  timestampDate: Date;
+  totalAmount: number;
+  items: NonNullable<Order['items']>;
+  id: NonNullable<Order['id']>;
 };
 
 
@@ -84,7 +86,7 @@ export default function ReportsPage() {
   const validatedSales = useMemo((): ValidatedSale[] => {
     return sales
       .map(sale => {
-        const timestampDate = getSafeDate(sale.timestamp);
+        const timestampDate = getSafeDate(sale?.timestamp);
         if (!sale || !timestampDate) return null; // Exclude sales with no data or invalid primary timestamp.
 
         return {
@@ -100,7 +102,26 @@ export default function ReportsPage() {
       .filter((s): s is ValidatedSale => s !== null);
   }, [sales]);
 
-  // 2. Base all subsequent logic on this `validatedSales` array.
+  // Create a fully validated and clean source of truth for orders data.
+  const validatedOrders = useMemo((): ValidatedOrder[] => {
+    return orders
+      .map(order => {
+        const timestampDate = getSafeDate(order?.timestamp);
+        if (!order || !timestampDate) return null;
+
+        return {
+          ...order,
+          id: order.id ?? `invalid-id-${Math.random()}`,
+          totalAmount: typeof order.totalAmount === 'number' && isFinite(order.totalAmount) ? order.totalAmount : 0,
+          items: Array.isArray(order.items) ? order.items : [],
+          timestampDate,
+        };
+      })
+      .filter((o): o is ValidatedOrder => o !== null);
+  }, [orders]);
+
+
+  // 2. Base all subsequent logic on these validated arrays.
   const getSaleDateForFiltering = useCallback((sale: ValidatedSale): Date => {
     return sale.operationalDateDate ?? sale.timestampDate;
   }, []);
@@ -232,13 +253,10 @@ export default function ReportsPage() {
     const from = startOfDay(ordersDateRange.from);
     const to = endOfDay(ordersDateRange.to ?? ordersDateRange.from);
 
-    return orders
-      .filter(order => {
-        const orderDate = getSafeDate(order?.timestamp);
-        return orderDate && isWithinInterval(orderDate, { start: from, end: to });
-      })
-      .sort((a, b) => (getSafeDate(b.timestamp)?.getTime() ?? 0) - (getSafeDate(a.timestamp)?.getTime() ?? 0));
-  }, [orders, ordersDateRange]);
+    return validatedOrders
+      .filter(order => isWithinInterval(order.timestampDate, { start: from, end: to }))
+      .sort((a, b) => b.timestampDate.getTime() - a.timestampDate.getTime());
+  }, [validatedOrders, ordersDateRange]);
   
   const ordersSummary = useMemo(() => {
     const totalOrders = ordersForPeriod.length;
@@ -457,7 +475,7 @@ export default function ReportsPage() {
                 <div className="text-center py-10 text-muted-foreground"><ClipboardList className="mx-auto h-12 w-12 mb-4" /><p className="text-lg">No hay pedidos en el período seleccionado.</p></div>
             ) : (
                 <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Pedido #</TableHead><TableHead>Fecha</TableHead><TableHead>Cliente</TableHead><TableHead className="text-right">Monto</TableHead><TableHead>Estado</TableHead></TableRow></TableHeader><TableBody>
-                  {ordersForPeriod.map(order => (<TableRow key={order.id}><TableCell className="font-mono">{order.orderNumber}</TableCell><TableCell>{format(parseISO(order.timestamp), 'dd MMM yy, HH:mm', {locale: es})}</TableCell><TableCell>{order.customerName}</TableCell><TableCell className="text-right">{formatCurrency(order.totalAmount)}</TableCell><TableCell><Badge variant="outline">{ORDER_STATUS_MAP[order.status]}</Badge></TableCell></TableRow>))}
+                  {ordersForPeriod.map(order => (<TableRow key={order.id}><TableCell className="font-mono">{order.orderNumber}</TableCell><TableCell>{format(order.timestampDate, 'dd MMM yy, HH:mm', {locale: es})}</TableCell><TableCell>{order.customerName}</TableCell><TableCell className="text-right">{formatCurrency(order.totalAmount)}</TableCell><TableCell><Badge variant="outline">{ORDER_STATUS_MAP[order.status]}</Badge></TableCell></TableRow>))}
                 </TableBody></Table></div>
             )}
         </CardContent>
@@ -520,7 +538,7 @@ export default function ReportsPage() {
       </Card>
 
       {isPrintingOperationsReport && ReactDOM.createPortal(<div id="printableOperationsReportArea"><OperationsReportPrintLayout reportTitle="Reporte Detallado de Operaciones" periodDescription={periodDescriptionForPrint} operations={detailedOperations} appSettings={appSettings} businessSettings={businessSettings}/></div>, document.body)}
-      {isPrintingOrdersReport && ReactDOM.createPortal(<div id="printableOrdersReportArea"><OrdersReportLayout reportTitle="Reporte Detallado de Pedidos" periodDescription={ordersPeriodDescription} orders={ordersForPeriod} summary={ordersSummary} appSettings={appSettings} businessSettings={businessSettings} /></div>, document.body)}
+      {isPrintingOrdersReport && ReactDOM.createPortal(<div id="printableOrdersReportArea"><OrdersReportLayout reportTitle="Reporte Detallado de Pedidos" periodDescription={ordersPeriodDescription} orders={ordersForPeriod as (Order & {timestampDate: Date})[]} summary={ordersSummary} appSettings={appSettings} businessSettings={businessSettings} /></div>, document.body)}
     </div>
   );
 }
