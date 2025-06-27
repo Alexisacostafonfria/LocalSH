@@ -176,7 +176,7 @@ h1, h2, h3, h4, h5, h6 {
 
   @page accounts-receivable-report-page { size: A4 portrait; margin: 1cm; }
   #printableAccountsReceivableReportArea { page: accounts-receivable-report-page; }
-
+  
   @page invoice-contract-page { size: A4 portrait; margin: 1cm; }
   #printableInvoiceContractArea { page: invoice-contract-page; }
 

@@ -4,17 +4,18 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { Sale, AppSettings, BusinessSettings, InvoicePaymentDetails } from '@/types';
+import { Sale, AppSettings, BusinessSettings, InvoicePaymentDetails, Customer } from '@/types';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 interface InvoiceContractPrintLayoutProps {
   sale: Sale;
+  customer: Customer | undefined;
   appSettings: AppSettings;
   businessSettings: BusinessSettings;
 }
 
-const InvoiceContractPrintLayout: React.FC<InvoiceContractPrintLayoutProps> = ({ sale, appSettings, businessSettings }) => {
+const InvoiceContractPrintLayout: React.FC<InvoiceContractPrintLayoutProps> = ({ sale, customer, appSettings, businessSettings }) => {
   const { currencySymbol } = appSettings;
   const invoiceDetails = sale.paymentDetails as InvoicePaymentDetails;
 
@@ -27,7 +28,7 @@ const InvoiceContractPrintLayout: React.FC<InvoiceContractPrintLayoutProps> = ({
 
       <section className="mb-6 text-xs">
         <p className="mb-2">
-          En la ciudad de {businessSettings.address.split(',')[1] || '[Ciudad]'}, a los {format(new Date(sale.timestamp), "d 'días del mes de' MMMM 'de' yyyy", { locale: es })},
+          En la ciudad de {businessSettings.address.split(',').slice(1).join(',').trim() || '[Ciudad]'}, a los {format(new Date(sale.timestamp), "d 'días del mes de' MMMM 'de' yyyy", { locale: es })},
           se celebra el presente Contrato de Apertura de Crédito que suscriben, por una parte:
         </p>
         <div className="grid grid-cols-2 gap-8 mb-4">
@@ -42,10 +43,10 @@ const InvoiceContractPrintLayout: React.FC<InvoiceContractPrintLayoutProps> = ({
           <div className="border p-3">
             <h2 className="font-bold text-sm mb-1">EL CLIENTE:</h2>
             <p><strong>Nombre/Razón Social:</strong> {sale.customerName || 'N/A'}</p>
-            <p><strong>ID Fiscal/Personal:</strong> {(sale.customerId && businessSettings.taxId) || 'N/A'}</p> {/* Placeholder for customer tax id */}
+            <p><strong>ID Fiscal/Personal:</strong> {customer?.personalId || 'N/A'}</p>
             <p><strong>Dirección:</strong> {'[Dirección del Cliente]'.padEnd(50, '.')}</p>
-            <p><strong>Teléfono:</strong> {(sale.customerId && '[Teléfono del Cliente]') || 'N/A'}</p>
-            <p><strong>Email:</strong> {'[Email del Cliente]'.padEnd(50, '.')}</p>
+            <p><strong>Teléfono:</strong> {customer?.phone || 'N/A'}</p>
+            <p><strong>Email:</strong> {customer?.email || 'N/A'}</p>
           </div>
         </div>
         <p>Ambas partes, reconociéndose mutuamente la capacidad legal necesaria para este acto, convienen en las siguientes cláusulas:</p>
@@ -83,7 +84,7 @@ const InvoiceContractPrintLayout: React.FC<InvoiceContractPrintLayoutProps> = ({
 
         <p><strong>TERCERA - CONDICIONES DE PAGO:</strong> EL CLIENTE se compromete a pagar el monto total de cada factura emitida por EL PROVEEDOR en un plazo no mayor a <strong>QUINCE (15) DÍAS HÁBILES</strong> a partir de la fecha de emisión de la misma. La fecha de vencimiento de la presente factura es el <strong>{format(parseISO(invoiceDetails.dueDate), "dd 'de' MMMM 'de' yyyy", { locale: es })}</strong>.</p>
         <p><strong>CUARTA - MORA:</strong> En caso de incumplimiento en el pago en la fecha estipulada, EL CLIENTE incurrirá en mora automática sin necesidad de requerimiento judicial o extrajudicial. Esto podrá generar intereses moratorios a la tasa máxima legal permitida y la suspensión de la línea de crédito.</p>
-        <p><strong>QUINTA - VIGENCIA Y JURISDICCIÓN:</strong> El presente contrato tiene una vigencia indefinida y podrá ser rescindido por cualquiera de las partes con una notificación previa de 30 días. Para cualquier controversia, las partes se someten a la jurisdicción de los tribunales competentes de la ciudad de {businessSettings.address.split(',')[1] || '[Ciudad]'}.</p>
+        <p><strong>QUINTA - VIGENCIA Y JURISDICCIÓN:</strong> El presente contrato tiene una vigencia indefinida y podrá ser rescindido por cualquiera de las partes con una notificación previa de 30 días. Para cualquier controversia, las partes se someten a la jurisdicción de los tribunales competentes de la ciudad de {businessSettings.address.split(',').slice(1).join(',').trim() || '[Ciudad]'}.</p>
       </section>
 
       <section className="mt-20">

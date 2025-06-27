@@ -1,4 +1,5 @@
 
+
 // src/app/(main)/sales/page.tsx
 "use client";
 
@@ -16,7 +17,7 @@ import { Sale, Product, Customer, AppSettings, DEFAULT_APP_SETTINGS, BusinessSet
 import useLocalStorageState from '@/hooks/useLocalStorageState';
 import SaleDialog from '@/components/sales/SaleDialog';
 import SaleReceipt from '@/components/sales/SaleReceipt';
-import InvoiceContractPrintLayout from '@/components/sales/InvoiceContractPrintLayout'; // Nuevo
+import InvoiceContractPrintLayout from '@/components/sales/InvoiceContractPrintLayout';
 import { format, parseISO, isValid, startOfDay, endOfDay, isWithinInterval, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { DateRange } from "react-day-picker";
@@ -56,7 +57,7 @@ export default function SalesPage() {
   });
   
   const [saleToPrint, setSaleToPrint] = useState<Sale | null>(null);
-  const [contractToPrint, setContractToPrint] = useState<Sale | null>(null); // Nuevo estado
+  const [contractToPrint, setContractToPrint] = useState<{sale: Sale, customer: Customer | undefined} | null>(null);
   const [isClientMounted, setIsClientMounted] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
 
@@ -85,7 +86,6 @@ export default function SalesPage() {
 
 
   const handleAddSale = (newSale: Sale) => {
-    // Check if it's the customer's first invoice before saving the sale
     const isFirstInvoice = newSale.paymentMethod === 'invoice' && newSale.customerId &&
       !sales.some(s => s.customerId === newSale.customerId && s.paymentMethod === 'invoice');
 
@@ -152,10 +152,11 @@ export default function SalesPage() {
   }, []);
 
   const handleInitiateContractPrint = useCallback((sale: Sale) => {
-    setContractToPrint(sale);
+    const customerForContract = customers.find(c => c.id === sale.customerId);
+    setContractToPrint({sale, customer: customerForContract});
     setSaleToPrint(null);
     setIsPrinting(true);
-  }, []);
+  }, [customers]);
 
   useEffect(() => {
     if (isPrinting && (saleToPrint || contractToPrint) && isClientMounted) {
@@ -363,7 +364,8 @@ export default function SalesPage() {
         ReactDOM.createPortal(
           <div id="printableInvoiceContractArea">
             <InvoiceContractPrintLayout 
-              sale={contractToPrint} 
+              sale={contractToPrint.sale} 
+              customer={contractToPrint.customer}
               appSettings={appSettings}
               businessSettings={businessSettings} 
             />
