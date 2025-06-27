@@ -67,9 +67,21 @@ export default function ReportsPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // With localStorage, loading is synchronous.
     setIsLoadingProducts(false);
   }, []);
+
+  // Pre-filter sales data for validity to prevent runtime errors
+  const validSales = useMemo(() => {
+    return sales.filter(sale => 
+      sale &&
+      typeof sale.id === 'string' &&
+      typeof sale.timestamp === 'string' &&
+      isValid(parseISO(sale.timestamp)) &&
+      typeof sale.totalAmount === 'number' &&
+      isFinite(sale.totalAmount) &&
+      Array.isArray(sale.items)
+    );
+  }, [sales]);
 
   const getSaleDate = useMemo(() => (sale: Sale): Date => {
     return sale.operationalDate && isValid(parseISO(sale.operationalDate)) 
@@ -84,10 +96,10 @@ export default function ReportsPage() {
     const startDate = startOfDay(chartDateRange.from);
     const endDate = endOfDay(chartDateRange.to);
 
-    return sales.filter(sale =>
+    return validSales.filter(sale =>
       isWithinInterval(getSaleDate(sale), { start: startDate, end: endDate })
     );
-  }, [sales, chartDateRange, getSaleDate]);
+  }, [validSales, chartDateRange, getSaleDate]);
 
   const salesForTablePeriod = useMemo(() => {
     if (!tableDateRange?.from || !tableDateRange?.to) {
@@ -95,10 +107,10 @@ export default function ReportsPage() {
     }
     const startDate = startOfDay(tableDateRange.from);
     const endDate = endOfDay(tableDateRange.to);
-    return sales.filter(sale => 
+    return validSales.filter(sale => 
         isWithinInterval(getSaleDate(sale), { start: startDate, end: endDate})
     );
-  }, [sales, tableDateRange, getSaleDate]);
+  }, [validSales, tableDateRange, getSaleDate]);
 
 
   const salesDataForChart = useMemo(() => {
@@ -192,9 +204,9 @@ export default function ReportsPage() {
   }, [salesForChartPeriod]);
   
   const totalAccountsReceivable = useMemo(() => {
-    return sales.filter(s => s.paymentMethod === 'invoice' && (s.paymentDetails as InvoicePaymentDetails).status !== 'paid')
+    return validSales.filter(s => s.paymentMethod === 'invoice' && s.paymentDetails && (s.paymentDetails as InvoicePaymentDetails).status !== 'paid')
                .reduce((sum, s) => sum + s.totalAmount, 0);
-  }, [sales]);
+  }, [validSales]);
 
   const totalCogsValueForChartPeriod = useMemo(() => {
     if (isLoadingProducts) return 0;
@@ -219,40 +231,27 @@ export default function ReportsPage() {
   const detailedOperations = useMemo(() => {
     return salesForTablePeriod
       .filter(sale => {
-        // Basic data integrity check
-        if (!sale || typeof sale.id !== 'string' || !Array.isArray(sale.items)) {
-          return false;
-        }
-        
         const matchesPaymentMethod = detailPaymentMethodFilter === 'all' || sale.paymentMethod === detailPaymentMethodFilter;
         if (!matchesPaymentMethod) return false;
 
-        const matchesOrigin = detailOriginFilter === 'all' || sale.origin === detailOriginFilter;
+        const matchesOrigin = detailOriginFilter === 'all' || (sale.origin || 'pos') === detailOriginFilter;
         if (!matchesOrigin) return false;
         
         const searchTermLower = detailSearchTerm.toLowerCase();
-        if (!searchTermLower) return true; // If no search term, all items (that passed other filters) match
+        if (!searchTermLower) return true;
 
         const idMatch = sale.id.toLowerCase().includes(searchTermLower);
         const customerMatch = sale.customerName ? sale.customerName.toLowerCase().includes(searchTermLower) : false;
         const itemMatch = sale.items.some(item => (item.productName || '').toLowerCase().includes(searchTermLower));
         
-        let opDateMatch = false;
-        if (sale.operationalDate && isValid(parseISO(sale.operationalDate))) {
-            opDateMatch = format(parseISO(sale.operationalDate), "dd/MM/yyyy", { locale: es }).includes(searchTermLower);
-        }
-
-        let timestampMatch = false;
-        if (sale.timestamp && isValid(parseISO(sale.timestamp))) {
-            timestampMatch = format(parseISO(sale.timestamp), "dd/MM/yyyy").includes(searchTermLower);
-        }
+        const opDateMatch = sale.operationalDate ? format(parseISO(sale.operationalDate), "dd/MM/yyyy", { locale: es }).includes(searchTermLower) : false;
+        const timestampMatch = format(parseISO(sale.timestamp), "dd/MM/yyyy").includes(searchTermLower);
 
         return idMatch || customerMatch || itemMatch || opDateMatch || timestampMatch;
       })
       .sort((a, b) => {
           const dateA = getSaleDate(a);
           const dateB = getSaleDate(b);
-          if (!isValid(dateA) || !isValid(dateB)) return 0;
           return dateB.getTime() - dateA.getTime();
       });
   }, [salesForTablePeriod, detailSearchTerm, detailPaymentMethodFilter, detailOriginFilter, getSaleDate]);
@@ -265,13 +264,13 @@ export default function ReportsPage() {
     const endDate = endOfDay(ordersDateRange.to);
 
     return orders.filter(order =>
-      isWithinInterval(parseISO(order.timestamp), { start: startDate, end: endDate })
+      order && order.timestamp && isValid(parseISO(order.timestamp)) && isWithinInterval(parseISO(order.timestamp), { start: startDate, end: endDate })
     ).sort((a,b) => parseISO(b.timestamp).getTime() - parseISO(a.timestamp).getTime());
   }, [orders, ordersDateRange]);
   
   const ordersSummary = useMemo(() => {
     const totalOrders = ordersForPeriod.length;
-    const totalValue = ordersForPeriod.reduce((sum, order) => sum + order.totalAmount, 0);
+    const totalValue = ordersForPeriod.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
     const completedOrders = ordersForPeriod.filter(o => o.status === 'completed').length;
     const cancelledOrders = ordersForPeriod.filter(o => o.status === 'cancelled').length;
     const activeOrders = ordersForPeriod.filter(o => o.status === 'pending' || o.status === 'in-progress' || o.status === 'ready').length;
@@ -279,13 +278,13 @@ export default function ReportsPage() {
   }, [ordersForPeriod]);
 
   const handleExport = () => {
-    if (detailedOperations.length === 0) { // Based on detailedOperations (table data)
+    if (detailedOperations.length === 0) {
       toast({title: "Nada que Exportar", description:"No hay datos para exportar en el periodo y filtros de tabla seleccionados.", variant: "warning"});
       return;
     }
     const headers = "ID Venta,Timestamp,Fecha Operativa,Origen,ID Pedido,Cliente,Items (Cantidad Total),SubTotal,Descuento,Total Venta,Metodo Pago,Monto Recibido (Efectivo),Cambio (Efectivo),Propina (Efectivo),Referencia (Transferencia),Estado Factura,Vencimiento Factura\n";
     const csvRows = detailedOperations.map(sale => {
-      const itemsCount = sale.items.reduce((acc, item) => acc + item.quantity, 0);
+      const itemsCount = sale.items.reduce((acc, item) => acc + (item.quantity || 0), 0);
       const cashDetails = sale.paymentMethod === 'cash' ? sale.paymentDetails as CashPaymentDetails : null;
       const transferDetails = sale.paymentMethod === 'transfer' ? sale.paymentDetails as TransferPaymentDetails : null;
       const invoiceDetails = sale.paymentMethod === 'invoice' ? sale.paymentDetails as InvoicePaymentDetails : null;
@@ -294,20 +293,20 @@ export default function ReportsPage() {
         sale.id,
         format(parseISO(sale.timestamp), "yyyy-MM-dd HH:mm:ss"),
         sale.operationalDate ? format(parseISO(sale.operationalDate), "yyyy-MM-dd") : format(parseISO(sale.timestamp), "yyyy-MM-dd"),
-        sale.origin,
+        sale.origin || 'pos',
         sale.orderId || 'N/A',
         `"${sale.customerName || 'N/A'}"`,
         itemsCount,
-        sale.subTotal.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        (sale.subTotal || 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }),
         (sale.discount || 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-        sale.totalAmount.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        (sale.totalAmount || 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }),
         sale.paymentMethod,
-        cashDetails ? cashDetails.amountReceived.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '',
-        cashDetails ? cashDetails.changeGiven.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '',
+        cashDetails ? (cashDetails.amountReceived || 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '',
+        cashDetails ? (cashDetails.changeGiven || 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '',
         cashDetails ? (cashDetails.tip || 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '',
         transferDetails ? `"${transferDetails.reference || ''}"` : '',
-        invoiceDetails ? invoiceDetails.status : '',
-        invoiceDetails ? format(parseISO(invoiceDetails.dueDate), 'yyyy-MM-dd') : '',
+        invoiceDetails && invoiceDetails.status ? invoiceDetails.status : '',
+        invoiceDetails && invoiceDetails.dueDate ? format(parseISO(invoiceDetails.dueDate), 'yyyy-MM-dd') : '',
       ].join(',');
     });
     const csvString = headers + csvRows.join('\n');
@@ -328,7 +327,7 @@ export default function ReportsPage() {
   };
 
   const periodDescriptionForPrint = useMemo(() => {
-    if (!tableDateRange?.from || !tableDateRange?.to) { // Use tableDateRange for print description
+    if (!tableDateRange?.from || !tableDateRange?.to) {
       return "Rango no seleccionado";
     }
     return `Del ${format(tableDateRange.from, "dd MMM yyyy", { locale: es })} al ${format(tableDateRange.to, "dd MMM yyyy", { locale: es })}`;
@@ -538,9 +537,9 @@ export default function ReportsPage() {
         <CardContent className="h-[400px] w-full pt-6">
           {salesDataForChart.length === 0 ? (
             <div className="flex items-center justify-center h-full text-muted-foreground">
-                {(sales.length === 0 || salesForChartPeriod.length === 0) 
-                  ? "No hay datos de ventas para el periodo seleccionado para el gráfico."
-                  : "No hay datos de ventas para mostrar en el gráfico."}
+                {(validSales.length === 0 || salesForChartPeriod.length === 0) 
+                  ? "No hay datos de ventas para el periodo seleccionado."
+                  : "No hay datos de ventas válidos para mostrar en el gráfico."}
             </div>
            ) : (
             <ResponsiveContainer width="100%" height="100%">
@@ -861,3 +860,4 @@ export default function ReportsPage() {
     </div>
   );
 }
+
