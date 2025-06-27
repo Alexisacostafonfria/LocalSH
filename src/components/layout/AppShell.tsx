@@ -1,4 +1,3 @@
-
 // src/components/layout/AppShell.tsx
 "use client";
 
@@ -84,9 +83,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
     // Once state is loaded, perform the authentication check.
     // If there is no user, redirect to login, unless we are already on the login page.
-    if (!authState.currentUser && pathname !== '/login') {
-      console.log("[AppShell] No currentUser, redirecting to /login from pathname:", pathname);
-      router.replace('/login');
+    if (!authState.currentUser && pathname !== '/') {
+      console.log("[AppShell] No currentUser, redirecting to / from pathname:", pathname);
+      router.replace('/');
     }
   }, [isAuthInitialized, authState.currentUser, pathname, router]);
 
@@ -96,7 +95,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const handleLogout = () => {
     setAuthState(prev => ({ ...prev, currentUser: null })); 
     closeMobileSheet();
-    router.push('/login'); // Redirect to login after clearing currentUser
+    router.push('/'); // Redirect to login after clearing currentUser
   };
   
   const currentUser = authState.currentUser;
@@ -109,7 +108,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // Show a global loader while we check auth status, but only for protected pages.
   // The login page can be rendered immediately.
-  if (!isAuthInitialized && pathname !== '/login') {
+  if (!isAuthInitialized && pathname !== '/') {
      return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
@@ -120,7 +119,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   
   // If after initialization there is still no user, the effect above will have triggered a redirect.
   // We return null here to prevent a flash of the protected content.
-  if (!currentUser && pathname !== '/login') {
+  if (!currentUser && pathname !== '/') {
     return null;
   }
   
