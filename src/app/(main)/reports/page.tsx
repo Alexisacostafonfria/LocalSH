@@ -218,18 +218,43 @@ export default function ReportsPage() {
 
   const detailedOperations = useMemo(() => {
     return salesForTablePeriod
-      .filter(sale => 
-        (detailPaymentMethodFilter === 'all' || sale.paymentMethod === detailPaymentMethodFilter) &&
-        (detailOriginFilter === 'all' || sale.origin === detailOriginFilter) &&
-        (
-          sale.id.toLowerCase().includes(detailSearchTerm.toLowerCase()) ||
-          (sale.customerName && sale.customerName.toLowerCase().includes(detailSearchTerm.toLowerCase())) ||
-          sale.items.some(item => (item.productName || '').toLowerCase().includes(detailSearchTerm.toLowerCase())) ||
-          (sale.operationalDate && isValid(parseISO(sale.operationalDate)) && format(parseISO(sale.operationalDate), "dd/MM/yyyy", { locale: es }).includes(detailSearchTerm)) ||
-          (isValid(parseISO(sale.timestamp)) && format(parseISO(sale.timestamp), "dd/MM/yyyy").includes(detailSearchTerm))
-        )
-      )
-      .sort((a,b) => getSaleDate(b).getTime() - getSaleDate(a).getTime());
+      .filter(sale => {
+        // Basic data integrity check
+        if (!sale || typeof sale.id !== 'string' || !Array.isArray(sale.items)) {
+          return false;
+        }
+        
+        const matchesPaymentMethod = detailPaymentMethodFilter === 'all' || sale.paymentMethod === detailPaymentMethodFilter;
+        if (!matchesPaymentMethod) return false;
+
+        const matchesOrigin = detailOriginFilter === 'all' || sale.origin === detailOriginFilter;
+        if (!matchesOrigin) return false;
+        
+        const searchTermLower = detailSearchTerm.toLowerCase();
+        if (!searchTermLower) return true; // If no search term, all items (that passed other filters) match
+
+        const idMatch = sale.id.toLowerCase().includes(searchTermLower);
+        const customerMatch = sale.customerName ? sale.customerName.toLowerCase().includes(searchTermLower) : false;
+        const itemMatch = sale.items.some(item => (item.productName || '').toLowerCase().includes(searchTermLower));
+        
+        let opDateMatch = false;
+        if (sale.operationalDate && isValid(parseISO(sale.operationalDate))) {
+            opDateMatch = format(parseISO(sale.operationalDate), "dd/MM/yyyy", { locale: es }).includes(searchTermLower);
+        }
+
+        let timestampMatch = false;
+        if (sale.timestamp && isValid(parseISO(sale.timestamp))) {
+            timestampMatch = format(parseISO(sale.timestamp), "dd/MM/yyyy").includes(searchTermLower);
+        }
+
+        return idMatch || customerMatch || itemMatch || opDateMatch || timestampMatch;
+      })
+      .sort((a, b) => {
+          const dateA = getSaleDate(a);
+          const dateB = getSaleDate(b);
+          if (!isValid(dateA) || !isValid(dateB)) return 0;
+          return dateB.getTime() - dateA.getTime();
+      });
   }, [salesForTablePeriod, detailSearchTerm, detailPaymentMethodFilter, detailOriginFilter, getSaleDate]);
   
   const ordersForPeriod = useMemo(() => {
@@ -778,21 +803,21 @@ export default function ReportsPage() {
                 <TableBody>
                   {detailedOperations.map((sale) => (
                     <TableRow key={sale.id}>
-                      <TableCell className="font-mono text-xs">{sale.id.substring(0,8)}...</TableCell>
-                      <TableCell>{format(parseISO(sale.timestamp), "dd MMM yy, HH:mm", { locale: es })}</TableCell>
+                      <TableCell className="font-mono text-xs">{(sale.id || 'N/A').substring(0,8)}...</TableCell>
+                      <TableCell>{sale.timestamp && isValid(parseISO(sale.timestamp)) ? format(parseISO(sale.timestamp), "dd MMM yy, HH:mm", { locale: es }) : 'Fecha Inválida'}</TableCell>
                       <TableCell>
                         <Badge variant={sale.origin === 'pos' ? 'default' : 'secondary'}>
                           {sale.origin === 'pos' ? 'POS' : 'Pedido'}
                         </Badge>
                       </TableCell>
                       <TableCell>{sale.customerName || <span className="text-muted-foreground/70">N/A</span>}</TableCell>
-                      <TableCell className="text-center">{sale.items.reduce((sum, item) => sum + item.quantity, 0)}</TableCell>
+                      <TableCell className="text-center">{(Array.isArray(sale.items) ? sale.items.reduce((sum, item) => sum + (item.quantity || 0), 0) : 0)}</TableCell>
                       <TableCell className="text-right font-semibold">
-                        {appSettings.currencySymbol}{sale.totalAmount.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {appSettings.currencySymbol}{(sale.totalAmount || 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </TableCell>
                       <TableCell>
                         <Badge variant={sale.paymentMethod === 'cash' ? 'secondary' : sale.paymentMethod === 'transfer' ? 'outline' : 'default'}>
-                          {sale.paymentMethod.charAt(0).toUpperCase() + sale.paymentMethod.slice(1)}
+                          {(sale.paymentMethod || 'N/A').charAt(0).toUpperCase() + (sale.paymentMethod || 'N/A').slice(1)}
                         </Badge>
                       </TableCell>
                     </TableRow>
