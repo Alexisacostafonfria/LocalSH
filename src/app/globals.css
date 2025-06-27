@@ -80,7 +80,7 @@ h1, h2, h3, h4, h5, h6 {
     padding: 0 !important;
   }
 
-  body > *:not(#printableOperationsReportArea):not(#printable-receipt-area):not(#printableProductListArea):not(#printableMovementsReportArea):not(#printableClosureReportArea):not(#printable-prep-ticket-area):not(#printableAccountsReceivableReportArea):not(#printableInvoiceContractArea):not(#printableSaleA4Area) {
+  body > *:not(#printableOperationsReportArea):not(#printable-receipt-area):not(#printableProductListArea):not(#printableMovementsReportArea):not(#printableClosureReportArea):not(#printable-prep-ticket-area):not(#printableAccountsReceivableReportArea):not(#printableInvoiceContractArea):not(#printableSaleA4Area):not(#printableOrdersReportArea) {
     display: none !important;
     visibility: hidden !important;
   }
@@ -94,7 +94,8 @@ h1, h2, h3, h4, h5, h6 {
   #printable-prep-ticket-area,
   #printableAccountsReceivableReportArea,
   #printableInvoiceContractArea,
-  #printableSaleA4Area {
+  #printableSaleA4Area,
+  #printableOrdersReportArea {
     display: block !important;
     visibility: visible !important;
     position: absolute !important;
@@ -118,7 +119,8 @@ h1, h2, h3, h4, h5, h6 {
   #printableClosureReportArea,
   #printableAccountsReceivableReportArea,
   #printableInvoiceContractArea,
-  #printableSaleA4Area {
+  #printableSaleA4Area,
+  #printableOrdersReportArea {
     font-size: 10pt !important;
   }
   #printableOperationsReportArea *,
@@ -127,7 +129,8 @@ h1, h2, h3, h4, h5, h6 {
   #printableClosureReportArea *,
   #printableAccountsReceivableReportArea *,
   #printableInvoiceContractArea *,
-  #printableSaleA4Area * {
+  #printableSaleA4Area *,
+  #printableOrdersReportArea * {
     visibility: visible !important;
     color: black !important;
     background-color: transparent !important;
@@ -138,7 +141,8 @@ h1, h2, h3, h4, h5, h6 {
   #printableClosureReportArea table, #printableClosureReportArea th, #printableClosureReportArea td,
   #printableAccountsReceivableReportArea table, #printableAccountsReceivableReportArea th, #printableAccountsReceivableReportArea td,
   #printableInvoiceContractArea table, #printableInvoiceContractArea th, #printableInvoiceContractArea td,
-  #printableSaleA4Area table, #printableSaleA4Area th, #printableSaleA4Area td {
+  #printableSaleA4Area table, #printableSaleA4Area th, #printableSaleA4Area td,
+  #printableOrdersReportArea table, #printableOrdersReportArea th, #printableOrdersReportArea td {
     border-color: #666 !important;
   }
   #printableOperationsReportArea th,
@@ -147,7 +151,8 @@ h1, h2, h3, h4, h5, h6 {
   #printableClosureReportArea th,
   #printableAccountsReceivableReportArea th,
   #printableInvoiceContractArea th,
-  #printableSaleA4Area th {
+  #printableSaleA4Area th,
+  #printableOrdersReportArea th {
     background-color: #f2f2f2 !important;
   }
   #printableOperationsReportArea .break-inside-avoid-page,
@@ -156,7 +161,8 @@ h1, h2, h3, h4, h5, h6 {
   #printableClosureReportArea .break-inside-avoid-page,
   #printableAccountsReceivableReportArea .break-inside-avoid-page,
   #printableInvoiceContractArea .break-inside-avoid-page,
-  #printableSaleA4Area .break-inside-avoid-page {
+  #printableSaleA4Area .break-inside-avoid-page,
+  #printableOrdersReportArea .break-inside-avoid-page {
     page-break-inside: avoid;
   }
   #printableOperationsReportArea .no-print,
@@ -165,7 +171,8 @@ h1, h2, h3, h4, h5, h6 {
   #printableClosureReportArea .no-print,
   #printableAccountsReceivableReportArea .no-print,
   #printableInvoiceContractArea .no-print,
-  #printableSaleA4Area .no-print {
+  #printableSaleA4Area .no-print,
+  #printableOrdersReportArea .no-print {
       display: none !important;
   }
 
@@ -189,6 +196,9 @@ h1, h2, h3, h4, h5, h6 {
   
   @page sale-a4-page { size: A4 portrait; margin: 1cm; }
   #printableSaleA4Area { page: sale-a4-page; }
+  
+  @page orders-report-page { size: A4 portrait; margin: 1cm; }
+  #printableOrdersReportArea { page: orders-report-page; }
 
   /* Estilos específicos para RECIBOS Y TICKETS DE PREPARACIÓN */
    #printable-receipt-area,

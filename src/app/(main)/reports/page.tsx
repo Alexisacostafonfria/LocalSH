@@ -8,18 +8,19 @@ import ReactDOM from 'react-dom';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Product, Sale, AppSettings, DEFAULT_APP_SETTINGS, BusinessSettings, DEFAULT_BUSINESS_SETTINGS, CashPaymentDetails, TransferPaymentDetails, InvoicePaymentDetails } from '@/types';
+import { Product, Sale, AppSettings, DEFAULT_APP_SETTINGS, BusinessSettings, DEFAULT_BUSINESS_SETTINGS, CashPaymentDetails, TransferPaymentDetails, InvoicePaymentDetails, Order, ORDER_STATUS_MAP } from '@/types';
 import useLocalStorageState from '@/hooks/useLocalStorageState';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, isWithinInterval, subDays, subWeeks, subMonths, startOfDay, endOfDay, addWeeks, addMonths, isValid, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import { Download, BarChart3, Coins, ShoppingBag, ArchiveRestore, TrendingUp, PieChart, Search, Filter, Printer, CalendarIcon, Loader2, AlertTriangle, Package, Layers, FileText } from 'lucide-react';
+import { Download, BarChart3, Coins, ShoppingBag, ArchiveRestore, TrendingUp, PieChart, Search, Filter, Printer, CalendarIcon, Loader2, AlertTriangle, Package, Layers, FileText, ClipboardList, CheckCircle, Ban, Hourglass } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import OperationsReportPrintLayout from '@/components/reports/OperationsReportPrintLayout';
+import OrdersReportLayout from '@/components/reports/OrdersReportLayout';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -34,6 +35,7 @@ type OriginFilter = 'all' | 'pos' | 'order';
 export default function ReportsPage() {
   const [sales] = useLocalStorageState<Sale[]>('sales', []);
   const [products] = useLocalStorageState<Product[]>('products', []);
+  const [orders] = useLocalStorageState<Order[]>('orders', []);
   const [appSettings] = useLocalStorageState<AppSettings>('appSettings', DEFAULT_APP_SETTINGS);
   const [businessSettings] = useLocalStorageState<BusinessSettings>('businessSettings', DEFAULT_BUSINESS_SETTINGS);
   
@@ -49,12 +51,18 @@ export default function ReportsPage() {
     from: subDays(today, 6),
     to: today,
   });
+  const [ordersDateRange, setOrdersDateRange] = useState<DateRange | undefined>({
+    from: subDays(today, 6),
+    to: today,
+  });
 
   const [chartType, setChartType] = useState<ChartType>('bar');
   const [detailSearchTerm, setDetailSearchTerm] = useState('');
   const [detailPaymentMethodFilter, setDetailPaymentMethodFilter] = useState<PaymentMethodFilter>('all');
   const [detailOriginFilter, setDetailOriginFilter] = useState<OriginFilter>('all');
   const [isPrintingOperationsReport, setIsPrintingOperationsReport] = useState(false);
+  const [isPrintingOrdersReport, setIsPrintingOrdersReport] = useState(false);
+
 
   const { toast } = useToast();
 
@@ -223,7 +231,27 @@ export default function ReportsPage() {
       )
       .sort((a,b) => getSaleDate(b).getTime() - getSaleDate(a).getTime());
   }, [salesForTablePeriod, detailSearchTerm, detailPaymentMethodFilter, detailOriginFilter, getSaleDate]);
+  
+  const ordersForPeriod = useMemo(() => {
+    if (!ordersDateRange?.from || !ordersDateRange?.to) {
+      return [];
+    }
+    const startDate = startOfDay(ordersDateRange.from);
+    const endDate = endOfDay(ordersDateRange.to);
 
+    return orders.filter(order =>
+      isWithinInterval(parseISO(order.timestamp), { start: startDate, end: endDate })
+    ).sort((a,b) => parseISO(b.timestamp).getTime() - parseISO(a.timestamp).getTime());
+  }, [orders, ordersDateRange]);
+  
+  const ordersSummary = useMemo(() => {
+    const totalOrders = ordersForPeriod.length;
+    const totalValue = ordersForPeriod.reduce((sum, order) => sum + order.totalAmount, 0);
+    const completedOrders = ordersForPeriod.filter(o => o.status === 'completed').length;
+    const cancelledOrders = ordersForPeriod.filter(o => o.status === 'cancelled').length;
+    const activeOrders = ordersForPeriod.filter(o => o.status === 'pending' || o.status === 'in-progress' || o.status === 'ready').length;
+    return { totalOrders, totalValue, completedOrders, cancelledOrders, activeOrders };
+  }, [ordersForPeriod]);
 
   const handleExport = () => {
     if (detailedOperations.length === 0) { // Based on detailedOperations (table data)
@@ -292,6 +320,18 @@ export default function ReportsPage() {
     }
     setIsPrintingOperationsReport(true);
   };
+  
+  const handlePrintOrdersReport = () => {
+    if (ordersForPeriod.length === 0) {
+      toast({
+        title: "Nada que Imprimir",
+        description: "No hay pedidos en el periodo seleccionado para generar un reporte.",
+        variant: "warning"
+      });
+      return;
+    }
+    setIsPrintingOrdersReport(true);
+  };
 
   useEffect(() => {
     if (isPrintingOperationsReport && detailedOperations.length > 0) {
@@ -311,7 +351,23 @@ export default function ReportsPage() {
       };
     }
   }, [isPrintingOperationsReport, detailedOperations]);
-
+  
+  useEffect(() => {
+    if (isPrintingOrdersReport && ordersForPeriod.length > 0) {
+      const timer = setTimeout(() => {
+        window.print();
+      }, 300);
+      const handleAfterPrint = () => {
+        setIsPrintingOrdersReport(false);
+        window.removeEventListener('afterprint', handleAfterPrint);
+      };
+      window.addEventListener('afterprint', handleAfterPrint);
+      return () => {
+        clearTimeout(timer);
+        window.removeEventListener('afterprint', handleAfterPrint);
+      };
+    }
+  }, [isPrintingOrdersReport, ordersForPeriod]);
 
   const ChartComponent = chartType === 'bar' ? BarChart : LineChart;
   const ChartElement = chartType === 'bar' ? Bar : Line;
@@ -326,10 +382,15 @@ export default function ReportsPage() {
     return `Mostrando datos del ${format(tableDateRange.from, "dd LLL, y", {locale: es})} al ${format(tableDateRange.to, "dd LLL, y", {locale: es})}`;
   }, [tableDateRange]);
 
+  const ordersPeriodDescription = useMemo(() => {
+    if (!ordersDateRange?.from || !ordersDateRange?.to) return "Rango no seleccionado";
+    return `Datos del ${format(ordersDateRange.from, "dd LLL, y", {locale: es})} al ${format(ordersDateRange.to, "dd LLL, y", {locale: es})}`;
+  }, [ordersDateRange]);
+
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Reportes de Ventas" description="Analiza el rendimiento de tus ventas con gráficos y datos detallados." />
+      <PageHeader title="Reportes de Ventas y Pedidos" description="Analiza el rendimiento de tu negocio con gráficos y datos detallados." />
       
       {fetchError && (
         <Alert variant="destructive">
@@ -480,12 +541,128 @@ export default function ReportsPage() {
            )}
         </CardContent>
       </Card>
+      
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <CardTitle className="font-headline">Reporte de Pedidos</CardTitle>
+              <CardDescription>Resumen y detalle de todos los pedidos registrados en el período seleccionado.</CardDescription>
+            </div>
+            <div className="flex flex-wrap gap-2">
+               <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="ordersDateRangePicker"
+                    variant={"outline"}
+                    className={cn(
+                      "w-full sm:w-[280px] justify-start text-left font-normal",
+                      !ordersDateRange && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {ordersDateRange?.from ? (
+                      ordersDateRange.to ? (
+                        <>
+                          {format(ordersDateRange.from, "dd LLL, y", { locale: es })} - {format(ordersDateRange.to, "dd LLL, y", { locale: es })}
+                        </>
+                      ) : (
+                        format(ordersDateRange.from, "dd LLL, y", { locale: es })
+                      )
+                    ) : (
+                      <span>Seleccionar rango (Pedidos)</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={ordersDateRange?.from}
+                    selected={ordersDateRange}
+                    onSelect={setOrdersDateRange}
+                    numberOfMonths={2}
+                    locale={es}
+                    disabled={(date) => date > new Date() || date < new Date("2000-01-01")}
+                  />
+                </PopoverContent>
+              </Popover>
+               <Button onClick={handlePrintOrdersReport} variant="outline" size="sm">
+                  <Printer className="mr-2 h-4 w-4" /> Imprimir Reporte
+               </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Pedidos Totales</CardTitle>
+                      <ClipboardList className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent><p className="text-2xl font-bold">{ordersSummary.totalOrders}</p></CardContent>
+                </Card>
+                 <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Valor Total Pedidos</CardTitle>
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent><p className="text-2xl font-bold">{appSettings.currencySymbol}{ordersSummary.totalValue.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</p></CardContent>
+                </Card>
+                 <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Pedidos Completados</CardTitle>
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                  </CardHeader>
+                  <CardContent><p className="text-2xl font-bold">{ordersSummary.completedOrders}</p></CardContent>
+                </Card>
+                 <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Pedidos Cancelados</CardTitle>
+                      <Ban className="h-4 w-4 text-destructive" />
+                  </CardHeader>
+                  <CardContent><p className="text-2xl font-bold">{ordersSummary.cancelledOrders}</p></CardContent>
+                </Card>
+            </div>
+             {ordersForPeriod.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground">
+                    <ClipboardList className="mx-auto h-12 w-12 mb-4" />
+                    <p className="text-lg">No hay pedidos en el período seleccionado.</p>
+                </div>
+            ) : (
+                <div className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Pedido #</TableHead>
+                                <TableHead>Fecha</TableHead>
+                                <TableHead>Cliente</TableHead>
+                                <TableHead className="text-right">Monto</TableHead>
+                                <TableHead>Estado</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {ordersForPeriod.map(order => (
+                                <TableRow key={order.id}>
+                                    <TableCell className="font-mono">{order.orderNumber}</TableCell>
+                                    <TableCell>{format(parseISO(order.timestamp), 'dd MMM yy, HH:mm', {locale: es})}</TableCell>
+                                    <TableCell>{order.customerName}</TableCell>
+                                    <TableCell className="text-right">{appSettings.currencySymbol}{order.totalAmount.toLocaleString('es-ES', {minimumFractionDigits: 2})}</TableCell>
+                                    <TableCell><Badge variant="outline">{ORDER_STATUS_MAP[order.status]}</Badge></TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <CardTitle className="font-headline">Detalle de Operaciones</CardTitle>
+                    <CardTitle className="font-headline">Detalle de Operaciones de Venta</CardTitle>
                     <CardDescription>
                         Lista de todas las ventas individuales. {tablePeriodDescription}.
                     </CardDescription>
@@ -634,6 +811,21 @@ export default function ReportsPage() {
               reportTitle="Reporte Detallado de Operaciones"
               periodDescription={periodDescriptionForPrint}
               operations={detailedOperations}
+              appSettings={appSettings}
+              businessSettings={businessSettings}
+            />
+          </div>,
+          document.body
+        )
+      }
+      {isPrintingOrdersReport && typeof document !== 'undefined' &&
+        ReactDOM.createPortal(
+          <div id="printableOrdersReportArea">
+            <OrdersReportLayout
+              reportTitle="Reporte Detallado de Pedidos"
+              periodDescription={ordersPeriodDescription}
+              orders={ordersForPeriod}
+              summary={ordersSummary}
               appSettings={appSettings}
               businessSettings={businessSettings}
             />
