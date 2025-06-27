@@ -1,4 +1,3 @@
-
 // src/app/(main)/dashboard/page.tsx
 "use client";
 
@@ -11,10 +10,9 @@ import { Package, ShoppingCart, Archive, BarChartBig, Loader2, Briefcase, Dollar
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 import useLocalStorageState from '@/hooks/useLocalStorageState';
-import type { Product, Sale, AppSettings, BusinessSettings, SalesDataPoint, Order } from '@/types';
+import type { Product, Sale, AppSettings, BusinessSettings, Order } from '@/types';
 import { DEFAULT_APP_SETTINGS, DEFAULT_BUSINESS_SETTINGS } from '@/types';
-import { salesTrendForecast } from '@/ai/flows/sales-trend-forecast';
-import { format, parseISO, startOfDay, isToday, subDays } from 'date-fns';
+import { format, parseISO, startOfDay, isToday } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
 const quickAccessItems = [
@@ -35,8 +33,6 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [todaySales, setTodaySales] = useState<number>(0);
   const [lowStockCount, setLowStockCount] = useState<number>(0);
-  const [nextWeekForecastText, setNextWeekForecastText] = useState<string>("Cargando...");
-  const [isLoadingForecast, setIsLoadingForecast] = useState<boolean>(true);
 
   const { toast } = useToast();
 
@@ -68,56 +64,6 @@ export default function DashboardPage() {
     const ready = orders.filter(o => o.status === 'ready').length;
     return { activeOrdersCount: active, readyOrdersCount: ready };
   }, [orders]);
-
-  const historicalSalesDataForForecast: SalesDataPoint[] = useMemo(() => {
-    const sixtyDaysAgo = subDays(startOfDay(new Date()), 59); 
-    const aggregatedSales: { [date: string]: number } = {};
-
-    sales
-      .filter(sale => parseISO(sale.timestamp) >= sixtyDaysAgo)
-      .forEach(sale => {
-        const dateKey = format(startOfDay(parseISO(sale.timestamp)), 'yyyy-MM-dd');
-        aggregatedSales[dateKey] = (aggregatedSales[dateKey] || 0) + sale.totalAmount;
-      });
-
-    return Object.entries(aggregatedSales)
-      .map(([date, salesVolume]) => ({ date, salesVolume }))
-      .sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [sales]);
-
-  useEffect(() => {
-    const fetchForecast = async () => {
-      if (historicalSalesDataForForecast.length === 0 && sales.length > 0) {
-        setNextWeekForecastText("Pocos datos recientes");
-        setIsLoadingForecast(false);
-        return;
-      }
-      
-      if (historicalSalesDataForForecast.length >= 7) {
-        setIsLoadingForecast(true);
-        try {
-          const result = await salesTrendForecast({ salesData: historicalSalesDataForForecast });
-          setNextWeekForecastText(result.forecast || "Tendencia no disponible");
-        } catch (err) {
-          console.error("Error fetching dashboard forecast:", err);
-          setNextWeekForecastText("Error al obtener pronóstico");
-        } finally {
-          setIsLoadingForecast(false);
-        }
-      } else {
-        setNextWeekForecastText("Pocos datos para pronóstico");
-        setIsLoadingForecast(false);
-      }
-    };
-
-    if (sales.length === 0) {
-        setNextWeekForecastText("Sin datos de ventas");
-        setIsLoadingForecast(false);
-    } else {
-        fetchForecast();
-    }
-  }, [sales, historicalSalesDataForForecast]);
-
 
   return (
     <div className="flex flex-col gap-6">
@@ -151,7 +97,7 @@ export default function DashboardPage() {
               Bienvenido a {businessSettings.businessName || 'Local Sales Hub'}
             </CardTitle>
             <CardDescription className="mt-1 text-sm sm:text-base">
-              {businessSettings.address ? `${businessSettings.address}` : "Gestiona tus ventas, inventario y pronósticos de forma eficiente."}
+              {businessSettings.address ? `${businessSettings.address}` : "Gestiona tus ventas, inventario y pedidos de forma eficiente."}
             </CardDescription>
             {businessSettings.phone && (
                 <p className="text-xs text-muted-foreground mt-1">Tel: {businessSettings.phone}</p>
@@ -219,12 +165,6 @@ export default function DashboardPage() {
               <p className="text-2xl font-bold">
                 {appSettings.currencySymbol}
                 {totalStockCostValue.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </p>
-            </div>
-            <div className="p-4 bg-muted/30 rounded-lg shadow">
-              <h3 className="text-sm font-medium text-muted-foreground">Pronóstico Próxima Semana</h3>
-              <p className="text-2xl font-bold truncate" title={nextWeekForecastText}>
-                {isLoadingForecast ? <Loader2 className="h-6 w-6 animate-spin inline" /> : nextWeekForecastText}
               </p>
             </div>
           </div>
