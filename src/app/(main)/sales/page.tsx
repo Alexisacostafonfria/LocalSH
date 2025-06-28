@@ -79,16 +79,16 @@ export default function SalesPage() {
 
     setSales(prevSales => [newSale, ...prevSales].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
     
-    if (newSale.paymentMethod !== 'invoice') {
-      const updatedProducts = products.map(p => {
-          const itemSold = newSale.items.find(item => item.productId === p.id);
-          if (itemSold) {
-              return { ...p, stock: p.stock - itemSold.quantity };
-          }
-          return p;
-      });
-      setProducts(updatedProducts);
-    }
+    // Stock is now deducted for ALL sales, including invoices, as the goods have left the inventory.
+    const updatedProducts = products.map(p => {
+        const itemSold = newSale.items.find(item => item.productId === p.id);
+        if (itemSold) {
+            const newStock = p.stock - itemSold.quantity;
+            return { ...p, stock: Math.max(0, newStock) };
+        }
+        return p;
+    });
+    setProducts(updatedProducts);
 
     toast({
         title: "Venta Registrada",
