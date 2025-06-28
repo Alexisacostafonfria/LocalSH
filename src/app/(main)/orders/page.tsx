@@ -111,19 +111,66 @@ export default function OrdersPage() {
   };
   
   const handleOpenPaymentDialog = (order: Order) => {
-    const stockIssues = order.items.filter(item => {
-      const product = products.find(p => p.id === item.productId);
-      return !product || product.stock < item.quantity;
-    });
+    const olderActiveOrders = orders.filter(o =>
+        (o.status === 'pending' || o.status === 'in-progress') &&
+        o.id !== order.id &&
+        new Date(o.timestamp) < new Date(order.timestamp)
+    );
 
-    if (stockIssues.length > 0) {
-      toast({
-        title: 'Stock Insuficiente',
-        description: `No se puede procesar el pago. Productos con stock insuficiente: ${stockIssues.map(i => i.productName).join(', ')}`,
-        variant: 'destructive',
-      });
-      return;
+    const stockConflicts: { productName: string, message: string }[] = [];
+
+    for (const item of order.items) {
+        const product = products.find(p => p.id === item.productId);
+        if (!product) {
+            stockConflicts.push({
+                productName: item.productName,
+                message: `El producto ya no existe en el catálogo.`,
+            });
+            continue;
+        }
+
+        const reservedForOlderOrders = olderActiveOrders.reduce((sum, olderOrder) => {
+            const itemInOlderOrder = olderOrder.items.find(i => i.productId === item.productId);
+            return sum + (itemInOlderOrder ? itemInOlderOrder.quantity : 0);
+        }, 0);
+        
+        const effectiveStock = product.stock - reservedForOlderOrders;
+
+        if (item.quantity > effectiveStock) {
+            let message: string;
+            if (product.stock < item.quantity) {
+                message = `Stock total insuficiente. Disponible: ${product.stock}, Necesario: ${item.quantity}.`;
+            } else {
+                message = `Stock reservado para pedidos anteriores. Stock total: ${product.stock}, Reservado: ${reservedForOlderOrders}, Disponible para este pedido: ${effectiveStock}.`;
+            }
+            stockConflicts.push({
+                productName: item.productName,
+                message: message
+            });
+        }
     }
+
+    if (stockConflicts.length > 0) {
+        toast({
+            title: 'Conflicto de Inventario',
+            description: (
+                <div className="text-sm">
+                    <p>No se puede procesar el pago para respetar el orden de los pedidos. Se encontraron los siguientes problemas:</p>
+                    <ul className="mt-2 list-disc pl-5 space-y-1">
+                        {stockConflicts.map((conflict, index) => (
+                            <li key={index}>
+                                <strong>{conflict.productName}:</strong> {conflict.message}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            ),
+            variant: 'destructive',
+            duration: 10000,
+        });
+        return;
+    }
+
     setOrderToPay(order);
     setIsPaymentDialogOpen(true);
   };
