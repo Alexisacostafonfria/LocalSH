@@ -97,7 +97,7 @@ export default function OrdersPage() {
         description: `El pedido #${order.orderNumber} ahora está ${ORDER_STATUS_MAP[newStatus]}.`
     });
 
-    if (newStatus === 'in-progress') {
+    if (newStatus === 'in-progress' && appSettings.autoPrintOrderTicket) {
         initiatePrint(order, 'prep');
     }
     
@@ -353,7 +353,7 @@ export default function OrdersPage() {
             <AlertDialogTitle>Confirmar cambio de estado</AlertDialogTitle>
             <AlertDialogDescription>
               ¿Estás seguro de que quieres marcar el pedido #{orderToConfirm?.order.orderNumber} como "{ORDER_STATUS_MAP[orderToConfirm?.newStatus || 'pending']}"?
-              {orderToConfirm?.newStatus === 'in-progress' && " Se imprimirá un ticket de preparación."}
+              {orderToConfirm?.newStatus === 'in-progress' && appSettings.autoPrintOrderTicket && " Se imprimirá un ticket de preparación automáticamente."}
               {orderToConfirm?.newStatus === 'cancelled' && " Esta acción es irreversible."}
             </AlertDialogDescription>
           </AlertDialogHeader>

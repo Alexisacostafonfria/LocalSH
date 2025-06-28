@@ -16,7 +16,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { Save, Download, Upload, AlertTriangle, Building, Image as ImageIcon, Trash2, Users } from 'lucide-react';
+import { Save, Download, Upload, AlertTriangle, Building, Image as ImageIcon, Trash2, Users, Printer } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,6 +35,7 @@ const appSettingsSchema = z.object({
   allowTips: z.boolean(),
   invoicePaymentFeePercentage: z.coerce.number().min(0, "Debe ser 0 o mayor").max(100, "No puede exceder 100"),
   latePaymentFeePercentage: z.coerce.number().min(0, "Debe ser 0 o mayor").max(100, "No puede exceder 100"),
+  autoPrintOrderTicket: z.boolean(),
 });
 
 const businessSettingsSchema = z.object({
@@ -429,6 +430,41 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </form>
+
+       <Card>
+        <CardHeader>
+            <CardTitle className="font-headline flex items-center gap-2"><Printer className="h-6 w-6 text-primary"/>Impresión Automática</CardTitle>
+            <CardDescription>Configura la impresión automática para diferentes transacciones.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+            <form onSubmit={handleAppSubmit(onAppSubmit)} className="space-y-4">
+                 <div className="flex items-center space-x-2 pt-2">
+                    <Controller
+                        name="autoPrintOrderTicket"
+                        control={appControl}
+                        render={({ field }) => (
+                            <Switch
+                                id="autoPrintOrderTicket"
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                            />
+                        )}
+                    />
+                    <Label htmlFor="autoPrintOrderTicket">Imprimir Ticket de Pedido Automáticamente</Label>
+                </div>
+                {appErrors.autoPrintOrderTicket && <p className="text-sm text-destructive mt-1">{appErrors.autoPrintOrderTicket.message}</p>}
+                <p className="text-xs text-muted-foreground ml-12">
+                  Si está activado, se enviará a imprimir un ticket de preparación cada vez que un pedido se marque como "En Preparación".
+                </p>
+                <div className="flex justify-end">
+                  <Button type="submit" disabled={!isAppFormDirty} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                    <Save className="mr-2 h-4 w-4" /> Guardar Config. Impresión
+                  </Button>
+                </div>
+            </form>
+        </CardContent>
+      </Card>
+
 
       <form onSubmit={handleBusinessSubmit(onBusinessSubmit)}>
         <Card>

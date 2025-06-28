@@ -119,6 +119,7 @@ export interface AppSettings {
   allowTips: boolean;
   invoicePaymentFeePercentage: number;
   latePaymentFeePercentage: number;
+  autoPrintOrderTicket: boolean;
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
@@ -127,6 +128,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   allowTips: true,
   invoicePaymentFeePercentage: 5, // Default 5% fee for invoice payments
   latePaymentFeePercentage: 10, // Default 10% penalty for late payments
+  autoPrintOrderTicket: false,
 };
 
 export interface BusinessSettings {
