@@ -99,7 +99,15 @@ export default function SaleDialog({
     const itemQuantity = (typeof item.quantity === 'number' && isFinite(item.quantity)) ? item.quantity : 0;
     return sum + (itemPrice * itemQuantity);
   }, 0), [saleItems]);
-  const totalAmount = subTotal; 
+
+  const invoiceFee = useMemo(() => {
+    if (paymentMethod === 'invoice' && appSettings.invoicePaymentFeePercentage > 0) {
+      return subTotal * (appSettings.invoicePaymentFeePercentage / 100);
+    }
+    return 0;
+  }, [paymentMethod, appSettings.invoicePaymentFeePercentage, subTotal]);
+
+  const totalAmount = subTotal + invoiceFee; 
 
   const isDayEffectivelyOpen = accountingSettings.isDayOpen && !!accountingSettings.currentOperationalDate;
 
@@ -414,23 +422,23 @@ export default function SaleDialog({
     }
 
     if (customerHasDebt && (paymentMethod === 'cash' || paymentMethod === 'transfer')) {
-        toast({ title: "Venta Bloqueada", description: "No se pueden realizar ventas en efectivo/transferencia a clientes con deudas pendientes.", variant: "destructive" });
+        toast({ title: "Venta Bloqueada", description: "No se pueden realizar ventas en efectivo/transferencia a clientes con deudas pendientes. Solo se puede emitir una nueva factura para renegociar.", variant: "destructive" });
         return;
     }
     
-    const finalTotalAmount = isFinite(totalAmount) ? totalAmount : 0;
     let finalPaymentDetails: PaymentDetails;
+    let fees: { description: string; amount: number; }[] | undefined;
 
     if (paymentMethod === 'cash') {
       const finalAmountReceived = (isFinite(cashDetails.amountReceived) ? cashDetails.amountReceived : 0);
       const finalTip = (isFinite(cashDetails.tip) ? cashDetails.tip : 0);
       
-      if ((finalAmountReceived - finalTip) < finalTotalAmount) {
+      if ((finalAmountReceived - finalTip) < totalAmount) {
          toast({ title: "Pago Insuficiente", description: "El monto recibido (menos propina si aplica) es menor al total de la venta.", variant: "destructive" });
          return;
       }
-       if (!isFinite(finalTip) || finalTip < 0 || (appSettings.allowTips && finalTip > Math.max(0, finalAmountReceived - finalTotalAmount)) ) {
-         toast({ title: "Propina Inválida", description: `La propina no puede ser negativa ni mayor que el cambio disponible (${appSettings.currencySymbol}${Math.max(0, finalAmountReceived - finalTotalAmount).toLocaleString('es-ES',{minimumFractionDigits:2, maximumFractionDigits:2})}).`, variant: "destructive" });
+       if (!isFinite(finalTip) || finalTip < 0 || (appSettings.allowTips && finalTip > Math.max(0, finalAmountReceived - totalAmount)) ) {
+         toast({ title: "Propina Inválida", description: `La propina no puede ser negativa ni mayor que el cambio disponible (${appSettings.currencySymbol}${Math.max(0, finalAmountReceived - totalAmount).toLocaleString('es-ES',{minimumFractionDigits:2, maximumFractionDigits:2})}).`, variant: "destructive" });
          return;
       }
       finalPaymentDetails = { 
@@ -476,6 +484,9 @@ export default function SaleDialog({
             dueDate: invoiceDueDate.toISOString(),
             status: 'pending'
         };
+        if (invoiceFee > 0) {
+            fees = [{ description: 'Cargo por Servicio de Factura', amount: invoiceFee }];
+        }
     }
     
     const sale: Sale = {
@@ -487,7 +498,8 @@ export default function SaleDialog({
       customerName: currentTransactionCustomer?.name || 'Consumidor Final', 
       items: saleItems,
       subTotal: isFinite(subTotal) ? subTotal : 0,
-      totalAmount: finalTotalAmount,
+      totalAmount: isFinite(totalAmount) ? totalAmount : 0,
+      fees,
       paymentMethod,
       paymentDetails: finalPaymentDetails,
     };
@@ -528,9 +540,9 @@ export default function SaleDialog({
   const finalizeSaleButtonDisabled = saleItems.length === 0 ||
     !isDayEffectivelyOpen ||
     (paymentMethod === 'cash' && (
-      ((isFinite(cashDetails.amountReceived) ? cashDetails.amountReceived : 0) - (isFinite(cashDetails.tip) ? cashDetails.tip : 0)) < (isFinite(totalAmount) ? totalAmount : 0) ||
+      ((isFinite(cashDetails.amountReceived) ? cashDetails.amountReceived : 0) - (isFinite(cashDetails.tip) ? cashDetails.tip : 0)) < totalAmount ||
       !isFinite(cashDetails.tip) || cashDetails.tip < 0 ||
-      (appSettings.allowTips && cashDetails.tip > Math.max(0, (isFinite(cashDetails.amountReceived) ? cashDetails.amountReceived : 0) - (isFinite(totalAmount) ? totalAmount : 0)))
+      (appSettings.allowTips && cashDetails.tip > Math.max(0, (isFinite(cashDetails.amountReceived) ? cashDetails.amountReceived : 0) - totalAmount))
     )) ||
     (paymentMethod === 'transfer' && (
       !currentTransactionCustomer?.name ||
@@ -706,13 +718,27 @@ export default function SaleDialog({
                     <AlertTitle>Cliente con Deuda Pendiente</AlertTitle>
                     <AlertDescription>
                         Este cliente tiene {debtDetails.count} factura(s) por un total de {appSettings.currencySymbol}{debtDetails.total.toLocaleString('es-ES', { minimumFractionDigits: 2 })}. 
-                        Las formas de pago en efectivo y transferencia están deshabilitadas. Para continuar, solo puede generar una nueva factura (renegociación).
+                        Solo se puede proceder generando una nueva factura para renegociar el crédito.
                     </AlertDescription>
                 </Alert>
               )}
-              <div className="text-3xl font-bold text-right text-primary">
-                Total: {appSettings.currencySymbol}{(isFinite(totalAmount) ? totalAmount : 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              <div className="space-y-2 border-t pt-4">
+                 <div className="flex justify-between text-sm">
+                    <span>Subtotal:</span>
+                    <span>{appSettings.currencySymbol}{subTotal.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span>
+                </div>
+                {invoiceFee > 0 && (
+                     <div className="flex justify-between text-sm text-amber-400">
+                        <span>Cargo por Factura ({appSettings.invoicePaymentFeePercentage}%):</span>
+                        <span>+{appSettings.currencySymbol}{invoiceFee.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                )}
+                <div className="flex justify-between text-3xl font-bold text-primary">
+                    <span>Total:</span>
+                    <span>{appSettings.currencySymbol}{totalAmount.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
               </div>
+
               <div className="space-y-1">
                 <Label htmlFor="paymentMethod">Método de Pago</Label>
                 <Select 
@@ -724,8 +750,8 @@ export default function SaleDialog({
                     <SelectValue placeholder="Seleccionar método" />
                   </SelectTrigger>
                   <SelectContent>
-                    {!customerHasDebt && <SelectItem value="cash">Efectivo</SelectItem>}
-                    {!customerHasDebt && <SelectItem value="transfer">Transferencia</SelectItem>}
+                    <SelectItem value="cash" disabled={customerHasDebt}>Efectivo</SelectItem>
+                    <SelectItem value="transfer" disabled={customerHasDebt}>Transferencia</SelectItem>
                     <SelectItem value="invoice">Factura (Cuentas por Cobrar)</SelectItem>
                   </SelectContent>
                 </Select>
@@ -746,7 +772,7 @@ export default function SaleDialog({
                               min="0"
                               step="0.01"
                               disabled={hasActiveBreakdown}
-                              className="text-lg font-semibold text-orange-500"
+                              className="text-lg font-semibold"
                           />
                       </div>
                       <Popover open={isCashBreakdownPopoverOpen} onOpenChange={setIsCashBreakdownPopoverOpen}>
@@ -787,7 +813,7 @@ export default function SaleDialog({
                    {hasActiveBreakdown && (
                       <p className="text-xs text-muted-foreground -mt-2">Monto calculado por desglose. Limpie el desglose para entrada directa.</p>
                    )}
-                   {(isFinite(cashDetails.amountReceived) ? cashDetails.amountReceived : 0) > 0 && ((isFinite(cashDetails.amountReceived) ? cashDetails.amountReceived : 0) - (isFinite(cashDetails.tip) ? cashDetails.tip : 0)) < (isFinite(totalAmount) ? totalAmount : 0) && (
+                   {(isFinite(cashDetails.amountReceived) ? cashDetails.amountReceived : 0) > 0 && ((isFinite(cashDetails.amountReceived) ? cashDetails.amountReceived : 0) - (isFinite(cashDetails.tip) ? cashDetails.tip : 0)) < totalAmount && (
                     <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle size={14}/>Monto recibido (menos propina) es menor al total.</p>
                   )}
                   <div className="text-lg font-semibold text-orange-500 pt-2">
@@ -795,7 +821,7 @@ export default function SaleDialog({
                       {appSettings.currencySymbol}{(isFinite(cashDetails.changeGiven) ? cashDetails.changeGiven : 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
-                  {appSettings.allowTips && (isFinite(cashDetails.amountReceived) ? cashDetails.amountReceived : 0) - (isFinite(totalAmount) ? totalAmount : 0) >= 0 && (
+                  {appSettings.allowTips && (isFinite(cashDetails.amountReceived) ? cashDetails.amountReceived : 0) - totalAmount >= 0 && (
                      <div>
                        <Label htmlFor="tip">Propina (del cambio disponible)</Label>
                        <Input 
@@ -803,7 +829,7 @@ export default function SaleDialog({
                           type="number" 
                           placeholder="0.00" 
                           min="0"
-                          max={Math.max(0, (isFinite(cashDetails.amountReceived) ? cashDetails.amountReceived : 0) - (isFinite(totalAmount) ? totalAmount : 0)).toFixed(2)}
+                          max={Math.max(0, (isFinite(cashDetails.amountReceived) ? cashDetails.amountReceived : 0) - totalAmount).toFixed(2)}
                           value={Number.isNaN(cashDetails.tip) || !isFinite(cashDetails.tip) ? "" : String(cashDetails.tip)}
                           onChange={e => {
                             const enteredValue = e.target.value;
@@ -815,9 +841,8 @@ export default function SaleDialog({
                             }
                           }}
                           step="0.01"
-                          className="text-lg font-semibold text-orange-500"
                         />
-                        {isFinite(cashDetails.tip) && cashDetails.tip > Math.max(0, (isFinite(cashDetails.amountReceived) ? cashDetails.amountReceived : 0) - (isFinite(totalAmount) ? totalAmount : 0)) ? 
+                        {isFinite(cashDetails.tip) && cashDetails.tip > Math.max(0, (isFinite(cashDetails.amountReceived) ? cashDetails.amountReceived : 0) - totalAmount) ? 
                           <p className="text-xs text-destructive">La propina excede el cambio disponible.</p> : null
                         }
                      </div>
@@ -954,7 +979,7 @@ export default function SaleDialog({
                 disabled={finalizeSaleButtonDisabled}
                 className="bg-green-600 hover:bg-green-600/90 text-white"
               >
-                <CheckCircle2 className="mr-2 h-4 w-4" /> Finalizar Venta ({appSettings.currencySymbol}{(isFinite(totalAmount) ? totalAmount : 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+                <CheckCircle2 className="mr-2 h-4 w-4" /> Finalizar Venta ({appSettings.currencySymbol}{totalAmount.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })})
               </Button>
             )}
           </div>

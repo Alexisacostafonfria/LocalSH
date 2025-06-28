@@ -94,6 +94,7 @@ export interface Sale {
   items: SaleItem[];
   subTotal: number;
   discount?: number;
+  fees?: { description: string; amount: number; }[];
   totalAmount: number;
   paymentMethod: 'cash' | 'transfer' | 'invoice';
   paymentDetails: PaymentDetails;
@@ -116,12 +117,16 @@ export interface AppSettings {
   lowStockThreshold: number;
   currencySymbol: string;
   allowTips: boolean;
+  invoicePaymentFeePercentage: number;
+  latePaymentFeePercentage: number;
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   lowStockThreshold: 10,
   currencySymbol: '$',
   allowTips: true,
+  invoicePaymentFeePercentage: 5, // Default 5% fee for invoice payments
+  latePaymentFeePercentage: 10, // Default 10% penalty for late payments
 };
 
 export interface BusinessSettings {

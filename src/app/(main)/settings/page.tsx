@@ -33,6 +33,8 @@ const appSettingsSchema = z.object({
   lowStockThreshold: z.coerce.number().min(0, "Debe ser 0 o mayor"),
   currencySymbol: z.string().min(1, "Símbolo es requerido").max(5, "Máximo 5 caracteres"),
   allowTips: z.boolean(),
+  invoicePaymentFeePercentage: z.coerce.number().min(0, "Debe ser 0 o mayor").max(100, "No puede exceder 100"),
+  latePaymentFeePercentage: z.coerce.number().min(0, "Debe ser 0 o mayor").max(100, "No puede exceder 100"),
 });
 
 const businessSettingsSchema = z.object({
@@ -372,6 +374,33 @@ export default function SettingsPage() {
                 {appErrors.currencySymbol && <p className="text-sm text-destructive mt-1">{appErrors.currencySymbol.message}</p>}
                 <p className="text-xs text-muted-foreground mt-1">Ej: $, €, Bs.</p>
               </div>
+
+              <div>
+                <Label htmlFor="invoicePaymentFeePercentage">% Cargo por Factura</Label>
+                <Controller
+                  name="invoicePaymentFeePercentage"
+                  control={appControl}
+                  render={({ field }) => (
+                    <Input id="invoicePaymentFeePercentage" type="number" {...field} placeholder="Ej: 5" />
+                  )}
+                />
+                {appErrors.invoicePaymentFeePercentage && <p className="text-sm text-destructive mt-1">{appErrors.invoicePaymentFeePercentage.message}</p>}
+                <p className="text-xs text-muted-foreground mt-1">Porcentaje de recargo por ventas a crédito.</p>
+              </div>
+
+              <div>
+                <Label htmlFor="latePaymentFeePercentage">% por Mora</Label>
+                <Controller
+                  name="latePaymentFeePercentage"
+                  control={appControl}
+                  render={({ field }) => (
+                    <Input id="latePaymentFeePercentage" type="number" {...field} placeholder="Ej: 10" />
+                  )}
+                />
+                {appErrors.latePaymentFeePercentage && <p className="text-sm text-destructive mt-1">{appErrors.latePaymentFeePercentage.message}</p>}
+                <p className="text-xs text-muted-foreground mt-1">Penalización porcentual por pagos atrasados.</p>
+              </div>
+
             </div>
             
             <div className="flex items-center space-x-2 pt-2">

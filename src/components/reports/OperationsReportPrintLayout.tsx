@@ -39,6 +39,8 @@ const OperationsReportPrintLayout: React.FC<OperationsReportPrintLayoutProps> = 
 
   const totalRevenue = operations.reduce((sum, sale) => sum + sale.totalAmount, 0);
   const numberOfTransactions = operations.length;
+  const totalFees = operations.reduce((sum, sale) => sum + (sale.fees || []).reduce((feeSum, fee) => feeSum + fee.amount, 0), 0);
+  
   const totalCashSales = operations
     .filter(sale => sale.paymentMethod === 'cash')
     .reduce((sum, sale) => sum + sale.totalAmount, 0);
@@ -137,6 +139,13 @@ const OperationsReportPrintLayout: React.FC<OperationsReportPrintLayoutProps> = 
               <td className="border p-2 text-right">
                 {appSettings.currencySymbol}
                 {totalRevenue.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </td>
+            </tr>
+            <tr>
+              <td colSpan={6} className="border p-2 text-right">Total Cargos por Servicio:</td>
+              <td className="border p-2 text-right">
+                {appSettings.currencySymbol}
+                {totalFees.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </td>
             </tr>
             <tr>

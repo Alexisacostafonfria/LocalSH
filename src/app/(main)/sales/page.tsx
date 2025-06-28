@@ -1,3 +1,4 @@
+
 // src/app/(main)/sales/page.tsx
 "use client";
 
@@ -11,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Sale, Product, Customer, AppSettings, DEFAULT_APP_SETTINGS, BusinessSettings, DEFAULT_BUSINESS_SETTINGS, AccountingSettings, DEFAULT_ACCOUNTING_SETTINGS } from '@/types';
+import { Sale, Product, Customer, AppSettings, DEFAULT_APP_SETTINGS, BusinessSettings, DEFAULT_BUSINESS_SETTINGS, AccountingSettings, DEFAULT_ACCOUNTING_SETTINGS, InvoicePaymentDetails } from '@/types';
 import useLocalStorageState from '@/hooks/useLocalStorageState';
 import SaleDialog from '@/components/sales/SaleDialog';
 import SaleReceipt from '@/components/sales/SaleReceipt';
@@ -58,7 +59,7 @@ export default function SalesPage() {
   
   const [saleForPrintOptions, setSaleForPrintOptions] = useState<Sale | null>(null);
   const [saleToPrint, setSaleToPrint] = useState<Sale | null>(null);
-  const [contractToPrint, setContractToPrint] = useState<{sale: Sale, customer: Customer | undefined} | null>(null);
+  const [contractToPrint, setContractToPrint] = useState<{sale: Sale, customer: Customer | undefined, previousInvoices?: Sale[]} | null>(null);
   const [printFormat, setPrintFormat] = useState<'a4' | 'receipt' | null>(null);
   const [isClientMounted, setIsClientMounted] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
@@ -71,10 +72,6 @@ export default function SalesPage() {
   }, []);
 
   const handleAddSale = (newSale: Sale) => {
-    // Check if this is the first invoice sale for this customer
-    const isFirstInvoice = newSale.paymentMethod === 'invoice' && newSale.customerId &&
-      !sales.some(s => s.customerId === newSale.customerId && s.paymentMethod === 'invoice' && s.id !== newSale.id);
-
     setSales(prevSales => [newSale, ...prevSales].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
     
     // Stock is now deducted for ALL sales, including invoices, as the goods have left the inventory.
@@ -93,8 +90,17 @@ export default function SalesPage() {
         description: `Venta ${newSale.id.substring(0,8)} completada.`,
     });
 
-    if (isFirstInvoice) {
-        handleInitiateContractPrint(newSale);
+    if (newSale.paymentMethod === 'invoice') {
+        const customer = customers.find(c => c.id === newSale.customerId);
+        // Find previous UNPAID invoices for this customer, excluding the one we just created.
+        const previousInvoices = sales.filter(s =>
+            s.customerId === newSale.customerId &&
+            s.id !== newSale.id &&
+            s.paymentMethod === 'invoice' &&
+            (s.paymentDetails as InvoicePaymentDetails).status !== 'paid'
+        );
+        setContractToPrint({ sale: newSale, customer, previousInvoices: previousInvoices.length > 0 ? previousInvoices : undefined });
+        setIsPrinting(true);
     } else {
         setSaleForPrintOptions(newSale);
     }
@@ -135,15 +141,7 @@ export default function SalesPage() {
     setSaleForPrintOptions(null);
     setIsPrinting(true);
   };
-
-  const handleInitiateContractPrint = useCallback((sale: Sale) => {
-    const customerForContract = customers.find(c => c.id === sale.customerId);
-    setContractToPrint({sale, customer: customerForContract});
-    setSaleToPrint(null);
-    setPrintFormat(null);
-    setIsPrinting(true);
-  }, [customers]);
-
+  
   useEffect(() => {
     if (isPrinting && (saleToPrint || contractToPrint) && isClientMounted) {
       const timer = setTimeout(() => {
@@ -351,7 +349,8 @@ export default function SalesPage() {
                   sale={contractToPrint.sale} 
                   customer={contractToPrint.customer}
                   appSettings={appSettings}
-                  businessSettings={businessSettings} 
+                  businessSettings={businessSettings}
+                  previousInvoices={contractToPrint.previousInvoices} 
                 />
               </div>
             )}

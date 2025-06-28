@@ -24,7 +24,7 @@ interface PaymentDialogProps {
   isOpen: boolean;
   onClose: () => void;
   order: Order;
-  onConfirm: (order: Order, paymentDetails: PaymentDetails) => void;
+  onConfirm: (order: Order, paymentDetails: PaymentDetails, fees?: { description: string; amount: number; }[]) => void;
   appSettings: AppSettings;
 }
 
@@ -44,7 +44,15 @@ export default function PaymentDialog({ isOpen, onClose, order, onConfirm, appSe
   
   const { toast } = useToast();
 
-  const totalAmount = order.totalAmount;
+  const subTotal = order.totalAmount;
+  const invoiceFee = useMemo(() => {
+    if (paymentMethod === 'invoice' && appSettings.invoicePaymentFeePercentage > 0) {
+      return subTotal * (appSettings.invoicePaymentFeePercentage / 100);
+    }
+    return 0;
+  }, [paymentMethod, appSettings.invoicePaymentFeePercentage, subTotal]);
+
+  const totalAmount = subTotal + invoiceFee;
   const changeGiven = Math.max(0, (cashDetails.amountReceived || 0) - totalAmount - (cashDetails.tip || 0));
   const customerDetails = useMemo(() => customers.find(c => c.id === order.customerId), [customers, order.customerId]);
 
@@ -99,11 +107,12 @@ export default function PaymentDialog({ isOpen, onClose, order, onConfirm, appSe
 
   const handleConfirmPayment = () => {
     if (customerHasDebt && (paymentMethod === 'cash' || paymentMethod === 'transfer')) {
-        toast({ title: "Acción Bloqueada", description: "El cliente tiene deudas pendientes. No se puede completar el pedido con efectivo o transferencia.", variant: 'destructive' });
+        toast({ title: "Acción Bloqueada", description: "El cliente tiene deudas pendientes y solo puede generar una nueva factura para renegociar.", variant: 'destructive' });
         return;
     }
 
     let finalPaymentDetails: PaymentDetails;
+    let fees: { description: string; amount: number; }[] | undefined;
 
     if (paymentMethod === 'cash') {
       const { amountReceived, tip } = cashDetails;
@@ -143,8 +152,11 @@ export default function PaymentDialog({ isOpen, onClose, order, onConfirm, appSe
             dueDate: invoiceDueDate.toISOString(),
             status: 'pending',
         };
+        if (invoiceFee > 0) {
+            fees = [{ description: 'Cargo por Servicio de Factura', amount: invoiceFee }];
+        }
     }
-    onConfirm(order, finalPaymentDetails);
+    onConfirm(order, finalPaymentDetails, fees);
   };
   
   const hasActiveBreakdown = Object.values(cashBreakdownInputs).some(val => val && parseInt(val) > 0);
@@ -171,9 +183,6 @@ export default function PaymentDialog({ isOpen, onClose, order, onConfirm, appSe
               </AlertDescription>
             </Alert>
           )}
-          <div className="text-3xl font-bold text-right text-primary">
-              Total: {appSettings.currencySymbol}{totalAmount.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
-          </div>
           
           <div className="space-y-1">
             <Label htmlFor="paymentMethod">Método de Pago</Label>
@@ -189,6 +198,23 @@ export default function PaymentDialog({ isOpen, onClose, order, onConfirm, appSe
                 <SelectItem value="invoice">Factura (Cuentas por Cobrar)</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2 border-t pt-4">
+            <div className="flex justify-between text-sm">
+              <span>Subtotal Pedido:</span>
+              <span>{appSettings.currencySymbol}{subTotal.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span>
+            </div>
+            {invoiceFee > 0 && (
+                <div className="flex justify-between text-sm text-amber-400">
+                    <span>Cargo por Factura ({appSettings.invoicePaymentFeePercentage}%):</span>
+                    <span>+{appSettings.currencySymbol}{invoiceFee.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span>
+                </div>
+            )}
+            <div className="flex justify-between text-2xl font-bold text-primary">
+              <span>Total a Pagar:</span>
+              <span>{appSettings.currencySymbol}{totalAmount.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span>
+            </div>
           </div>
 
           {paymentMethod === 'cash' && (
@@ -209,7 +235,7 @@ export default function PaymentDialog({ isOpen, onClose, order, onConfirm, appSe
                         {denominations.map(den => (
                           <div key={den} className="space-y-1">
                             <Label htmlFor={`breakdown-${den}`} className="text-xs">{appSettings.currencySymbol}{den}</Label>
-                            <Input id={`breakdown-${den}`} type="number" min="0" value={cashBreakdownInputs[den] || ''} onChange={e => handleCashBreakdownChange(String(den), e.target.value)} />
+                            <Input id={`breakdown-${den}`} type="number" min="0" value={cashBreakdownInputs[String(den)] || ''} onChange={e => handleCashBreakdownChange(String(den), e.target.value)} />
                           </div>
                         ))}
                       </div>

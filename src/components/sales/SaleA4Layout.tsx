@@ -1,3 +1,4 @@
+
 // src/components/sales/SaleA4Layout.tsx
 "use client";
 
@@ -86,6 +87,12 @@ const SaleA4Layout: React.FC<SaleA4LayoutProps> = ({ sale, appSettings, business
                             <td className="py-1 text-right">-{currencySymbol}{sale.discount.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
                         </tr>
                     )}
+                    {sale.fees && sale.fees.map((fee, index) => (
+                      <tr key={index}>
+                          <td className="py-1">{fee.description}:</td>
+                          <td className="py-1 text-right">{currencySymbol}{fee.amount.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
+                      </tr>
+                    ))}
                     <tr className="font-bold text-base border-t-2 border-black">
                         <td className="py-2">TOTAL:</td>
                         <td className="py-2 text-right">{currencySymbol}{sale.totalAmount.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>

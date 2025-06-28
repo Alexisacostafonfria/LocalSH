@@ -96,6 +96,14 @@ const SaleReceipt: React.FC<SaleReceiptProps> = ({ sale, appSettings, businessSe
             <span>-{currencySymbol}{sale.discount.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
         )}
+        {sale.fees && sale.fees.length > 0 && (
+            sale.fees.map((fee, index) => (
+                <div className="flex justify-between" key={index}>
+                    <span>{fee.description}:</span>
+                    <span>{currencySymbol}{fee.amount.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+            ))
+        )}
         <div className="flex justify-between font-bold text-base">
           <span>TOTAL:</span>
           <span>{currencySymbol}{sale.totalAmount.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>

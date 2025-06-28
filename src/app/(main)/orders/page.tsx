@@ -122,7 +122,7 @@ export default function OrdersPage() {
     setIsPaymentDialogOpen(true);
   };
 
-  const handleCompleteOrder = (completedOrder: Order, paymentDetails: PaymentDetails) => {
+  const handleCompleteOrder = (completedOrder: Order, paymentDetails: PaymentDetails, fees?: { description: string; amount: number; }[]) => {
     // Determine payment method from paymentDetails structure
     let paymentMethod: 'cash' | 'transfer' | 'invoice';
     if ('amountReceived' in paymentDetails) {
@@ -132,6 +132,8 @@ export default function OrdersPage() {
     } else {
       paymentMethod = 'transfer';
     }
+
+    const totalFees = fees ? fees.reduce((sum, fee) => sum + fee.amount, 0) : 0;
 
     // 1. Create Sale Object
     const newSale: Sale = {
@@ -144,7 +146,8 @@ export default function OrdersPage() {
       customerName: completedOrder.customerName,
       items: completedOrder.items,
       subTotal: completedOrder.totalAmount,
-      totalAmount: completedOrder.totalAmount,
+      totalAmount: completedOrder.totalAmount + totalFees,
+      fees: fees,
       paymentMethod: paymentMethod, // Correctly determined method
       paymentDetails: paymentDetails,
     };
