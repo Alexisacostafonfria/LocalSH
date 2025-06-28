@@ -1,5 +1,3 @@
-
-
 // src/app/(main)/sales/page.tsx
 "use client";
 
