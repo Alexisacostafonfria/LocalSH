@@ -150,6 +150,7 @@ export default function SaleDialog({
               const totalDebt = customerInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
               setCustomerHasDebt(true);
               setDebtDetails({ count: customerInvoices.length, total: totalDebt });
+              setPaymentMethod('invoice'); // Force invoice if debt exists
           } else {
               setCustomerHasDebt(false);
               setDebtDetails(null);
@@ -526,7 +527,6 @@ export default function SaleDialog({
   
   const finalizeSaleButtonDisabled = saleItems.length === 0 ||
     !isDayEffectivelyOpen ||
-    (customerHasDebt && (paymentMethod === 'cash' || paymentMethod === 'transfer')) ||
     (paymentMethod === 'cash' && (
       ((isFinite(cashDetails.amountReceived) ? cashDetails.amountReceived : 0) - (isFinite(cashDetails.tip) ? cashDetails.tip : 0)) < (isFinite(totalAmount) ? totalAmount : 0) ||
       !isFinite(cashDetails.tip) || cashDetails.tip < 0 ||
@@ -705,11 +705,8 @@ export default function SaleDialog({
                     <AlertTriangle className="h-4 w-4"/>
                     <AlertTitle>Cliente con Deuda Pendiente</AlertTitle>
                     <AlertDescription>
-                        Este cliente tiene {debtDetails.count} factura(s) pendiente(s) por un total de {appSettings.currencySymbol}{debtDetails.total.toLocaleString('es-ES', { minimumFractionDigits: 2 })}.
-                        {(paymentMethod === 'cash' || paymentMethod === 'transfer') ? 
-                            ' Los pagos con este método están bloqueados hasta que se liquide la deuda en Cuentas por Cobrar.' :
-                            ' Si genera una nueva factura, se asumirá una renegociación del crédito.'
-                        }
+                        Este cliente tiene {debtDetails.count} factura(s) por un total de {appSettings.currencySymbol}{debtDetails.total.toLocaleString('es-ES', { minimumFractionDigits: 2 })}. 
+                        Las formas de pago en efectivo y transferencia están deshabilitadas. Para continuar, solo puede generar una nueva factura (renegociación).
                     </AlertDescription>
                 </Alert>
               )}
@@ -718,13 +715,17 @@ export default function SaleDialog({
               </div>
               <div className="space-y-1">
                 <Label htmlFor="paymentMethod">Método de Pago</Label>
-                <Select value={paymentMethod} onValueChange={(value: 'cash' | 'transfer' | 'invoice') => setPaymentMethod(value)}>
+                <Select 
+                  value={paymentMethod} 
+                  onValueChange={(value: 'cash' | 'transfer' | 'invoice') => setPaymentMethod(value)}
+                  disabled={customerHasDebt}
+                >
                   <SelectTrigger id="paymentMethod">
                     <SelectValue placeholder="Seleccionar método" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cash">Efectivo</SelectItem>
-                    <SelectItem value="transfer">Transferencia</SelectItem>
+                    {!customerHasDebt && <SelectItem value="cash">Efectivo</SelectItem>}
+                    {!customerHasDebt && <SelectItem value="transfer">Transferencia</SelectItem>}
                     <SelectItem value="invoice">Factura (Cuentas por Cobrar)</SelectItem>
                   </SelectContent>
                 </Select>

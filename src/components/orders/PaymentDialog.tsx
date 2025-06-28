@@ -74,12 +74,17 @@ export default function PaymentDialog({ isOpen, onClose, order, onConfirm, appSe
       setInvoiceDueDate(addDays(new Date(), 30));
       setCashBreakdownInputs({});
     } else {
+       if (customerHasDebt) {
+        setPaymentMethod('invoice');
+      } else {
+        setPaymentMethod('cash');
+      }
       setTransferDetails(prev => ({
           ...prev,
           customerId: order.customerId,
       }))
     }
-  }, [isOpen, order]);
+  }, [isOpen, order, customerHasDebt]);
 
   const handleCashBreakdownChange = (denominationKey: string, countStr: string) => {
     const newBreakdownInputs = { ...cashBreakdownInputs, [denominationKey]: countStr };
@@ -145,7 +150,6 @@ export default function PaymentDialog({ isOpen, onClose, order, onConfirm, appSe
   const hasActiveBreakdown = Object.values(cashBreakdownInputs).some(val => val && parseInt(val) > 0);
 
   const finalizeButtonDisabled = 
-    (customerHasDebt && (paymentMethod === 'cash' || paymentMethod === 'transfer')) ||
     (paymentMethod === 'cash' && ((cashDetails.amountReceived || 0) < totalAmount || (appSettings.allowTips && (cashDetails.tip || 0) > ((cashDetails.amountReceived || 0) - totalAmount)))) ||
     (paymentMethod === 'invoice' && (!order.customerId || !invoiceDueDate));
 
@@ -163,11 +167,7 @@ export default function PaymentDialog({ isOpen, onClose, order, onConfirm, appSe
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Cliente con Deuda Pendiente</AlertTitle>
               <AlertDescription>
-                Este cliente tiene {debtDetails.count} factura(s) pendiente(s) por un total de {appSettings.currencySymbol}{debtDetails.total.toLocaleString('es-ES', { minimumFractionDigits: 2 })}.
-                 {(paymentMethod === 'cash' || paymentMethod === 'transfer') ? 
-                    ' El pedido no puede completarse con este método de pago hasta que se liquide la deuda.' :
-                    ' Si genera una nueva factura, se asumirá una renegociación del crédito.'
-                }
+                 Este cliente tiene {debtDetails.count} factura(s) por un total de {appSettings.currencySymbol}{debtDetails.total.toLocaleString('es-ES', { minimumFractionDigits: 2 })}. Solo se puede proceder generando una nueva factura (renegociación). Los otros métodos de pago están deshabilitados.
               </AlertDescription>
             </Alert>
           )}
@@ -177,11 +177,15 @@ export default function PaymentDialog({ isOpen, onClose, order, onConfirm, appSe
           
           <div className="space-y-1">
             <Label htmlFor="paymentMethod">Método de Pago</Label>
-            <Select value={paymentMethod} onValueChange={(v: 'cash' | 'transfer' | 'invoice') => setPaymentMethod(v)}>
+            <Select 
+              value={paymentMethod} 
+              onValueChange={(v: 'cash' | 'transfer' | 'invoice') => setPaymentMethod(v)}
+              disabled={customerHasDebt}
+            >
               <SelectTrigger id="paymentMethod"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="cash">Efectivo</SelectItem>
-                <SelectItem value="transfer">Transferencia</SelectItem>
+                {!customerHasDebt && <SelectItem value="cash">Efectivo</SelectItem>}
+                {!customerHasDebt && <SelectItem value="transfer">Transferencia</SelectItem>}
                 <SelectItem value="invoice">Factura (Cuentas por Cobrar)</SelectItem>
               </SelectContent>
             </Select>
