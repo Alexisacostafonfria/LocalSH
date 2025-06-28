@@ -314,7 +314,7 @@ export default function AccountingPage() {
   const isClosureButtonDisabled = isLoading || (Object.keys(countedCashBreakdownInputs).length === 0 && totalCountedCash === 0);
 
   const reportYears = useMemo(() => {
-    const years = new Set(accountingSettings.dailyClosureHistory.map(h => getYear(parseISO(h.closureDate))));
+    const years = new Set((accountingSettings.dailyClosureHistory || []).map(h => getYear(parseISO(h.closureDate))));
     years.add(getYear(new Date()));
     return Array.from(years).sort((a, b) => b - a);
   }, [accountingSettings.dailyClosureHistory]);
@@ -324,7 +324,7 @@ export default function AccountingPage() {
       toast({ title: "Acceso Denegado", description: "No tienes permiso para generar cierres mensuales.", variant: "destructive" });
       return;
     }
-    const dailyClosuresForMonth = accountingSettings.dailyClosureHistory.filter(h => {
+    const dailyClosuresForMonth = (accountingSettings.dailyClosureHistory || []).filter(h => {
         const closureDate = parseISO(h.closureDate);
         return getYear(closureDate) === reportYear && (getMonth(closureDate) + 1) === reportMonth;
     });
@@ -346,7 +346,7 @@ export default function AccountingPage() {
     };
 
     setAccountingSettings(prev => {
-        const otherMonths = prev.monthlyClosureHistory.filter(r => !(r.year === reportYear && r.month === reportMonth));
+        const otherMonths = (prev.monthlyClosureHistory || []).filter(r => !(r.year === reportYear && r.month === reportMonth));
         return {
             ...prev,
             monthlyClosureHistory: [...otherMonths, newMonthlyReport].sort((a, b) => new Date(b.generationDate).getTime() - new Date(a.generationDate).getTime()),
@@ -483,9 +483,9 @@ export default function AccountingPage() {
             <Card>
                 <CardHeader><CardTitle className="font-headline">Historial de Cierres Diarios</CardTitle><CardDescription>Consulta los detalles de cada cierre operativo realizado.</CardDescription></CardHeader>
                 <CardContent>
-                    {accountingSettings.dailyClosureHistory.length === 0 ? (<p className="text-muted-foreground">No hay cierres diarios en el historial.</p>) : (
+                    {(accountingSettings.dailyClosureHistory || []).length === 0 ? (<p className="text-muted-foreground">No hay cierres diarios en el historial.</p>) : (
                     <Accordion type="single" collapsible className="w-full">
-                        {accountingSettings.dailyClosureHistory.sort((a,b) => new Date(b.closureDate).getTime() - new Date(a.closureDate).getTime()).map(closure => (
+                        {(accountingSettings.dailyClosureHistory || []).sort((a,b) => new Date(b.closureDate).getTime() - new Date(a.closureDate).getTime()).map(closure => (
                             <AccordionItem value={closure.closureDate} key={closure.closureDate}>
                                 <AccordionTrigger>
                                     <div className="flex justify-between w-full pr-4">
@@ -513,9 +513,9 @@ export default function AccountingPage() {
              <Card>
                 <CardHeader><CardTitle className="font-headline">Historial de Cierres Mensuales</CardTitle><CardDescription>Consulta los reportes mensuales generados.</CardDescription></CardHeader>
                 <CardContent>
-                    {accountingSettings.monthlyClosureHistory.length === 0 ? (<p className="text-muted-foreground">No hay cierres mensuales en el historial.</p>) : (
+                    {(accountingSettings.monthlyClosureHistory || []).length === 0 ? (<p className="text-muted-foreground">No hay cierres mensuales en el historial.</p>) : (
                     <Accordion type="single" collapsible className="w-full">
-                        {accountingSettings.monthlyClosureHistory.sort((a,b) => b.year - a.year || b.month - a.month).map(report => (
+                        {(accountingSettings.monthlyClosureHistory || []).sort((a,b) => b.year - a.year || b.month - a.month).map(report => (
                             <AccordionItem value={`${report.year}-${report.month}`} key={`${report.year}-${report.month}`}>
                                 <AccordionTrigger>
                                     <div className="flex justify-between w-full pr-4">
