@@ -150,14 +150,16 @@ export interface DenominationCount {
   totalValue: number;
 }
 
-export interface LastClosureDetails {
-  closureDate: string; // ISO string date of the operational day that was closed
+export interface DailyClosureReport {
+  closureDate: string; 
   expectedCashInBox: number;
   countedCashBreakdown: DenominationCount[];
   totalCountedCash: number;
   cashDifference: number;
   closureNotes: string;
   totalRevenue: number;
+  totalCogs: number;
+  grossProfit: number;
   totalTransactions: number;
   cashSalesAmount: number;
   transferSalesAmount: number;
@@ -166,18 +168,31 @@ export interface LastClosureDetails {
   invoicePaymentsInTransfer: number;
 }
 
+export interface MonthlyClosureReport {
+    year: number;
+    month: number; // 1-12
+    generationDate: string; // ISO string
+    totalRevenue: number;
+    totalCogs: number;
+    grossProfit: number;
+    totalTransactions: number;
+    totalTips: number;
+}
+
 export interface AccountingSettings {
   lastClosureDate: string | null;
   currentOperationalDate: string | null;
   isDayOpen: boolean;
-  lastClosureDetails?: LastClosureDetails;
+  dailyClosureHistory: DailyClosureReport[];
+  monthlyClosureHistory: MonthlyClosureReport[];
 }
 
 export const DEFAULT_ACCOUNTING_SETTINGS: AccountingSettings = {
   lastClosureDate: null,
   currentOperationalDate: null,
   isDayOpen: false,
-  lastClosureDetails: undefined,
+  dailyClosureHistory: [],
+  monthlyClosureHistory: [],
 };
 
 export type InventoryItem = Pick<Product, 'id' | 'name' | 'stock' | 'category' | 'imageUrl' | 'unitOfMeasure'> & {

@@ -4,27 +4,13 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { AppSettings, BusinessSettings, DenominationCount } from '@/types';
+import { AppSettings, BusinessSettings, DailyClosureReport } from '@/types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-interface DailySummaryData {
-    totalRevenue: number;
-    totalTransactions: number;
-    cashSalesAmount: number;
-    transferSalesAmount: number;
-    totalTips: number;
-    invoicePaymentsInCash: number;
-    invoicePaymentsInTransfer: number;
-    expectedCashInBox: number;
-}
 
 interface DailyClosureReportPrintLayoutProps {
-  dailySummary: DailySummaryData;
-  countedCashBreakdown: DenominationCount[];
-  totalCountedCash: number;
-  cashDifference: number;
-  closureNotes: string;
+  dailySummary: DailyClosureReport;
   operationalDateDisplay: string;
   appSettings: AppSettings;
   businessSettings: BusinessSettings;
@@ -32,10 +18,6 @@ interface DailyClosureReportPrintLayoutProps {
 
 const DailyClosureReportPrintLayout: React.FC<DailyClosureReportPrintLayoutProps> = ({
   dailySummary,
-  countedCashBreakdown,
-  totalCountedCash,
-  cashDifference,
-  closureNotes,
   operationalDateDisplay,
   appSettings,
   businessSettings,
@@ -72,28 +54,34 @@ const DailyClosureReportPrintLayout: React.FC<DailyClosureReportPrintLayoutProps
         <h3 className="text-lg font-semibold border-b pb-1 mb-2">Resumen del Día ({operationalDateDisplay})</h3>
         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
           <div className="font-medium">Ingresos Totales (Ventas):</div>
-          <div>{appSettings.currencySymbol}{dailySummary.totalRevenue.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+          <div>{appSettings.currencySymbol}{dailySummary.totalRevenue.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</div>
+          
+           <div className="font-medium">Costo de Bienes Vendidos:</div>
+          <div>{appSettings.currencySymbol}{dailySummary.totalCogs.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</div>
+          
+           <div className="font-bold">Ganancia Bruta:</div>
+          <div className="font-bold">{appSettings.currencySymbol}{dailySummary.grossProfit.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</div>
 
-          <div className="font-medium">Total Transacciones:</div>
-          <div>{dailySummary.totalTransactions}</div>
+          <div className="font-medium pt-2 border-t mt-1">Total Transacciones:</div>
+          <div className="pt-2 border-t mt-1">{dailySummary.totalTransactions}</div>
 
           <div className="font-medium">Ventas en Efectivo:</div>
-          <div>{appSettings.currencySymbol}{dailySummary.cashSalesAmount.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+          <div>{appSettings.currencySymbol}{dailySummary.cashSalesAmount.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</div>
 
           <div className="font-medium">Ventas por Transferencia:</div>
-          <div>{appSettings.currencySymbol}{dailySummary.transferSalesAmount.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+          <div>{appSettings.currencySymbol}{dailySummary.transferSalesAmount.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</div>
 
           {appSettings.allowTips && (
             <>
               <div className="font-medium">Total Propinas (Efectivo):</div>
-              <div>{appSettings.currencySymbol}{dailySummary.totalTips.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              <div>{appSettings.currencySymbol}{dailySummary.totalTips.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</div>
             </>
           )}
           <div className="font-medium pt-2 border-t mt-1">Cobranza Facturas (Efectivo):</div>
-          <div className="pt-2 border-t mt-1">{appSettings.currencySymbol}{dailySummary.invoicePaymentsInCash.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+          <div className="pt-2 border-t mt-1">{appSettings.currencySymbol}{dailySummary.invoicePaymentsInCash.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</div>
 
           <div className="font-medium">Cobranza Facturas (Transfer):</div>
-          <div>{appSettings.currencySymbol}{dailySummary.invoicePaymentsInTransfer.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+          <div>{appSettings.currencySymbol}{dailySummary.invoicePaymentsInTransfer.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</div>
 
         </div>
       </section>
@@ -102,11 +90,11 @@ const DailyClosureReportPrintLayout: React.FC<DailyClosureReportPrintLayoutProps
         <h3 className="text-lg font-semibold border-b pb-1 mb-2">Arqueo de Caja</h3>
         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
             <div className="font-medium">Efectivo Esperado en Caja:</div>
-            <div className="font-semibold">{appSettings.currencySymbol}{dailySummary.expectedCashInBox.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <div className="font-semibold">{appSettings.currencySymbol}{dailySummary.expectedCashInBox.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</div>
         </div>
 
         <h4 className="text-sm font-semibold mt-3 mb-1">Detalle del Efectivo Contado:</h4>
-        {countedCashBreakdown.length > 0 ? (
+        {dailySummary.countedCashBreakdown.length > 0 ? (
           <table className="w-full border-collapse text-xs mb-2">
             <thead>
               <tr className="bg-gray-100">
@@ -116,11 +104,11 @@ const DailyClosureReportPrintLayout: React.FC<DailyClosureReportPrintLayoutProps
               </tr>
             </thead>
             <tbody>
-              {countedCashBreakdown.sort((a,b) => b.denomination - a.denomination).map(item => (
+              {dailySummary.countedCashBreakdown.sort((a,b) => b.denomination - a.denomination).map(item => (
                 <tr key={item.denomination}>
                   <td className="border p-1">{appSettings.currencySymbol}{item.denomination.toLocaleString('es-ES')}</td>
                   <td className="border p-1 text-right">{item.count}</td>
-                  <td className="border p-1 text-right">{appSettings.currencySymbol}{item.totalValue.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td className="border p-1 text-right">{appSettings.currencySymbol}{item.totalValue.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</td>
                 </tr>
               ))}
             </tbody>
@@ -131,22 +119,22 @@ const DailyClosureReportPrintLayout: React.FC<DailyClosureReportPrintLayoutProps
         
         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs mt-2">
             <div className="font-medium">Total Contado en Caja:</div>
-            <div className="font-semibold">{appSettings.currencySymbol}{totalCountedCash.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <div className="font-semibold">{appSettings.currencySymbol}{dailySummary.totalCountedCash.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</div>
 
             <div className="font-medium">Diferencia:</div>
-            <div className={`font-semibold ${cashDifference === 0 ? '' : cashDifference > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {appSettings.currencySymbol}{cashDifference.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                {cashDifference > 0 && " (Sobrante)"}
-                {cashDifference < 0 && " (Faltante)"}
-                {cashDifference === 0 && " (Cuadre Exacto)"}
+            <div className={`font-semibold ${dailySummary.cashDifference === 0 ? '' : dailySummary.cashDifference > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {appSettings.currencySymbol}{dailySummary.cashDifference.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}
+                {dailySummary.cashDifference > 0 && " (Sobrante)"}
+                {dailySummary.cashDifference < 0 && " (Faltante)"}
+                {dailySummary.cashDifference === 0 && " (Cuadre Exacto)"}
             </div>
         </div>
       </section>
 
-      {closureNotes && (
+      {dailySummary.closureNotes && (
         <section className="mb-6">
           <h3 className="text-lg font-semibold border-b pb-1 mb-2">Notas Adicionales del Cierre</h3>
-          <p className="text-xs whitespace-pre-wrap">{closureNotes}</p>
+          <p className="text-xs whitespace-pre-wrap">{dailySummary.closureNotes}</p>
         </section>
       )}
 
