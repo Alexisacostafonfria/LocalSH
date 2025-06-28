@@ -50,55 +50,53 @@ const SaleA4Layout: React.FC<SaleA4LayoutProps> = ({ sale, appSettings, business
 
       <section className="mb-8">
         <h3 className="font-bold border-b mb-2 pb-1">Items</h3>
-        <table className="w-full border-collapse text-xs">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="border p-2 text-left">Producto</th>
-              <th className="border p-2 text-right">Cantidad</th>
-              <th className="border p-2 text-right">P. Unitario</th>
-              <th className="border p-2 text-right">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sale.items.map((item: SaleItem) => (
-              <tr key={item.productId}>
-                <td className="border p-2">{item.productName}</td>
-                <td className="border p-2 text-right">{item.quantity}</td>
-                <td className="border p-2 text-right">{currencySymbol}{item.unitPrice.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
-                <td className="border p-2 text-right">{currencySymbol}{item.totalPrice.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="w-full text-xs">
+            {/* Header */}
+            <div className="grid grid-cols-12 gap-2 font-bold bg-gray-100 p-2 border-b">
+                <div className="col-span-6">Producto</div>
+                <div className="col-span-2 text-right">Cantidad</div>
+                <div className="col-span-2 text-right">P. Unitario</div>
+                <div className="col-span-2 text-right">Total</div>
+            </div>
+            {/* Body */}
+            <div className="border-l border-r border-b">
+                {sale.items.map((item: SaleItem) => (
+                <div key={item.productId} className="grid grid-cols-12 gap-2 p-2 border-b last:border-b-0">
+                    <div className="col-span-6">{item.productName}</div>
+                    <div className="col-span-2 text-right">{item.quantity}</div>
+                    <div className="col-span-2 text-right">{currencySymbol}{item.unitPrice.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</div>
+                    <div className="col-span-2 text-right">{currencySymbol}{item.totalPrice.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</div>
+                </div>
+                ))}
+            </div>
+        </div>
       </section>
       
       <section className="flex justify-end mb-8">
         <div className="w-1/2">
             <h3 className="font-bold border-b mb-2 pb-1">Resumen</h3>
-            <table className="w-full text-sm">
-                <tbody>
-                    <tr>
-                        <td className="py-1">Subtotal:</td>
-                        <td className="py-1 text-right">{currencySymbol}{sale.subTotal.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
-                    </tr>
-                    {sale.discount && sale.discount > 0 && (
-                        <tr>
-                            <td className="py-1">Descuento:</td>
-                            <td className="py-1 text-right">-{currencySymbol}{sale.discount.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
-                        </tr>
-                    )}
-                    {sale.fees && sale.fees.map((fee, index) => (
-                      <tr key={index}>
-                          <td className="py-1">{fee.description}:</td>
-                          <td className="py-1 text-right">{currencySymbol}{fee.amount.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
-                      </tr>
-                    ))}
-                    <tr className="font-bold text-base border-t-2 border-black">
-                        <td className="py-2">TOTAL:</td>
-                        <td className="py-2 text-right">{currencySymbol}{sale.totalAmount.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
-                    </tr>
-                </tbody>
-            </table>
+            <div className="w-full text-sm space-y-1">
+                <div className="flex justify-between">
+                    <span>Subtotal:</span>
+                    <span>{currencySymbol}{sale.subTotal.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span>
+                </div>
+                {sale.discount && sale.discount > 0 && (
+                    <div className="flex justify-between">
+                        <span>Descuento:</span>
+                        <span>-{currencySymbol}{sale.discount.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                )}
+                {sale.fees && sale.fees.map((fee, index) => (
+                  <div key={index} className="flex justify-between">
+                      <span>{fee.description}:</span>
+                      <span>{currencySymbol}{fee.amount.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between font-bold text-base pt-2 border-t-2 border-black">
+                    <span>TOTAL:</span>
+                    <span>{currencySymbol}{sale.totalAmount.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span>
+                </div>
+            </div>
         </div>
       </section>
 

@@ -1,3 +1,4 @@
+
 // src/components/reports/OrdersReportLayout.tsx
 "use client";
 
@@ -86,43 +87,40 @@ const OrdersReportLayout: React.FC<OrdersReportLayoutProps> = ({
 
       <section>
         <h3 className="text-lg font-semibold border-b pb-1 mb-2">Detalle de Pedidos</h3>
-        <table className="w-full border-collapse text-xs">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="border p-2 text-left font-semibold">Pedido #</th>
-              <th className="border p-2 text-left font-semibold">Fecha</th>
-              <th className="border p-2 text-left font-semibold">Cliente</th>
-              <th className="border p-2 text-right font-semibold">Monto</th>
-              <th className="border p-2 text-left font-semibold">Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="border p-2 text-center text-gray-500">No hay pedidos para mostrar.</td>
-              </tr>
-            ) : (
-              orders.map((order) => (
-                <tr key={order.id} className="break-inside-avoid-page">
-                  <td className="border p-1 align-top">{order.orderNumber}</td>
-                  <td className="border p-1 align-top">{formatDateSafe(order.timestampDate)}</td>
-                  <td className="border p-1 align-top">{order.customerName}</td>
-                  <td className="border p-1 align-top text-right">{appSettings.currencySymbol}{order.totalAmount.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
-                  <td className="border p-1 align-top">{ORDER_STATUS_MAP[order.status]}</td>
-                </tr>
-              ))
+        <div className="w-full text-xs">
+            {/* Header */}
+            <div className="grid grid-cols-5 gap-2 font-semibold bg-gray-100 p-2 border-b">
+                <div className="col-span-1">Pedido #</div>
+                <div className="col-span-1">Fecha</div>
+                <div className="col-span-1">Cliente</div>
+                <div className="col-span-1 text-right">Monto</div>
+                <div className="col-span-1">Estado</div>
+            </div>
+            {/* Body */}
+            <div className="border-l border-r border-b">
+                {orders.length === 0 ? (
+                    <div className="p-2 text-center text-gray-500">No hay pedidos para mostrar.</div>
+                ) : (
+                    orders.map((order) => (
+                    <div key={order.id} className="grid grid-cols-5 gap-2 p-2 border-b last:border-b-0 break-inside-avoid-page">
+                        <div className="align-top">{order.orderNumber}</div>
+                        <div className="align-top">{formatDateSafe(order.timestampDate)}</div>
+                        <div className="align-top">{order.customerName}</div>
+                        <div className="align-top text-right">{appSettings.currencySymbol}{order.totalAmount.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</div>
+                        <div className="align-top">{ORDER_STATUS_MAP[order.status]}</div>
+                    </div>
+                    ))
+                )}
+            </div>
+            {/* Footer */}
+            {orders.length > 0 && (
+            <div className="mt-2 grid grid-cols-5 gap-2 font-semibold bg-gray-100 p-2 border-t">
+                <div className="col-span-3 text-right">Valor Total Pedidos:</div>
+                <div className="text-right">{appSettings.currencySymbol}{summary.totalValue.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</div>
+                <div></div>
+            </div>
             )}
-          </tbody>
-          {orders.length > 0 && (
-            <tfoot className="bg-gray-100 font-semibold">
-              <tr>
-                <td colSpan={3} className="border p-2 text-right">Valor Total Pedidos:</td>
-                <td className="border p-2 text-right">{appSettings.currencySymbol}{summary.totalValue.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
-                <td className="border p-2"></td>
-              </tr>
-            </tfoot>
-          )}
-        </table>
+        </div>
       </section>
 
       <footer className="mt-6 pt-4 border-t text-center text-xs text-gray-500">

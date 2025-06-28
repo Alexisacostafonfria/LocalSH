@@ -51,22 +51,20 @@ const MonthlyClosureReportPrintLayout: React.FC<MonthlyClosureReportPrintLayoutP
 
       <section className="mb-6">
         <h3 className="text-lg font-semibold border-b pb-1 mb-2">Resumen Financiero del Mes</h3>
-        <table className="w-full text-sm">
-            <tbody>
-                <tr className="border-b">
-                    <td className="py-2">Ingresos Totales por Ventas</td>
-                    <td className="py-2 text-right font-mono">{appSettings.currencySymbol}{report.totalRevenue.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</td>
-                </tr>
-                 <tr className="border-b">
-                    <td className="py-2">(-) Costo de Bienes Vendidos (COGS)</td>
-                    <td className="py-2 text-right font-mono">{appSettings.currencySymbol}{report.totalCogs.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</td>
-                </tr>
-                <tr className="font-bold text-base bg-gray-100">
-                    <td className="py-2 px-1">(=) Ganancia Bruta</td>
-                    <td className="py-2 px-1 text-right font-mono">{appSettings.currencySymbol}{report.grossProfit.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</td>
-                </tr>
-            </tbody>
-        </table>
+        <div className="space-y-2 text-sm">
+            <div className="flex justify-between border-b pb-1">
+                <span>Ingresos Totales por Ventas</span>
+                <span className="font-mono">{appSettings.currencySymbol}{report.totalRevenue.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</span>
+            </div>
+            <div className="flex justify-between border-b pb-1">
+                <span>(-) Costo de Bienes Vendidos (COGS)</span>
+                <span className="font-mono">{appSettings.currencySymbol}{report.totalCogs.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</span>
+            </div>
+            <div className="flex justify-between font-bold text-base bg-gray-100 p-2 mt-2 rounded">
+                <span>(=) Ganancia Bruta</span>
+                <span className="font-mono">{appSettings.currencySymbol}{report.grossProfit.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</span>
+            </div>
+        </div>
       </section>
 
       <section className="mb-6">

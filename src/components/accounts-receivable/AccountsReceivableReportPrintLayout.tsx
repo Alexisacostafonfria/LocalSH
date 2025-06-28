@@ -93,40 +93,36 @@ const AccountsReceivableReportPrintLayout: React.FC<AccountsReceivableReportPrin
 
       <section>
          <h3 className="text-lg font-semibold border-b pb-1 mb-2">Detalle de Facturas</h3>
-        <table className="w-full border-collapse text-xs">
-            <thead>
-            <tr className="bg-gray-100">
-                <th className="border p-2 text-left font-semibold">Factura #</th>
-                <th className="border p-2 text-left font-semibold">Cliente</th>
-                <th className="border p-2 text-left font-semibold">Fecha Emisión</th>
-                <th className="border p-2 text-left font-semibold">Fecha Vencimiento</th>
-                <th className="border p-2 text-right font-semibold">Monto</th>
-                <th className="border p-2 text-left font-semibold">Estado</th>
-            </tr>
-            </thead>
-            <tbody>
-            {invoices.length === 0 ? (
-                <tr>
-                <td colSpan={6} className="border p-2 text-center text-gray-500">
-                    No hay facturas que coincidan con los filtros aplicados.
-                </td>
-                </tr>
-            ) : (
-                invoices.map((invoice) => (
-                <tr key={invoice.id} className="break-inside-avoid-page">
-                    <td className="border p-1 align-top">{invoice.id ? invoice.id.substring(0, 8) : 'N/A'}...</td>
-                    <td className="border p-1 align-top">{invoice.customerName || 'N/A'}</td>
-                    <td className="border p-1 align-top">{safeFormatDate(invoice.timestamp)}</td>
-                    <td className="border p-1 align-top">{safeFormatDate(invoice.paymentDetails.dueDate)}</td>
-                    <td className="border p-1 align-top text-right">
-                    {appSettings.currencySymbol}{(invoice.totalAmount || 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </td>
-                    <td className="border p-1 align-top">{getStatusText(invoice.paymentDetails.status)}</td>
-                </tr>
-                ))
-            )}
-            </tbody>
-        </table>
+        <div className="w-full text-xs">
+            {/* Header */}
+            <div className="grid grid-cols-6 gap-2 font-semibold bg-gray-100 p-2 border-b">
+                <div className="col-span-1">Factura #</div>
+                <div className="col-span-1">Cliente</div>
+                <div className="col-span-1">F. Emisión</div>
+                <div className="col-span-1">F. Vencimiento</div>
+                <div className="col-span-1 text-right">Monto</div>
+                <div className="col-span-1">Estado</div>
+            </div>
+            {/* Body */}
+            <div className="border-l border-r border-b">
+                {invoices.length === 0 ? (
+                    <div className="p-2 text-center text-gray-500">No hay facturas que coincidan con los filtros aplicados.</div>
+                ) : (
+                    invoices.map((invoice) => (
+                        <div key={invoice.id} className="grid grid-cols-6 gap-2 p-2 border-b last:border-b-0 break-inside-avoid-page items-center">
+                            <div className="align-top font-mono">{invoice.id ? invoice.id.substring(0, 8) : 'N/A'}...</div>
+                            <div className="align-top">{invoice.customerName || 'N/A'}</div>
+                            <div className="align-top">{safeFormatDate(invoice.timestamp)}</div>
+                            <div className="align-top">{safeFormatDate(invoice.paymentDetails.dueDate)}</div>
+                            <div className="align-top text-right">
+                                {appSettings.currencySymbol}{(invoice.totalAmount || 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                            <div className="align-top">{getStatusText(invoice.paymentDetails.status)}</div>
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
       </section>
       
       <footer className="mt-8 pt-4 border-t text-center text-xs text-gray-500">

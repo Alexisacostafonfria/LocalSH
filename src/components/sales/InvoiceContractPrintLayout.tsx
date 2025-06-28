@@ -4,7 +4,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { Sale, AppSettings, BusinessSettings, InvoicePaymentDetails, Customer } from '@/types';
+import { Sale, AppSettings, BusinessSettings, InvoicePaymentDetails, Customer, SaleItem } from '@/types';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -66,66 +66,58 @@ const InvoiceContractPrintLayout: React.FC<InvoiceContractPrintLayoutProps> = ({
         {hasPreviousDebt && (
             <div className="my-4">
                 <h3 className="font-bold text-sm">DETALLE DE DEUDA ANTERIOR</h3>
-                <table className="w-full border-collapse text-xs my-1">
-                    <thead>
-                        <tr className="bg-gray-100">
-                            <th className="border p-1 text-left font-semibold">Factura Nº</th>
-                            <th className="border p-1 text-left font-semibold">Fecha Emisión</th>
-                            <th className="border p-1 text-right font-semibold">Monto Original</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {previousInvoices.map(inv => (
-                            <tr key={inv.id}>
-                                <td className="border p-1">{inv.id.substring(0, 8)}</td>
-                                <td className="border p-1">{format(parseISO(inv.timestamp), 'dd/MM/yyyy')}</td>
-                                <td className="border p-1 text-right">{currencySymbol}{inv.totalAmount.toLocaleString('es-ES', {minimumFractionDigits: 2})}</td>
-                            </tr>
-                        ))}
-                        <tr className="font-bold bg-gray-100">
-                            <td colSpan={2} className="border p-1 text-right">TOTAL DEUDA ANTERIOR:</td>
-                            <td className="border p-1 text-right">{currencySymbol}{totalPreviousDebt.toLocaleString('es-ES', {minimumFractionDigits: 2})}</td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div className="w-full text-xs my-1 border rounded-md">
+                    <div className="grid grid-cols-3 gap-1 font-bold bg-gray-100 p-1 border-b">
+                        <div className="col-span-1">Factura Nº</div>
+                        <div className="col-span-1">Fecha Emisión</div>
+                        <div className="col-span-1 text-right">Monto Original</div>
+                    </div>
+                    {previousInvoices.map(inv => (
+                        <div key={inv.id} className="grid grid-cols-3 gap-1 p-1 border-b last:border-b-0">
+                            <div className="col-span-1">{inv.id.substring(0, 8)}</div>
+                            <div className="col-span-1">{format(parseISO(inv.timestamp), 'dd/MM/yyyy')}</div>
+                            <div className="col-span-1 text-right">{currencySymbol}{inv.totalAmount.toLocaleString('es-ES', {minimumFractionDigits: 2})}</div>
+                        </div>
+                    ))}
+                    <div className="grid grid-cols-3 gap-1 font-bold bg-gray-100 p-1 border-t">
+                        <div className="col-span-2 text-right">TOTAL DEUDA ANTERIOR:</div>
+                        <div className="col-span-1 text-right">{currencySymbol}{totalPreviousDebt.toLocaleString('es-ES', {minimumFractionDigits: 2})}</div>
+                    </div>
+                </div>
             </div>
         )}
 
         <h3 className="font-bold text-sm">DETALLE DE NUEVA COMPRA (Factura Nº {sale.id.substring(0,8)})</h3>
-        <table className="w-full border-collapse text-xs my-1">
-            <thead>
-                <tr className="bg-gray-100">
-                    <th className="border p-1 text-left font-semibold">Producto</th>
-                    <th className="border p-1 text-right font-semibold">Cantidad</th>
-                    <th className="border p-1 text-right font-semibold">P. Unitario</th>
-                    <th className="border p-1 text-right font-semibold">Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                {sale.items.map(item => (
-                    <tr key={item.productId}>
-                        <td className="border p-1">{item.productName}</td>
-                        <td className="border p-1 text-right">{item.quantity}</td>
-                        <td className="border p-1 text-right">{currencySymbol}{item.unitPrice.toLocaleString('es-ES', {minimumFractionDigits: 2})}</td>
-                        <td className="border p-1 text-right">{currencySymbol}{item.totalPrice.toLocaleString('es-ES', {minimumFractionDigits: 2})}</td>
-                    </tr>
-                ))}
-                <tr className="bg-gray-50">
-                    <td colSpan={3} className="border p-1 text-right">Subtotal Nueva Compra:</td>
-                    <td className="border p-1 text-right">{currencySymbol}{sale.subTotal.toLocaleString('es-ES', {minimumFractionDigits: 2})}</td>
-                </tr>
-                {sale.fees && sale.fees.map((fee, index) => (
-                    <tr key={index} className="bg-gray-50">
-                        <td colSpan={3} className="border p-1 text-right">{fee.description} ({invoicePaymentFeePercentage}%):</td>
-                        <td className="border p-1 text-right">{currencySymbol}{fee.amount.toLocaleString('es-ES', {minimumFractionDigits: 2})}</td>
-                    </tr>
-                ))}
-                <tr className="font-bold bg-gray-100">
-                    <td colSpan={3} className="border p-1 text-right">TOTAL NUEVA COMPRA (Factura Nº {sale.id.substring(0,8)}):</td>
-                    <td className="border p-1 text-right">{currencySymbol}{sale.totalAmount.toLocaleString('es-ES', {minimumFractionDigits: 2})}</td>
-                </tr>
-            </tbody>
-        </table>
+        <div className="w-full text-xs my-1 border rounded-md">
+            <div className="grid grid-cols-10 gap-1 font-bold bg-gray-100 p-1 border-b">
+                <div className="col-span-5">Producto</div>
+                <div className="col-span-1 text-right">Cant.</div>
+                <div className="col-span-2 text-right">P. Unitario</div>
+                <div className="col-span-2 text-right">Total</div>
+            </div>
+            {sale.items.map((item:SaleItem) => (
+                <div key={item.productId} className="grid grid-cols-10 gap-1 p-1 border-b last:border-b-0">
+                    <div className="col-span-5">{item.productName}</div>
+                    <div className="col-span-1 text-right">{item.quantity}</div>
+                    <div className="col-span-2 text-right">{currencySymbol}{item.unitPrice.toLocaleString('es-ES', {minimumFractionDigits: 2})}</div>
+                    <div className="col-span-2 text-right">{currencySymbol}{item.totalPrice.toLocaleString('es-ES', {minimumFractionDigits: 2})}</div>
+                </div>
+            ))}
+            <div className="grid grid-cols-10 gap-1 p-1 border-t bg-gray-50">
+                <div className="col-span-8 text-right">Subtotal Nueva Compra:</div>
+                <div className="col-span-2 text-right">{currencySymbol}{sale.subTotal.toLocaleString('es-ES', {minimumFractionDigits: 2})}</div>
+            </div>
+            {sale.fees && sale.fees.map((fee, index) => (
+                <div key={index} className="grid grid-cols-10 gap-1 p-1 border-b bg-gray-50">
+                    <div className="col-span-8 text-right">{fee.description} ({invoicePaymentFeePercentage}%):</div>
+                    <div className="col-span-2 text-right">{currencySymbol}{fee.amount.toLocaleString('es-ES', {minimumFractionDigits: 2})}</div>
+                </div>
+            ))}
+            <div className="grid grid-cols-10 gap-1 font-bold p-1 border-t bg-gray-100">
+                <div className="col-span-8 text-right">TOTAL NUEVA COMPRA (Factura Nº {sale.id.substring(0,8)}):</div>
+                <div className="col-span-2 text-right">{currencySymbol}{sale.totalAmount.toLocaleString('es-ES', {minimumFractionDigits: 2})}</div>
+            </div>
+        </div>
 
         <div className="flex justify-end mt-4">
             <div className="w-1/2 bg-yellow-100 border-2 border-yellow-400 p-2">

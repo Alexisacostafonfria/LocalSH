@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React from 'react';
@@ -93,112 +92,109 @@ const OperationsReportPrintLayout: React.FC<OperationsReportPrintLayoutProps> = 
         </div>
       </header>
 
-      <table className="w-full border-collapse text-xs">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="border p-2 text-left font-semibold">ID Venta</th>
-            <th className="border p-2 text-left font-semibold">Fecha Venta</th>
-            <th className="border p-2 text-left font-semibold">Origen</th>
-            <th className="border p-2 text-left font-semibold">Cliente</th>
-            <th className="border p-2 text-center font-semibold">Items</th>
-            <th className="border p-2 text-right font-semibold">Total</th>
-            <th className="border p-2 text-left font-semibold">Método Pago</th>
-          </tr>
-        </thead>
-        <tbody>
-          {operations.length === 0 ? (
-            <tr>
-              <td colSpan={7} className="border p-2 text-center text-gray-500">
-                No hay operaciones para mostrar en este periodo.
-              </td>
-            </tr>
-          ) : (
-            operations.map((sale) => (
-              <tr key={sale.id} className="break-inside-avoid-page">
-                <td className="border p-2 align-top">{sale.id.substring(0, 8)}...</td>
-                <td className="border p-2 align-top">{formatDateSafe(sale.timestamp, "dd MMM yy, HH:mm")}</td>
-                <td className="border p-2 align-top">{sale.origin === 'pos' ? 'POS' : 'Pedido'}</td>
-                <td className="border p-2 align-top">{sale.customerName || 'N/A'}</td>
-                <td className="border p-2 align-top text-center">{sale.items.reduce((sum, item) => sum + item.quantity, 0)}</td>
-                <td className="border p-2 align-top text-right">
-                  {appSettings.currencySymbol}
-                  {sale.totalAmount.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </td>
-                <td className="border p-2 align-top">
-                  {sale.paymentMethod.charAt(0).toUpperCase() + sale.paymentMethod.slice(1)}
-                  {sale.paymentMethod === 'invoice' && ` (${(sale.paymentDetails as InvoicePaymentDetails).status})`}
-                </td>
-              </tr>
-            ))
+      <div className="w-full text-xs">
+          {/* Header */}
+          <div className="grid grid-cols-8 gap-2 font-semibold bg-gray-100 p-2 border-b">
+              <div className="col-span-1">ID Venta</div>
+              <div className="col-span-1">Fecha Venta</div>
+              <div className="col-span-1">Origen</div>
+              <div className="col-span-2">Cliente</div>
+              <div className="col-span-1 text-center">Items</div>
+              <div className="col-span-1 text-right">Total</div>
+              <div className="col-span-1">Método Pago</div>
+          </div>
+          {/* Body */}
+          <div className="border-l border-r border-b">
+              {operations.length === 0 ? (
+                  <div className="p-2 text-center text-gray-500">No hay operaciones para mostrar en este periodo.</div>
+              ) : (
+                  operations.map((sale) => (
+                      <div key={sale.id} className="grid grid-cols-8 gap-2 p-2 border-b last:border-b-0 break-inside-avoid-page">
+                          <div className="col-span-1 align-top">{sale.id.substring(0, 8)}...</div>
+                          <div className="col-span-1 align-top">{formatDateSafe(sale.timestamp, "dd MMM yy, HH:mm")}</div>
+                          <div className="col-span-1 align-top">{sale.origin === 'pos' ? 'POS' : 'Pedido'}</div>
+                          <div className="col-span-2 align-top">{sale.customerName || 'N/A'}</div>
+                          <div className="col-span-1 align-top text-center">{sale.items.reduce((sum, item) => sum + item.quantity, 0)}</div>
+                          <div className="col-span-1 align-top text-right">
+                              {appSettings.currencySymbol}
+                              {sale.totalAmount.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </div>
+                          <div className="col-span-1 align-top">
+                            {sale.paymentMethod.charAt(0).toUpperCase() + sale.paymentMethod.slice(1)}
+                            {sale.paymentMethod === 'invoice' && ` (${(sale.paymentDetails as InvoicePaymentDetails).status})`}
+                          </div>
+                      </div>
+                  ))
+              )}
+          </div>
+          {/* Footer */}
+          {operations.length > 0 && (
+            <div className="mt-4 space-y-1 bg-gray-100 p-2 rounded-md">
+                <div className="flex justify-between font-semibold">
+                  <span>Ingresos Totales:</span>
+                  <span>
+                    {appSettings.currencySymbol}
+                    {totalRevenue.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Total Cargos por Servicio:</span>
+                  <span>
+                    {appSettings.currencySymbol}
+                    {totalFees.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Total Transacciones:</span>
+                  <span>{numberOfTransactions}</span>
+                </div>
+                <div className="flex justify-between pt-2 mt-1 border-t">
+                  <span>Total Ventas Directas (POS):</span>
+                  <span>
+                    {appSettings.currencySymbol}
+                    {totalPosSales.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Total Ventas por Pedidos:</span>
+                  <span>
+                    {appSettings.currencySymbol}
+                    {totalOrderSales.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="flex justify-between pt-2 mt-1 border-t">
+                  <span>Total Ventas Efectivo:</span>
+                  <span>
+                    {appSettings.currencySymbol}
+                    {totalCashSales.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Total Ventas Transferencia:</span>
+                  <span>
+                    {appSettings.currencySymbol}
+                    {totalTransferSales.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Total Ventas a Crédito (Factura):</span>
+                  <span>
+                    {appSettings.currencySymbol}
+                    {totalInvoiceSales.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                {appSettings.allowTips && (
+                  <div className="flex justify-between">
+                    <span>Total Propinas Recaudadas (Efectivo):</span>
+                    <span>
+                      {appSettings.currencySymbol}
+                      {totalTipsCollected.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                )}
+            </div>
           )}
-        </tbody>
-        {operations.length > 0 && (
-          <tfoot className="bg-gray-100 font-semibold">
-            <tr>
-              <td colSpan={6} className="border p-2 text-right">Ingresos Totales:</td>
-              <td className="border p-2 text-right">
-                {appSettings.currencySymbol}
-                {totalRevenue.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </td>
-            </tr>
-            <tr>
-              <td colSpan={6} className="border p-2 text-right">Total Cargos por Servicio:</td>
-              <td className="border p-2 text-right">
-                {appSettings.currencySymbol}
-                {totalFees.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </td>
-            </tr>
-            <tr>
-              <td colSpan={6} className="border p-2 text-right">Total Transacciones:</td>
-              <td className="border p-2 text-right">{numberOfTransactions}</td>
-            </tr>
-             <tr>
-              <td colSpan={6} className="border p-2 text-right">Total Ventas Directas (POS):</td>
-              <td className="border p-2 text-right">
-                {appSettings.currencySymbol}
-                {totalPosSales.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </td>
-            </tr>
-            <tr>
-              <td colSpan={6} className="border p-2 text-right">Total Ventas por Pedidos:</td>
-              <td className="border p-2 text-right">
-                {appSettings.currencySymbol}
-                {totalOrderSales.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </td>
-            </tr>
-            <tr>
-              <td colSpan={6} className="border p-2 text-right">Total Ventas Efectivo:</td>
-              <td className="border p-2 text-right">
-                {appSettings.currencySymbol}
-                {totalCashSales.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </td>
-            </tr>
-            <tr>
-              <td colSpan={6} className="border p-2 text-right">Total Ventas Transferencia:</td>
-              <td className="border p-2 text-right">
-                {appSettings.currencySymbol}
-                {totalTransferSales.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </td>
-            </tr>
-            <tr>
-              <td colSpan={6} className="border p-2 text-right">Total Ventas a Crédito (Factura):</td>
-              <td className="border p-2 text-right">
-                {appSettings.currencySymbol}
-                {totalInvoiceSales.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </td>
-            </tr>
-            {appSettings.allowTips && (
-              <tr>
-                <td colSpan={6} className="border p-2 text-right">Total Propinas Recaudadas (Efectivo):</td>
-                <td className="border p-2 text-right">
-                  {appSettings.currencySymbol}
-                  {totalTipsCollected.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </td>
-              </tr>
-            )}
-          </tfoot>
-        )}
-      </table>
+      </div>
       <footer className="mt-6 pt-4 border-t text-center text-xs text-gray-500">
         <p>Fin del Reporte</p>
         <p className="mt-1">&copy; {new Date().getFullYear()} Ing. Alexis Acosta Fonfrias. Diseño y Programación.</p>

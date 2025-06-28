@@ -95,24 +95,20 @@ const DailyClosureReportPrintLayout: React.FC<DailyClosureReportPrintLayoutProps
 
         <h4 className="text-sm font-semibold mt-3 mb-1">Detalle del Efectivo Contado:</h4>
         {dailySummary.countedCashBreakdown.length > 0 ? (
-          <table className="w-full border-collapse text-xs mb-2">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="border p-1 text-left font-medium">Denominación</th>
-                <th className="border p-1 text-right font-medium">Cantidad</th>
-                <th className="border p-1 text-right font-medium">Valor Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {dailySummary.countedCashBreakdown.sort((a,b) => b.denomination - a.denomination).map(item => (
-                <tr key={item.denomination}>
-                  <td className="border p-1">{appSettings.currencySymbol}{item.denomination.toLocaleString('es-ES')}</td>
-                  <td className="border p-1 text-right">{item.count}</td>
-                  <td className="border p-1 text-right">{appSettings.currencySymbol}{item.totalValue.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="space-y-1 text-xs border-t border-b py-2 my-2">
+            <div className="grid grid-cols-3 font-semibold mb-1">
+              <span>Denominación</span>
+              <span className="text-right">Cantidad</span>
+              <span className="text-right">Valor Total</span>
+            </div>
+            {dailySummary.countedCashBreakdown.sort((a, b) => b.denomination - a.denomination).map(item => (
+              <div key={item.denomination} className="grid grid-cols-3">
+                <span>{appSettings.currencySymbol}{item.denomination.toLocaleString('es-ES')}</span>
+                <span className="text-right">{item.count}</span>
+                <span className="text-right">{appSettings.currencySymbol}{item.totalValue.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</span>
+              </div>
+            ))}
+          </div>
         ) : (
           <p className="text-xs text-gray-500 mb-2">No se ingresó desglose de efectivo contado.</p>
         )}

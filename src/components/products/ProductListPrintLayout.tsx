@@ -46,61 +46,58 @@ const ProductListPrintLayout: React.FC<ProductListPrintLayoutProps> = ({
           </div>
         </div>
       </header>
+      
+      <div className="w-full text-xs">
+          {/* Header */}
+          <div className="grid grid-cols-12 gap-2 font-semibold bg-gray-100 p-2 border-b">
+              <div className="col-span-3">Nombre</div>
+              <div className="col-span-2">Categoría</div>
+              <div className="col-span-1 text-right">P. Venta</div>
+              <div className="col-span-1 text-right">P. Costo</div>
+              <div className="col-span-1 text-right">Stock</div>
+              <div className="col-span-1">U. Med.</div>
+              <div className="col-span-3 text-center">Código de Barras</div>
+          </div>
+          {/* Body */}
+          <div className="border-l border-r border-b">
+              {products.length === 0 ? (
+                  <div className="p-2 text-center text-gray-500">No hay productos en el catálogo.</div>
+              ) : (
+                  products.map((product) => (
+                      <div key={product.id} className="grid grid-cols-12 gap-2 p-2 items-center border-b last:border-b-0 break-inside-avoid-page">
+                          <div className="col-span-3 align-top">{product.name}</div>
+                          <div className="col-span-2 align-top">{product.category}</div>
+                          <div className="col-span-1 align-top text-right">
+                              {appSettings.currencySymbol}
+                              {(typeof product.price === 'number' && isFinite(product.price) ? product.price : 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </div>
+                          <div className="col-span-1 align-top text-right">
+                              {appSettings.currencySymbol}
+                              {(typeof product.costPrice === 'number' && isFinite(product.costPrice) ? product.costPrice : 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </div>
+                          <div className="col-span-1 align-top text-right">{product.stock}</div>
+                          <div className="col-span-1 align-top">{product.unitOfMeasure || 'N/A'}</div>
+                          <div className="col-span-3 align-middle text-center">
+                              {product.id && (
+                              <div style={{ display: 'inline-block', minWidth: '120px', padding: '2px 0' }}>
+                                  <ProductBarcode 
+                                      productId={product.id}
+                                      printMode={true}
+                                      barcodeWidth={1.5}
+                                      barcodeHeight={40}
+                                      barcodeFontSize={14} 
+                                      barcodeTextMargin={3}
+                                      barcodeMargin={4}
+                                  />
+                              </div>
+                              )}
+                          </div>
+                      </div>
+                  ))
+              )}
+          </div>
+      </div>
 
-      <table className="w-full border-collapse text-xs">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="border p-2 text-left font-semibold">Nombre</th>
-            <th className="border p-2 text-left font-semibold">Categoría</th>
-            <th className="border p-2 text-right font-semibold">Precio Venta</th>
-            <th className="border p-2 text-right font-semibold">Precio Costo</th>
-            <th className="border p-2 text-right font-semibold">Stock</th>
-            <th className="border p-2 text-left font-semibold">U. Medida</th>
-            <th className="border p-2 text-center font-semibold">Código de Barras</th>
-          </tr>
-        </thead>
-        <tbody>
-          {products.length === 0 ? (
-            <tr>
-              <td colSpan={7} className="border p-2 text-center text-gray-500">
-                No hay productos en el catálogo.
-              </td>
-            </tr>
-          ) : (
-            products.map((product) => (
-              <tr key={product.id} className="break-inside-avoid-page">
-                <td className="border p-2 align-top">{product.name}</td>
-                <td className="border p-2 align-top">{product.category}</td>
-                <td className="border p-2 align-top text-right">
-                  {appSettings.currencySymbol}
-                  {(typeof product.price === 'number' && isFinite(product.price) ? product.price : 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </td>
-                <td className="border p-2 align-top text-right">
-                  {appSettings.currencySymbol}
-                  {(typeof product.costPrice === 'number' && isFinite(product.costPrice) ? product.costPrice : 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </td>
-                <td className="border p-2 align-top text-right">{product.stock}</td>
-                <td className="border p-2 align-top">{product.unitOfMeasure || 'N/A'}</td>
-                <td className="border p-2 align-middle text-center">
-                  {product.id && (
-                    <div style={{ display: 'inline-block', minWidth: '120px', padding: '2px 0' }}>
-                      <ProductBarcode 
-                        productId={product.id}
-                        printMode={true}
-                        barcodeWidth={1.5}
-                        barcodeHeight={40}
-                        barcodeFontSize={14} 
-                        barcodeTextMargin={3}
-                        barcodeMargin={4}
-                      />
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
       <footer className="mt-6 pt-4 border-t text-center text-xs text-gray-500">
         <p>Fin del Reporte de Productos</p>
         <p className="mt-1">&copy; {new Date().getFullYear()} Ing. Alexis Acosta Fonfrias. Diseño y Programación.</p>

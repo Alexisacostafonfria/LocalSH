@@ -54,45 +54,41 @@ const ProductMovementsReportPrintLayout: React.FC<ProductMovementsReportPrintLay
         </div>
       </header>
 
-      <table className="w-full border-collapse text-xs">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="border p-2 text-left font-semibold">ID Producto</th>
-            <th className="border p-2 text-left font-semibold">Nombre del Producto</th>
-            <th className="border p-2 text-right font-semibold">Cant. Vendida Hoy</th>
-            <th className="border p-2 text-right font-semibold">Stock Restante</th>
-          </tr>
-        </thead>
-        <tbody>
-          {movements.length === 0 ? (
-            <tr>
-              <td colSpan={4} className="border p-2 text-center text-gray-500">
-                No se registraron movimientos de productos para este día.
-              </td>
-            </tr>
-          ) : (
-            movements.map((movement) => (
-              <tr key={movement.productId} className="break-inside-avoid-page">
-                <td className="border p-2 align-top">{movement.productId.substring(0,16)}...</td>
-                <td className="border p-2 align-top">{movement.productName}</td>
-                <td className="border p-2 align-top text-right">{movement.quantitySold}</td>
-                <td className="border p-2 align-top text-right">{movement.remainingStock}</td>
-              </tr>
-            ))
+      <div className="w-full text-xs">
+          {/* Header */}
+          <div className="grid grid-cols-12 gap-4 font-semibold bg-gray-100 p-2 border-b">
+              <div className="col-span-4">ID Producto</div>
+              <div className="col-span-4">Nombre del Producto</div>
+              <div className="col-span-2 text-right">Cant. Vendida Hoy</div>
+              <div className="col-span-2 text-right">Stock Restante</div>
+          </div>
+          {/* Body */}
+          <div className="border-l border-r border-b">
+              {movements.length === 0 ? (
+                  <div className="p-2 text-center text-gray-500">No se registraron movimientos de productos para este día.</div>
+              ) : (
+                  movements.map((movement) => (
+                      <div key={movement.productId} className="grid grid-cols-12 gap-4 p-2 border-b last:border-b-0 break-inside-avoid-page">
+                          <div className="col-span-4 align-top">{movement.productId.substring(0,16)}...</div>
+                          <div className="col-span-4 align-top">{movement.productName}</div>
+                          <div className="col-span-2 align-top text-right">{movement.quantitySold}</div>
+                          <div className="col-span-2 align-top text-right">{movement.remainingStock}</div>
+                      </div>
+                  ))
+              )}
+          </div>
+          {/* Footer */}
+          {movements.length > 0 && (
+          <div className="grid grid-cols-12 gap-4 font-semibold bg-gray-100 p-2 border-t mt-2">
+              <div className="col-span-8 text-right">Total Unidades Vendidas:</div>
+              <div className="col-span-2 text-right">
+                  {movements.reduce((sum, item) => sum + item.quantitySold, 0)}
+              </div>
+              <div className="col-span-2"></div>
+          </div>
           )}
-        </tbody>
-       {movements.length > 0 && (
-        <tfoot className="bg-gray-100 font-semibold">
-            <tr>
-                <td colSpan={2} className="border p-2 text-right">Total Unidades Vendidas:</td>
-                <td className="border p-2 text-right">
-                    {movements.reduce((sum, item) => sum + item.quantitySold, 0)}
-                </td>
-                <td className="border p-2"></td>
-            </tr>
-        </tfoot>
-        )}
-      </table>
+      </div>
+
       <footer className="mt-6 pt-4 border-t text-center text-xs text-gray-500">
         <p>Fin del Reporte de Movimientos de Productos</p>
         <p className="mt-1">&copy; {new Date().getFullYear()} Ing. Alexis Acosta Fonfrias. Diseño y Programación.</p>
