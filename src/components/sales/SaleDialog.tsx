@@ -412,8 +412,8 @@ export default function SaleDialog({
       return;
     }
 
-    if (customerHasDebt) {
-        toast({ title: "Venta Bloqueada", description: "No se pueden realizar ventas a clientes con deudas pendientes.", variant: "destructive" });
+    if (customerHasDebt && (paymentMethod === 'cash' || paymentMethod === 'transfer')) {
+        toast({ title: "Venta Bloqueada", description: "No se pueden realizar ventas en efectivo/transferencia a clientes con deudas pendientes.", variant: "destructive" });
         return;
     }
     
@@ -524,14 +524,9 @@ export default function SaleDialog({
   
   const hasActiveBreakdown = Object.values(cashBreakdownInputs).some(val => val && parseInt(val) > 0);
   
-  const customerStepNextButtonDisabled = customerHasDebt || (paymentMethod === 'transfer' && 
-                                          (!currentTransactionCustomer?.name || 
-                                           !currentTransactionCustomer?.personalId || !currentTransactionCustomer?.phone || !currentTransactionCustomer?.cardNumber || currentTransactionCustomer.cardNumber.replace(/[^0-9]/g, "").length !== 16)) ||
-                                           (paymentMethod === 'invoice' && selectedCustomerId === ANONYMOUS_CUSTOMER_VALUE);
-
   const finalizeSaleButtonDisabled = saleItems.length === 0 ||
     !isDayEffectivelyOpen ||
-    customerHasDebt ||
+    (customerHasDebt && (paymentMethod === 'cash' || paymentMethod === 'transfer')) ||
     (paymentMethod === 'cash' && (
       ((isFinite(cashDetails.amountReceived) ? cashDetails.amountReceived : 0) - (isFinite(cashDetails.tip) ? cashDetails.tip : 0)) < (isFinite(totalAmount) ? totalAmount : 0) ||
       !isFinite(cashDetails.tip) || cashDetails.tip < 0 ||
@@ -542,7 +537,7 @@ export default function SaleDialog({
       !currentTransactionCustomer?.personalId ||
       !currentTransactionCustomer?.phone ||
       !currentTransactionCustomer?.cardNumber ||
-      currentTransactionCustomer.cardNumber.replace(/[^0-g]/g, "").length !== 16
+      currentTransactionCustomer.cardNumber.replace(/[^0-9]/g, "").length !== 16
     )) ||
     (paymentMethod === 'invoice' && (
         selectedCustomerId === ANONYMOUS_CUSTOMER_VALUE || !invoiceDueDate
@@ -660,17 +655,6 @@ export default function SaleDialog({
                 </SelectContent>
               </Select>
               
-              {customerHasDebt && debtDetails && (
-                <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Cliente con Deuda Pendiente</AlertTitle>
-                  <AlertDescription>
-                    Este cliente tiene {debtDetails.count} factura(s) pendiente(s) por un total de {appSettings.currencySymbol}{debtDetails.total.toLocaleString('es-ES', {minimumFractionDigits: 2})}.
-                    No se pueden realizar nuevas transacciones hasta que se liquide la deuda en el módulo de Cuentas por Cobrar.
-                  </AlertDescription>
-                </Alert>
-              )}
-
               <Button variant="outline" size="sm" onClick={handleToggleAddNewSystemCustomer}>
                 <UserPlus className="mr-2 h-4 w-4" /> {isAddingNewSystemCustomer ? 'Cancelar Nuevo Cliente del Sistema' : 'Añadir Nuevo Cliente al Sistema'}
               </Button>
@@ -716,6 +700,19 @@ export default function SaleDialog({
           <Card className="flex-grow">
             <CardHeader><CardTitle className="text-lg font-headline">Resumen y Pago</CardTitle></CardHeader>
             <CardContent className="space-y-3">
+              {customerHasDebt && debtDetails && (
+                <Alert variant="warning">
+                    <AlertTriangle className="h-4 w-4"/>
+                    <AlertTitle>Cliente con Deuda Pendiente</AlertTitle>
+                    <AlertDescription>
+                        Este cliente tiene {debtDetails.count} factura(s) pendiente(s) por un total de {appSettings.currencySymbol}{debtDetails.total.toLocaleString('es-ES', { minimumFractionDigits: 2 })}.
+                        {(paymentMethod === 'cash' || paymentMethod === 'transfer') ? 
+                            ' Los pagos con este método están bloqueados hasta que se liquide la deuda en Cuentas por Cobrar.' :
+                            ' Si genera una nueva factura, se asumirá una renegociación del crédito.'
+                        }
+                    </AlertDescription>
+                </Alert>
+              )}
               <div className="text-3xl font-bold text-right text-primary">
                 Total: {appSettings.currencySymbol}{(isFinite(totalAmount) ? totalAmount : 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
@@ -945,7 +942,7 @@ export default function SaleDialog({
               <Button 
                 onClick={() => setCurrentStep('payment')}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                disabled={!isDayEffectivelyOpen || customerHasDebt}
+                disabled={!isDayEffectivelyOpen}
               >
                 Siguiente (Pago) <ArrowRight className="ml-2 h-4 w-4" />
               </Button>

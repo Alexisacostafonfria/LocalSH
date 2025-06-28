@@ -93,8 +93,8 @@ export default function PaymentDialog({ isOpen, onClose, order, onConfirm, appSe
   };
 
   const handleConfirmPayment = () => {
-    if (customerHasDebt) {
-        toast({ title: "Acción Bloqueada", description: "El cliente tiene deudas pendientes. No se puede completar el pedido.", variant: 'destructive' });
+    if (customerHasDebt && (paymentMethod === 'cash' || paymentMethod === 'transfer')) {
+        toast({ title: "Acción Bloqueada", description: "El cliente tiene deudas pendientes. No se puede completar el pedido con efectivo o transferencia.", variant: 'destructive' });
         return;
     }
 
@@ -144,7 +144,8 @@ export default function PaymentDialog({ isOpen, onClose, order, onConfirm, appSe
   
   const hasActiveBreakdown = Object.values(cashBreakdownInputs).some(val => val && parseInt(val) > 0);
 
-  const finalizeButtonDisabled = customerHasDebt ||
+  const finalizeButtonDisabled = 
+    (customerHasDebt && (paymentMethod === 'cash' || paymentMethod === 'transfer')) ||
     (paymentMethod === 'cash' && ((cashDetails.amountReceived || 0) < totalAmount || (appSettings.allowTips && (cashDetails.tip || 0) > ((cashDetails.amountReceived || 0) - totalAmount)))) ||
     (paymentMethod === 'invoice' && (!order.customerId || !invoiceDueDate));
 
@@ -158,12 +159,15 @@ export default function PaymentDialog({ isOpen, onClose, order, onConfirm, appSe
 
         <div className="space-y-4 py-4">
           {customerHasDebt && debtDetails && (
-            <Alert variant="destructive">
+            <Alert variant="warning">
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Cliente con Deuda Pendiente</AlertTitle>
               <AlertDescription>
                 Este cliente tiene {debtDetails.count} factura(s) pendiente(s) por un total de {appSettings.currencySymbol}{debtDetails.total.toLocaleString('es-ES', { minimumFractionDigits: 2 })}.
-                El pedido no puede completarse hasta que se liquide la deuda en Cuentas por Cobrar.
+                 {(paymentMethod === 'cash' || paymentMethod === 'transfer') ? 
+                    ' El pedido no puede completarse con este método de pago hasta que se liquide la deuda.' :
+                    ' Si genera una nueva factura, se asumirá una renegociación del crédito.'
+                }
               </AlertDescription>
             </Alert>
           )}
