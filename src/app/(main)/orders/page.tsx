@@ -1,4 +1,5 @@
 
+
 // src/app/(main)/orders/page.tsx
 "use client";
 
@@ -122,6 +123,16 @@ export default function OrdersPage() {
   };
 
   const handleCompleteOrder = (completedOrder: Order, paymentDetails: PaymentDetails) => {
+    // Determine payment method from paymentDetails structure
+    let paymentMethod: 'cash' | 'transfer' | 'invoice';
+    if ('amountReceived' in paymentDetails) {
+      paymentMethod = 'cash';
+    } else if ('dueDate' in paymentDetails) {
+      paymentMethod = 'invoice';
+    } else {
+      paymentMethod = 'transfer';
+    }
+
     // 1. Create Sale Object
     const newSale: Sale = {
       id: crypto.randomUUID(),
@@ -134,7 +145,7 @@ export default function OrdersPage() {
       items: completedOrder.items,
       subTotal: completedOrder.totalAmount,
       totalAmount: completedOrder.totalAmount,
-      paymentMethod: paymentDetails.hasOwnProperty('amountReceived') ? 'cash' : 'transfer',
+      paymentMethod: paymentMethod, // Correctly determined method
       paymentDetails: paymentDetails,
     };
     
@@ -145,7 +156,8 @@ export default function OrdersPage() {
     const updatedProducts = products.map(p => {
         const itemInOrder = completedOrder.items.find(item => item.productId === p.id);
         if (itemInOrder) {
-            return { ...p, stock: p.stock - itemInOrder.quantity };
+            const newStock = p.stock - itemInOrder.quantity;
+            return { ...p, stock: Math.max(0, newStock) };
         }
         return p;
     });
