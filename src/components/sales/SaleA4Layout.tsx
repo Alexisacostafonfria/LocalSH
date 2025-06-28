@@ -50,25 +50,24 @@ const SaleA4Layout: React.FC<SaleA4LayoutProps> = ({ sale, appSettings, business
 
       <section className="mb-8">
         <h3 className="font-bold border-b mb-2 pb-1">Items</h3>
-        <div className="w-full text-xs">
+        <div className="w-full text-xs space-y-2">
             {/* Header */}
-            <div className="grid grid-cols-12 gap-2 font-bold bg-gray-100 p-2 border-b">
-                <div className="col-span-6">Producto</div>
-                <div className="col-span-2 text-right">Cantidad</div>
-                <div className="col-span-2 text-right">P. Unitario</div>
-                <div className="col-span-2 text-right">Total</div>
+            <div className="flex font-bold text-gray-500">
+                <div className="w-6/12">Producto</div>
+                <div className="w-2/12 text-right">Cantidad</div>
+                <div className="w-2/12 text-right">P. Unitario</div>
+                <div className="w-2/12 text-right">Total</div>
             </div>
+             <hr className="border-gray-300"/>
             {/* Body */}
-            <div className="border-l border-r border-b">
-                {sale.items.map((item: SaleItem) => (
-                <div key={item.productId} className="grid grid-cols-12 gap-2 p-2 border-b last:border-b-0">
-                    <div className="col-span-6">{item.productName}</div>
-                    <div className="col-span-2 text-right">{item.quantity}</div>
-                    <div className="col-span-2 text-right">{currencySymbol}{item.unitPrice.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</div>
-                    <div className="col-span-2 text-right">{currencySymbol}{item.totalPrice.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</div>
-                </div>
-                ))}
+            {sale.items.map((item: SaleItem) => (
+            <div key={item.productId} className="flex py-1 border-b border-dashed">
+                <div className="w-6/12">{item.productName}</div>
+                <div className="w-2/12 text-right">{item.quantity}</div>
+                <div className="w-2/12 text-right">{currencySymbol}{item.unitPrice.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</div>
+                <div className="w-2/12 text-right font-semibold">{currencySymbol}{item.totalPrice.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</div>
             </div>
+            ))}
         </div>
       </section>
       

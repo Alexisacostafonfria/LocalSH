@@ -51,7 +51,7 @@ const MonthlyClosureReportPrintLayout: React.FC<MonthlyClosureReportPrintLayoutP
 
       <section className="mb-6">
         <h3 className="text-lg font-semibold border-b pb-1 mb-2">Resumen Financiero del Mes</h3>
-        <div className="space-y-2 text-sm">
+        <div className="space-y-1 text-sm">
             <div className="flex justify-between border-b pb-1">
                 <span>Ingresos Totales por Ventas</span>
                 <span className="font-mono">{appSettings.currencySymbol}{report.totalRevenue.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</span>
@@ -60,7 +60,7 @@ const MonthlyClosureReportPrintLayout: React.FC<MonthlyClosureReportPrintLayoutP
                 <span>(-) Costo de Bienes Vendidos (COGS)</span>
                 <span className="font-mono">{appSettings.currencySymbol}{report.totalCogs.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</span>
             </div>
-            <div className="flex justify-between font-bold text-base bg-gray-100 p-2 mt-2 rounded">
+            <div className="flex justify-between font-bold text-base border-t-2 border-black pt-2 mt-2">
                 <span>(=) Ganancia Bruta</span>
                 <span className="font-mono">{appSettings.currencySymbol}{report.grossProfit.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</span>
             </div>
@@ -69,12 +69,9 @@ const MonthlyClosureReportPrintLayout: React.FC<MonthlyClosureReportPrintLayoutP
 
       <section className="mb-6">
         <h3 className="text-lg font-semibold border-b pb-1 mb-2">Otras Métricas del Mes</h3>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-          <div className="font-medium">Total Transacciones:</div>
-          <div className="font-mono text-right">{report.totalTransactions}</div>
-          
-          <div className="font-medium">Total Propinas (Efectivo):</div>
-          <div className="font-mono text-right">{appSettings.currencySymbol}{report.totalTips.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</div>
+        <div className="space-y-1 text-xs">
+          <div className="flex justify-between"><span>Total Transacciones:</span> <span className="font-mono">{report.totalTransactions}</span></div>
+          <div className="flex justify-between"><span>Total Propinas (Efectivo):</span> <span className="font-mono">{appSettings.currencySymbol}{report.totalTips.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</span></div>
         </div>
       </section>
 

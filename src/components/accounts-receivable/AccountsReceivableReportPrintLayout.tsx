@@ -75,53 +75,44 @@ const AccountsReceivableReportPrintLayout: React.FC<AccountsReceivableReportPrin
 
       <section className="mb-6 break-inside-avoid-page">
         <h3 className="text-lg font-semibold border-b pb-1 mb-2">Resumen General</h3>
-        <div className="grid grid-cols-3 gap-4 text-xs">
-            <div className="bg-gray-100 p-2 rounded-md">
-                <p className="font-semibold">Pendiente de Cobro</p>
-                <p className="text-lg font-bold">{appSettings.currencySymbol}{(summary.totalPending || 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-            </div>
-             <div className="bg-gray-100 p-2 rounded-md">
-                <p className="font-semibold">Total Vencido</p>
-                <p className="text-lg font-bold">{appSettings.currencySymbol}{(summary.totalOverdue || 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-            </div>
-             <div className="bg-gray-100 p-2 rounded-md">
-                <p className="font-semibold">Total Cobrado (Histórico)</p>
-                <p className="text-lg font-bold">{appSettings.currencySymbol}{(summary.totalPaid || 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-            </div>
+        <div className="space-y-1 text-xs">
+          <div className="flex justify-between"><span>Pendiente de Cobro:</span> <span className="font-bold">{appSettings.currencySymbol}{(summary.totalPending || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span></div>
+          <div className="flex justify-between"><span>Total Vencido:</span> <span className="font-bold">{appSettings.currencySymbol}{(summary.totalOverdue || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span></div>
+          <div className="flex justify-between"><span>Total Cobrado (Histórico):</span> <span className="font-bold">{appSettings.currencySymbol}{(summary.totalPaid || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span></div>
         </div>
       </section>
 
       <section>
          <h3 className="text-lg font-semibold border-b pb-1 mb-2">Detalle de Facturas</h3>
-        <div className="w-full text-xs">
-            {/* Header */}
-            <div className="grid grid-cols-6 gap-2 font-semibold bg-gray-100 p-2 border-b">
-                <div className="col-span-1">Factura #</div>
-                <div className="col-span-1">Cliente</div>
-                <div className="col-span-1">F. Emisión</div>
-                <div className="col-span-1">F. Vencimiento</div>
-                <div className="col-span-1 text-right">Monto</div>
-                <div className="col-span-1">Estado</div>
-            </div>
-            {/* Body */}
-            <div className="border-l border-r border-b">
-                {invoices.length === 0 ? (
-                    <div className="p-2 text-center text-gray-500">No hay facturas que coincidan con los filtros aplicados.</div>
-                ) : (
-                    invoices.map((invoice) => (
-                        <div key={invoice.id} className="grid grid-cols-6 gap-2 p-2 border-b last:border-b-0 break-inside-avoid-page items-center">
-                            <div className="align-top font-mono">{invoice.id ? invoice.id.substring(0, 8) : 'N/A'}...</div>
-                            <div className="align-top">{invoice.customerName || 'N/A'}</div>
-                            <div className="align-top">{safeFormatDate(invoice.timestamp)}</div>
-                            <div className="align-top">{safeFormatDate(invoice.paymentDetails.dueDate)}</div>
-                            <div className="align-top text-right">
-                                {appSettings.currencySymbol}{(invoice.totalAmount || 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </div>
-                            <div className="align-top">{getStatusText(invoice.paymentDetails.status)}</div>
-                        </div>
-                    ))
-                )}
-            </div>
+         <div className="space-y-3 text-xs">
+            {invoices.length === 0 ? (
+                <div className="p-2 text-center text-gray-500">No hay facturas que coincidan con los filtros aplicados.</div>
+            ) : (
+                invoices.map((invoice) => (
+                    <div key={invoice.id} className="py-2 border-b last:border-b-0 break-inside-avoid-page">
+                      <div className="flex justify-between font-bold">
+                        <span>Factura #{invoice.id ? invoice.id.substring(0, 8) : 'N/A'}</span>
+                        <span>{getStatusText(invoice.paymentDetails.status)}</span>
+                      </div>
+                      <div className="flex justify-between text-gray-600">
+                        <span>Cliente:</span>
+                        <span>{invoice.customerName || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between text-gray-600">
+                        <span>F. Emisión:</span>
+                        <span>{safeFormatDate(invoice.timestamp)}</span>
+                      </div>
+                       <div className="flex justify-between text-gray-600">
+                        <span>F. Vencimiento:</span>
+                        <span>{safeFormatDate(invoice.paymentDetails.dueDate)}</span>
+                      </div>
+                      <div className="flex justify-between text-gray-600">
+                        <span>Monto:</span>
+                        <span className="font-semibold">{appSettings.currencySymbol}{(invoice.totalAmount || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                    </div>
+                ))
+            )}
         </div>
       </section>
       

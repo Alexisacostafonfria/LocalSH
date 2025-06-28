@@ -23,7 +23,7 @@ const OperationsReportPrintLayout: React.FC<OperationsReportPrintLayoutProps> = 
   businessSettings,
 }) => {
   
-  const formatDateSafe = (dateString: string | undefined | null, dateFormat: string = "dd MMM yy") => {
+  const formatDateSafe = (dateString: string | undefined | null, dateFormat: string = "dd MMM yy, HH:mm") => {
     if (!dateString) return "N/A";
     try {
       const parsed = parseISO(dateString);
@@ -38,32 +38,7 @@ const OperationsReportPrintLayout: React.FC<OperationsReportPrintLayoutProps> = 
 
   const totalRevenue = operations.reduce((sum, sale) => sum + sale.totalAmount, 0);
   const numberOfTransactions = operations.length;
-  const totalFees = operations.reduce((sum, sale) => sum + (sale.fees || []).reduce((feeSum, fee) => feeSum + fee.amount, 0), 0);
   
-  const totalCashSales = operations
-    .filter(sale => sale.paymentMethod === 'cash')
-    .reduce((sum, sale) => sum + sale.totalAmount, 0);
-  const totalTransferSales = operations
-    .filter(sale => sale.paymentMethod === 'transfer')
-    .reduce((sum, sale) => sum + sale.totalAmount, 0);
-  const totalInvoiceSales = operations
-    .filter(sale => sale.paymentMethod === 'invoice')
-    .reduce((sum, sale) => sum + sale.totalAmount, 0);
-
-  const totalTipsCollected = appSettings.allowTips 
-    ? operations.reduce((sum, sale) => {
-        if (sale.paymentMethod === 'cash' && sale.paymentDetails) {
-          const tip = (sale.paymentDetails as CashPaymentDetails).tip;
-          return sum + (typeof tip === 'number' && isFinite(tip) ? tip : 0);
-        }
-        return sum;
-      }, 0)
-    : 0;
-
-  const totalPosSales = operations.filter(s => s.origin === 'pos').reduce((sum, s) => sum + s.totalAmount, 0);
-  const totalOrderSales = operations.filter(s => s.origin === 'order').reduce((sum, s) => sum + s.totalAmount, 0);
-
-
   return (
     <div className="p-4 bg-white text-black text-sm font-sans">
       <header className="mb-6 border-b pb-4">
@@ -92,45 +67,46 @@ const OperationsReportPrintLayout: React.FC<OperationsReportPrintLayoutProps> = 
         </div>
       </header>
 
-      <div className="w-full text-xs">
-          {/* Header */}
-          <div className="grid grid-cols-8 gap-2 font-semibold bg-gray-100 p-2 border-b">
-              <div className="col-span-1">ID Venta</div>
-              <div className="col-span-1">Fecha Venta</div>
-              <div className="col-span-1">Origen</div>
-              <div className="col-span-2">Cliente</div>
-              <div className="col-span-1 text-center">Items</div>
-              <div className="col-span-1 text-right">Total</div>
-              <div className="col-span-1">Método Pago</div>
-          </div>
-          {/* Body */}
-          <div className="border-l border-r border-b">
-              {operations.length === 0 ? (
-                  <div className="p-2 text-center text-gray-500">No hay operaciones para mostrar en este periodo.</div>
-              ) : (
-                  operations.map((sale) => (
-                      <div key={sale.id} className="grid grid-cols-8 gap-2 p-2 border-b last:border-b-0 break-inside-avoid-page">
-                          <div className="col-span-1 align-top">{sale.id.substring(0, 8)}...</div>
-                          <div className="col-span-1 align-top">{formatDateSafe(sale.timestamp, "dd MMM yy, HH:mm")}</div>
-                          <div className="col-span-1 align-top">{sale.origin === 'pos' ? 'POS' : 'Pedido'}</div>
-                          <div className="col-span-2 align-top">{sale.customerName || 'N/A'}</div>
-                          <div className="col-span-1 align-top text-center">{sale.items.reduce((sum, item) => sum + item.quantity, 0)}</div>
-                          <div className="col-span-1 align-top text-right">
-                              {appSettings.currencySymbol}
-                              {sale.totalAmount.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </div>
-                          <div className="col-span-1 align-top">
-                            {sale.paymentMethod.charAt(0).toUpperCase() + sale.paymentMethod.slice(1)}
-                            {sale.paymentMethod === 'invoice' && ` (${(sale.paymentDetails as InvoicePaymentDetails).status})`}
-                          </div>
+      <div className="w-full text-xs space-y-3">
+          {operations.length === 0 ? (
+              <div className="p-2 text-center text-gray-500">No hay operaciones para mostrar en este periodo.</div>
+          ) : (
+              operations.map((sale) => (
+                  <div key={sale.id} className="py-2 border-b last:border-b-0 break-inside-avoid-page">
+                      <div className="flex justify-between font-bold">
+                        <span>Venta #{sale.id.substring(0, 8)}</span>
+                        <span>{appSettings.currencySymbol}{sale.totalAmount.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span>
                       </div>
-                  ))
-              )}
-          </div>
-          {/* Footer */}
+                       <div className="flex justify-between text-gray-600">
+                        <span>Fecha:</span>
+                        <span>{formatDateSafe(sale.timestamp)}</span>
+                      </div>
+                      <div className="flex justify-between text-gray-600">
+                        <span>Cliente:</span>
+                        <span>{sale.customerName || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between text-gray-600">
+                        <span>Items:</span>
+                        <span>{sale.items.reduce((sum, item) => sum + item.quantity, 0)}</span>
+                      </div>
+                      <div className="flex justify-between text-gray-600">
+                        <span>Origen:</span>
+                        <span>{sale.origin === 'pos' ? 'POS' : 'Pedido'}</span>
+                      </div>
+                      <div className="flex justify-between text-gray-600">
+                        <span>Pago:</span>
+                        <span>
+                          {sale.paymentMethod.charAt(0).toUpperCase() + sale.paymentMethod.slice(1)}
+                          {sale.paymentMethod === 'invoice' && ` (${(sale.paymentDetails as InvoicePaymentDetails).status})`}
+                        </span>
+                      </div>
+                  </div>
+              ))
+          )}
+          {/* Footer Summary */}
           {operations.length > 0 && (
-            <div className="mt-4 space-y-1 bg-gray-100 p-2 rounded-md">
-                <div className="flex justify-between font-semibold">
+            <div className="mt-4 space-y-1 bg-gray-100 p-2 rounded-md font-semibold">
+                <div className="flex justify-between">
                   <span>Ingresos Totales:</span>
                   <span>
                     {appSettings.currencySymbol}
@@ -138,60 +114,9 @@ const OperationsReportPrintLayout: React.FC<OperationsReportPrintLayoutProps> = 
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Total Cargos por Servicio:</span>
-                  <span>
-                    {appSettings.currencySymbol}
-                    {totalFees.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </div>
-                <div className="flex justify-between">
                   <span>Total Transacciones:</span>
                   <span>{numberOfTransactions}</span>
                 </div>
-                <div className="flex justify-between pt-2 mt-1 border-t">
-                  <span>Total Ventas Directas (POS):</span>
-                  <span>
-                    {appSettings.currencySymbol}
-                    {totalPosSales.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Total Ventas por Pedidos:</span>
-                  <span>
-                    {appSettings.currencySymbol}
-                    {totalOrderSales.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </div>
-                <div className="flex justify-between pt-2 mt-1 border-t">
-                  <span>Total Ventas Efectivo:</span>
-                  <span>
-                    {appSettings.currencySymbol}
-                    {totalCashSales.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Total Ventas Transferencia:</span>
-                  <span>
-                    {appSettings.currencySymbol}
-                    {totalTransferSales.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Total Ventas a Crédito (Factura):</span>
-                  <span>
-                    {appSettings.currencySymbol}
-                    {totalInvoiceSales.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </div>
-                {appSettings.allowTips && (
-                  <div className="flex justify-between">
-                    <span>Total Propinas Recaudadas (Efectivo):</span>
-                    <span>
-                      {appSettings.currencySymbol}
-                      {totalTipsCollected.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                )}
             </div>
           )}
       </div>

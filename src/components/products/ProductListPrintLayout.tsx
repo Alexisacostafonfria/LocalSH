@@ -47,55 +47,39 @@ const ProductListPrintLayout: React.FC<ProductListPrintLayoutProps> = ({
         </div>
       </header>
       
-      <div className="w-full text-xs">
-          {/* Header */}
-          <div className="grid grid-cols-12 gap-2 font-semibold bg-gray-100 p-2 border-b">
-              <div className="col-span-3">Nombre</div>
-              <div className="col-span-2">Categoría</div>
-              <div className="col-span-1 text-right">P. Venta</div>
-              <div className="col-span-1 text-right">P. Costo</div>
-              <div className="col-span-1 text-right">Stock</div>
-              <div className="col-span-1">U. Med.</div>
-              <div className="col-span-3 text-center">Código de Barras</div>
-          </div>
-          {/* Body */}
-          <div className="border-l border-r border-b">
-              {products.length === 0 ? (
-                  <div className="p-2 text-center text-gray-500">No hay productos en el catálogo.</div>
-              ) : (
-                  products.map((product) => (
-                      <div key={product.id} className="grid grid-cols-12 gap-2 p-2 items-center border-b last:border-b-0 break-inside-avoid-page">
-                          <div className="col-span-3 align-top">{product.name}</div>
-                          <div className="col-span-2 align-top">{product.category}</div>
-                          <div className="col-span-1 align-top text-right">
-                              {appSettings.currencySymbol}
-                              {(typeof product.price === 'number' && isFinite(product.price) ? product.price : 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </div>
-                          <div className="col-span-1 align-top text-right">
-                              {appSettings.currencySymbol}
-                              {(typeof product.costPrice === 'number' && isFinite(product.costPrice) ? product.costPrice : 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </div>
-                          <div className="col-span-1 align-top text-right">{product.stock}</div>
-                          <div className="col-span-1 align-top">{product.unitOfMeasure || 'N/A'}</div>
-                          <div className="col-span-3 align-middle text-center">
-                              {product.id && (
-                              <div style={{ display: 'inline-block', minWidth: '120px', padding: '2px 0' }}>
-                                  <ProductBarcode 
-                                      productId={product.id}
-                                      printMode={true}
-                                      barcodeWidth={1.5}
-                                      barcodeHeight={40}
-                                      barcodeFontSize={14} 
-                                      barcodeTextMargin={3}
-                                      barcodeMargin={4}
-                                  />
+      <div className="space-y-4 text-xs">
+          {products.length === 0 ? (
+              <div className="p-2 text-center text-gray-500">No hay productos en el catálogo.</div>
+          ) : (
+              products.map((product) => (
+                  <div key={product.id} className="py-2 border-b last:border-b-0 break-inside-avoid-page">
+                      <div className="flex justify-between items-center">
+                          <div className="flex-1">
+                              <p className="font-bold text-base">{product.name}</p>
+                              <p className="text-gray-600">{product.category}</p>
+                              <div className="mt-1 space-y-0.5">
+                                <div className="flex justify-between"><span>P. Venta:</span> <span className="font-semibold">{appSettings.currencySymbol}{(typeof product.price === 'number' && isFinite(product.price) ? product.price : 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span></div>
+                                <div className="flex justify-between"><span>P. Costo:</span> <span className="font-semibold">{appSettings.currencySymbol}{(typeof product.costPrice === 'number' && isFinite(product.costPrice) ? product.costPrice : 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span></div>
+                                <div className="flex justify-between"><span>Stock:</span> <span className="font-semibold">{product.stock} {product.unitOfMeasure || 'unid.'}</span></div>
                               </div>
+                          </div>
+                          <div className="w-1/3 flex flex-col items-center justify-center pl-4">
+                              {product.id && (
+                                <ProductBarcode 
+                                    productId={product.id}
+                                    printMode={true}
+                                    barcodeWidth={1}
+                                    barcodeHeight={30}
+                                    barcodeFontSize={10} 
+                                    barcodeTextMargin={1}
+                                    barcodeMargin={2}
+                                />
                               )}
                           </div>
                       </div>
-                  ))
-              )}
-          </div>
+                  </div>
+              ))
+          )}
       </div>
 
       <footer className="mt-6 pt-4 border-t text-center text-xs text-gray-500">

@@ -52,77 +52,53 @@ const DailyClosureReportPrintLayout: React.FC<DailyClosureReportPrintLayoutProps
 
       <section className="mb-6">
         <h3 className="text-lg font-semibold border-b pb-1 mb-2">Resumen del Día ({operationalDateDisplay})</h3>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-          <div className="font-medium">Ingresos Totales (Ventas):</div>
-          <div>{appSettings.currencySymbol}{dailySummary.totalRevenue.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</div>
-          
-           <div className="font-medium">Costo de Bienes Vendidos:</div>
-          <div>{appSettings.currencySymbol}{dailySummary.totalCogs.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</div>
-          
-           <div className="font-bold">Ganancia Bruta:</div>
-          <div className="font-bold">{appSettings.currencySymbol}{dailySummary.grossProfit.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</div>
-
-          <div className="font-medium pt-2 border-t mt-1">Total Transacciones:</div>
-          <div className="pt-2 border-t mt-1">{dailySummary.totalTransactions}</div>
-
-          <div className="font-medium">Ventas en Efectivo:</div>
-          <div>{appSettings.currencySymbol}{dailySummary.cashSalesAmount.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</div>
-
-          <div className="font-medium">Ventas por Transferencia:</div>
-          <div>{appSettings.currencySymbol}{dailySummary.transferSalesAmount.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</div>
-
-          {appSettings.allowTips && (
-            <>
-              <div className="font-medium">Total Propinas (Efectivo):</div>
-              <div>{appSettings.currencySymbol}{dailySummary.totalTips.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</div>
-            </>
-          )}
-          <div className="font-medium pt-2 border-t mt-1">Cobranza Facturas (Efectivo):</div>
-          <div className="pt-2 border-t mt-1">{appSettings.currencySymbol}{dailySummary.invoicePaymentsInCash.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</div>
-
-          <div className="font-medium">Cobranza Facturas (Transfer):</div>
-          <div>{appSettings.currencySymbol}{dailySummary.invoicePaymentsInTransfer.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</div>
-
+        <div className="space-y-1 text-xs">
+          <div className="flex justify-between"><span>Ingresos Totales (Ventas):</span> <span>{appSettings.currencySymbol}{dailySummary.totalRevenue.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</span></div>
+          <div className="flex justify-between"><span>Costo de Bienes Vendidos:</span> <span>{appSettings.currencySymbol}{dailySummary.totalCogs.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</span></div>
+          <div className="flex justify-between font-bold border-t pt-1"><span>Ganancia Bruta:</span> <span>{appSettings.currencySymbol}{dailySummary.grossProfit.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</span></div>
+          <div className="flex justify-between pt-2"><span>Total Transacciones:</span> <span>{dailySummary.totalTransactions}</span></div>
+          <div className="flex justify-between"><span>Ventas en Efectivo:</span> <span>{appSettings.currencySymbol}{dailySummary.cashSalesAmount.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</span></div>
+          <div className="flex justify-between"><span>Ventas por Transferencia:</span> <span>{appSettings.currencySymbol}{dailySummary.transferSalesAmount.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</span></div>
+          {appSettings.allowTips && (<div className="flex justify-between"><span>Total Propinas (Efectivo):</span> <span>{appSettings.currencySymbol}{dailySummary.totalTips.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</span></div>)}
+          <div className="flex justify-between pt-2 border-t"><span>Cobranza Facturas (Efectivo):</span> <span>{appSettings.currencySymbol}{dailySummary.invoicePaymentsInCash.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</span></div>
+          <div className="flex justify-between"><span>Cobranza Facturas (Transfer):</span> <span>{appSettings.currencySymbol}{dailySummary.invoicePaymentsInTransfer.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</span></div>
         </div>
       </section>
 
       <section className="mb-6">
         <h3 className="text-lg font-semibold border-b pb-1 mb-2">Arqueo de Caja</h3>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-            <div className="font-medium">Efectivo Esperado en Caja:</div>
-            <div className="font-semibold">{appSettings.currencySymbol}{dailySummary.expectedCashInBox.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</div>
-        </div>
-
+        <div className="flex justify-between text-xs font-semibold"><span>Efectivo Esperado en Caja:</span> <span>{appSettings.currencySymbol}{dailySummary.expectedCashInBox.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</span></div>
+        
         <h4 className="text-sm font-semibold mt-3 mb-1">Detalle del Efectivo Contado:</h4>
         {dailySummary.countedCashBreakdown.length > 0 ? (
           <div className="space-y-1 text-xs border-t border-b py-2 my-2">
-            <div className="grid grid-cols-3 font-semibold mb-1">
+            <div className="flex justify-between font-semibold mb-1">
               <span>Denominación</span>
-              <span className="text-right">Cantidad</span>
-              <span className="text-right">Valor Total</span>
+              <span className="text-right w-1/4">Cantidad</span>
+              <span className="text-right w-1/4">Valor Total</span>
             </div>
             {dailySummary.countedCashBreakdown.sort((a, b) => b.denomination - a.denomination).map(item => (
-              <div key={item.denomination} className="grid grid-cols-3">
+              <div key={item.denomination} className="flex justify-between">
                 <span>{appSettings.currencySymbol}{item.denomination.toLocaleString('es-ES')}</span>
-                <span className="text-right">{item.count}</span>
-                <span className="text-right">{appSettings.currencySymbol}{item.totalValue.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</span>
+                <span className="text-right w-1/4">{item.count}</span>
+                <span className="text-right w-1/4">{appSettings.currencySymbol}{item.totalValue.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</span>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-xs text-gray-500 mb-2">No se ingresó desglose de efectivo contado.</p>
+          <p className="text-xs text-gray-500 my-2">No se ingresó desglose de efectivo contado.</p>
         )}
         
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs mt-2">
-            <div className="font-medium">Total Contado en Caja:</div>
-            <div className="font-semibold">{appSettings.currencySymbol}{dailySummary.totalCountedCash.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</div>
-
-            <div className="font-medium">Diferencia:</div>
-            <div className={`font-semibold ${dailySummary.cashDifference === 0 ? '' : dailySummary.cashDifference > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {appSettings.currencySymbol}{dailySummary.cashDifference.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}
-                {dailySummary.cashDifference > 0 && " (Sobrante)"}
-                {dailySummary.cashDifference < 0 && " (Faltante)"}
-                {dailySummary.cashDifference === 0 && " (Cuadre Exacto)"}
+        <div className="space-y-1 text-xs mt-2">
+            <div className="flex justify-between"><span>Total Contado en Caja:</span> <span className="font-semibold">{appSettings.currencySymbol}{dailySummary.totalCountedCash.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</span></div>
+            <div className={`flex justify-between font-semibold ${dailySummary.cashDifference === 0 ? '' : dailySummary.cashDifference > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <span>Diferencia:</span> 
+                <span>
+                    {appSettings.currencySymbol}{dailySummary.cashDifference.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}
+                    {dailySummary.cashDifference > 0 && " (Sobrante)"}
+                    {dailySummary.cashDifference < 0 && " (Faltante)"}
+                    {dailySummary.cashDifference === 0 && " (Cuadre Exacto)"}
+                </span>
             </div>
         </div>
       </section>

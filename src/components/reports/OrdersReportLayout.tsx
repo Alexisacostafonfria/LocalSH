@@ -65,59 +65,46 @@ const OrdersReportLayout: React.FC<OrdersReportLayoutProps> = ({
 
       <section className="mb-6 break-inside-avoid-page">
         <h3 className="text-lg font-semibold border-b pb-1 mb-2">Resumen de Pedidos</h3>
-        <div className="grid grid-cols-4 gap-4 text-xs">
-          <div className="bg-gray-100 p-2 rounded-md">
-            <p className="font-semibold">Pedidos Totales</p>
-            <p className="text-lg font-bold">{summary.totalOrders}</p>
-          </div>
-          <div className="bg-gray-100 p-2 rounded-md">
-            <p className="font-semibold">Valor Total Pedidos</p>
-            <p className="text-lg font-bold">{appSettings.currencySymbol}{summary.totalValue.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</p>
-          </div>
-          <div className="bg-gray-100 p-2 rounded-md">
-            <p className="font-semibold">Completados</p>
-            <p className="text-lg font-bold">{summary.completedOrders}</p>
-          </div>
-          <div className="bg-gray-100 p-2 rounded-md">
-            <p className="font-semibold">Cancelados</p>
-            <p className="text-lg font-bold">{summary.cancelledOrders}</p>
-          </div>
+        <div className="space-y-1 text-xs">
+          <div className="flex justify-between"><span>Pedidos Totales:</span> <span className="font-bold">{summary.totalOrders}</span></div>
+          <div className="flex justify-between"><span>Valor Total Pedidos:</span> <span className="font-bold">{appSettings.currencySymbol}{summary.totalValue.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span></div>
+          <div className="flex justify-between"><span>Completados:</span> <span className="font-bold">{summary.completedOrders}</span></div>
+          <div className="flex justify-between"><span>Cancelados:</span> <span className="font-bold">{summary.cancelledOrders}</span></div>
         </div>
       </section>
 
       <section>
         <h3 className="text-lg font-semibold border-b pb-1 mb-2">Detalle de Pedidos</h3>
-        <div className="w-full text-xs">
-            {/* Header */}
-            <div className="grid grid-cols-5 gap-2 font-semibold bg-gray-100 p-2 border-b">
-                <div className="col-span-1">Pedido #</div>
-                <div className="col-span-1">Fecha</div>
-                <div className="col-span-1">Cliente</div>
-                <div className="col-span-1 text-right">Monto</div>
-                <div className="col-span-1">Estado</div>
-            </div>
-            {/* Body */}
-            <div className="border-l border-r border-b">
-                {orders.length === 0 ? (
-                    <div className="p-2 text-center text-gray-500">No hay pedidos para mostrar.</div>
-                ) : (
-                    orders.map((order) => (
-                    <div key={order.id} className="grid grid-cols-5 gap-2 p-2 border-b last:border-b-0 break-inside-avoid-page">
-                        <div className="align-top">{order.orderNumber}</div>
-                        <div className="align-top">{formatDateSafe(order.timestampDate)}</div>
-                        <div className="align-top">{order.customerName}</div>
-                        <div className="align-top text-right">{appSettings.currencySymbol}{order.totalAmount.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</div>
-                        <div className="align-top">{ORDER_STATUS_MAP[order.status]}</div>
+        <div className="w-full text-xs space-y-3">
+            {orders.length === 0 ? (
+                <div className="p-2 text-center text-gray-500">No hay pedidos para mostrar.</div>
+            ) : (
+                orders.map((order) => (
+                <div key={order.id} className="py-2 border-b last:border-b-0 break-inside-avoid-page">
+                    <div className="flex justify-between font-bold">
+                      <span>Pedido #{order.orderNumber}</span>
+                      <span>{ORDER_STATUS_MAP[order.status]}</span>
                     </div>
-                    ))
-                )}
-            </div>
+                     <div className="flex justify-between text-gray-600">
+                      <span>Fecha:</span>
+                      <span>{formatDateSafe(order.timestampDate)}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-600">
+                      <span>Cliente:</span>
+                      <span>{order.customerName}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-600">
+                      <span>Monto:</span>
+                      <span className="font-semibold">{appSettings.currencySymbol}{order.totalAmount.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                </div>
+                ))
+            )}
             {/* Footer */}
             {orders.length > 0 && (
-            <div className="mt-2 grid grid-cols-5 gap-2 font-semibold bg-gray-100 p-2 border-t">
-                <div className="col-span-3 text-right">Valor Total Pedidos:</div>
-                <div className="text-right">{appSettings.currencySymbol}{summary.totalValue.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</div>
-                <div></div>
+            <div className="mt-2 flex justify-between font-bold text-sm bg-gray-100 p-2 rounded-md">
+                <span>Valor Total de Pedidos Listados:</span>
+                <span>{appSettings.currencySymbol}{summary.totalValue.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span>
             </div>
             )}
         </div>

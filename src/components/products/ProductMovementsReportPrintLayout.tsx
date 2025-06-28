@@ -54,37 +54,32 @@ const ProductMovementsReportPrintLayout: React.FC<ProductMovementsReportPrintLay
         </div>
       </header>
 
-      <div className="w-full text-xs">
-          {/* Header */}
-          <div className="grid grid-cols-12 gap-4 font-semibold bg-gray-100 p-2 border-b">
-              <div className="col-span-4">ID Producto</div>
-              <div className="col-span-4">Nombre del Producto</div>
-              <div className="col-span-2 text-right">Cant. Vendida Hoy</div>
-              <div className="col-span-2 text-right">Stock Restante</div>
-          </div>
-          {/* Body */}
-          <div className="border-l border-r border-b">
-              {movements.length === 0 ? (
-                  <div className="p-2 text-center text-gray-500">No se registraron movimientos de productos para este día.</div>
-              ) : (
-                  movements.map((movement) => (
-                      <div key={movement.productId} className="grid grid-cols-12 gap-4 p-2 border-b last:border-b-0 break-inside-avoid-page">
-                          <div className="col-span-4 align-top">{movement.productId.substring(0,16)}...</div>
-                          <div className="col-span-4 align-top">{movement.productName}</div>
-                          <div className="col-span-2 align-top text-right">{movement.quantitySold}</div>
-                          <div className="col-span-2 align-top text-right">{movement.remainingStock}</div>
+      <div className="space-y-3 text-xs">
+          {movements.length === 0 ? (
+              <div className="p-2 text-center text-gray-500">No se registraron movimientos de productos para este día.</div>
+          ) : (
+              movements.map((movement) => (
+                  <div key={movement.productId} className="py-2 border-b last:border-b-0 break-inside-avoid-page">
+                      <p className="font-bold">{movement.productName}</p>
+                      <p className="text-gray-500 text-xs">ID: {movement.productId.substring(0,16)}...</p>
+                      <div className="flex justify-between mt-1">
+                          <span>Cantidad Vendida Hoy:</span>
+                          <span className="font-semibold">{movement.quantitySold}</span>
                       </div>
-                  ))
-              )}
-          </div>
+                       <div className="flex justify-between">
+                          <span>Stock Restante:</span>
+                          <span className="font-semibold">{movement.remainingStock}</span>
+                      </div>
+                  </div>
+              ))
+          )}
           {/* Footer */}
           {movements.length > 0 && (
-          <div className="grid grid-cols-12 gap-4 font-semibold bg-gray-100 p-2 border-t mt-2">
-              <div className="col-span-8 text-right">Total Unidades Vendidas:</div>
-              <div className="col-span-2 text-right">
+          <div className="flex justify-between font-bold text-sm bg-gray-100 p-2 mt-2 rounded-md">
+              <span>Total Unidades Vendidas:</span>
+              <span>
                   {movements.reduce((sum, item) => sum + item.quantitySold, 0)}
-              </div>
-              <div className="col-span-2"></div>
+              </span>
           </div>
           )}
       </div>
