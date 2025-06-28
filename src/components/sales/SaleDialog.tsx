@@ -86,6 +86,10 @@ export default function SaleDialog({
   const [currentTransactionCustomer, setCurrentTransactionCustomer] = useState<CurrentTransactionCustomerData>(initialTransactionCustomerData);
   
   const [accountingSettings] = useLocalStorageState<AccountingSettings>('accountingSettings', DEFAULT_ACCOUNTING_SETTINGS);
+  const [sales] = useLocalStorageState<Sale[]>('sales', []);
+
+  const [customerHasDebt, setCustomerHasDebt] = useState(false);
+  const [debtDetails, setDebtDetails] = useState<{count: number, total: number} | null>(null);
 
 
   const { toast } = useToast();
@@ -132,6 +136,29 @@ export default function SaleDialog({
       }
     }
   }, [selectedCustomerId, customers, isAddingNewSystemCustomer, paymentMethod]);
+
+
+  useEffect(() => {
+      if (selectedCustomerId && selectedCustomerId !== ANONYMOUS_CUSTOMER_VALUE) {
+          const customerInvoices = sales.filter(s =>
+              s.customerId === selectedCustomerId &&
+              s.paymentMethod === 'invoice' &&
+              (s.paymentDetails as InvoicePaymentDetails).status !== 'paid'
+          );
+
+          if (customerInvoices.length > 0) {
+              const totalDebt = customerInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
+              setCustomerHasDebt(true);
+              setDebtDetails({ count: customerInvoices.length, total: totalDebt });
+          } else {
+              setCustomerHasDebt(false);
+              setDebtDetails(null);
+          }
+      } else {
+          setCustomerHasDebt(false);
+          setDebtDetails(null);
+      }
+  }, [selectedCustomerId, sales]);
 
 
   useEffect(() => {
@@ -384,6 +411,11 @@ export default function SaleDialog({
       toast({ title: "Error", description: "Añada productos a la venta.", variant: "destructive" });
       return;
     }
+
+    if (customerHasDebt) {
+        toast({ title: "Venta Bloqueada", description: "No se pueden realizar ventas a clientes con deudas pendientes.", variant: "destructive" });
+        return;
+    }
     
     const finalTotalAmount = isFinite(totalAmount) ? totalAmount : 0;
     let finalPaymentDetails: PaymentDetails;
@@ -478,6 +510,8 @@ export default function SaleDialog({
     setCurrentTransactionCustomer(initialTransactionCustomerData);
     setIsCashBreakdownPopoverOpen(false);
     setCurrentStep('products'); 
+    setCustomerHasDebt(false);
+    setDebtDetails(null);
     if (barcodeInputRef.current) {
       barcodeInputRef.current.focus();
     }
@@ -490,15 +524,14 @@ export default function SaleDialog({
   
   const hasActiveBreakdown = Object.values(cashBreakdownInputs).some(val => val && parseInt(val) > 0);
   
-  const customerStepNextButtonDisabled = (paymentMethod === 'transfer' || paymentMethod === 'invoice') && 
+  const customerStepNextButtonDisabled = customerHasDebt || (paymentMethod === 'transfer' && 
                                           (!currentTransactionCustomer?.name || 
-                                           !currentTransactionCustomer?.id ||
-                                           (paymentMethod === 'transfer' && (!currentTransactionCustomer?.personalId || !currentTransactionCustomer?.phone || !currentTransactionCustomer?.cardNumber || currentTransactionCustomer.cardNumber.replace(/[^0-9]/g, "").length !== 16)) ||
-                                           (paymentMethod === 'invoice' && selectedCustomerId === ANONYMOUS_CUSTOMER_VALUE)
-                                          );
+                                           !currentTransactionCustomer?.personalId || !currentTransactionCustomer?.phone || !currentTransactionCustomer?.cardNumber || currentTransactionCustomer.cardNumber.replace(/[^0-9]/g, "").length !== 16)) ||
+                                           (paymentMethod === 'invoice' && selectedCustomerId === ANONYMOUS_CUSTOMER_VALUE);
 
   const finalizeSaleButtonDisabled = saleItems.length === 0 ||
     !isDayEffectivelyOpen ||
+    customerHasDebt ||
     (paymentMethod === 'cash' && (
       ((isFinite(cashDetails.amountReceived) ? cashDetails.amountReceived : 0) - (isFinite(cashDetails.tip) ? cashDetails.tip : 0)) < (isFinite(totalAmount) ? totalAmount : 0) ||
       !isFinite(cashDetails.tip) || cashDetails.tip < 0 ||
@@ -612,7 +645,7 @@ export default function SaleDialog({
           <Card>
             <CardHeader>
                 <CardTitle className="text-lg font-headline">Información del Cliente</CardTitle>
-                <DialogDescription>Seleccione o ingrese los datos del cliente para la transacción actual. Los cambios aquí no se guardan en el sistema automáticamente.</DialogDescription>
+                <DialogDescription>Seleccione o ingrese los datos del cliente para la transacción actual.</DialogDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId} disabled={isAddingNewSystemCustomer}>
@@ -626,6 +659,18 @@ export default function SaleDialog({
                   ))}
                 </SelectContent>
               </Select>
+              
+              {customerHasDebt && debtDetails && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Cliente con Deuda Pendiente</AlertTitle>
+                  <AlertDescription>
+                    Este cliente tiene {debtDetails.count} factura(s) pendiente(s) por un total de {appSettings.currencySymbol}{debtDetails.total.toLocaleString('es-ES', {minimumFractionDigits: 2})}.
+                    No se pueden realizar nuevas transacciones hasta que se liquide la deuda en el módulo de Cuentas por Cobrar.
+                  </AlertDescription>
+                </Alert>
+              )}
+
               <Button variant="outline" size="sm" onClick={handleToggleAddNewSystemCustomer}>
                 <UserPlus className="mr-2 h-4 w-4" /> {isAddingNewSystemCustomer ? 'Cancelar Nuevo Cliente del Sistema' : 'Añadir Nuevo Cliente al Sistema'}
               </Button>
@@ -900,7 +945,7 @@ export default function SaleDialog({
               <Button 
                 onClick={() => setCurrentStep('payment')}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                disabled={!isDayEffectivelyOpen}
+                disabled={!isDayEffectivelyOpen || customerHasDebt}
               >
                 Siguiente (Pago) <ArrowRight className="ml-2 h-4 w-4" />
               </Button>

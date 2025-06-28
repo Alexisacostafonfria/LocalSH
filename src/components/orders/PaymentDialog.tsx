@@ -2,13 +2,13 @@
 // src/components/orders/PaymentDialog.tsx
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AppSettings, Order, PaymentDetails, CashPaymentDetails, TransferPaymentDetails, InvoicePaymentDetails, Customer } from '@/types';
+import { AppSettings, Order, PaymentDetails, CashPaymentDetails, TransferPaymentDetails, InvoicePaymentDetails, Customer, Sale } from '@/types';
 import { useToast } from "@/hooks/use-toast";
 import { Coins, CheckCircle2, AlertCircle, Calendar as CalendarIcon, FileText, AlertTriangle } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -17,6 +17,7 @@ import { format, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import useLocalStorageState from '@/hooks/useLocalStorageState';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 
 interface PaymentDialogProps {
@@ -36,6 +37,7 @@ export default function PaymentDialog({ isOpen, onClose, order, onConfirm, appSe
   const [transferDetails, setTransferDetails] = useState<Omit<TransferPaymentDetails, 'customerName' | 'personalId' | 'mobileNumber' | 'cardNumber'>>({ reference: '' });
   const [invoiceDueDate, setInvoiceDueDate] = useState<Date | undefined>(addDays(new Date(), 30));
   const [customers] = useLocalStorageState<Customer[]>('customers', []);
+  const [sales] = useLocalStorageState<Sale[]>('sales', []);
   
   const [cashBreakdownInputs, setCashBreakdownInputs] = useState<Record<string, string>>({});
   const [isCashBreakdownPopoverOpen, setIsCashBreakdownPopoverOpen] = useState(false);
@@ -45,6 +47,24 @@ export default function PaymentDialog({ isOpen, onClose, order, onConfirm, appSe
   const totalAmount = order.totalAmount;
   const changeGiven = Math.max(0, (cashDetails.amountReceived || 0) - totalAmount - (cashDetails.tip || 0));
   const customerDetails = useMemo(() => customers.find(c => c.id === order.customerId), [customers, order.customerId]);
+
+  const { customerHasDebt, debtDetails } = useMemo(() => {
+    if (!order.customerId) {
+        return { customerHasDebt: false, debtDetails: null };
+    }
+    const customerInvoices = sales.filter(s =>
+        s.customerId === order.customerId &&
+        s.paymentMethod === 'invoice' &&
+        (s.paymentDetails as InvoicePaymentDetails).status !== 'paid'
+    );
+
+    if (customerInvoices.length > 0) {
+        const totalDebt = customerInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
+        return { customerHasDebt: true, debtDetails: { count: customerInvoices.length, total: totalDebt } };
+    }
+    return { customerHasDebt: false, debtDetails: null };
+  }, [order.customerId, sales]);
+
 
   useEffect(() => {
     if (!isOpen) {
@@ -73,6 +93,11 @@ export default function PaymentDialog({ isOpen, onClose, order, onConfirm, appSe
   };
 
   const handleConfirmPayment = () => {
+    if (customerHasDebt) {
+        toast({ title: "Acción Bloqueada", description: "El cliente tiene deudas pendientes. No se puede completar el pedido.", variant: 'destructive' });
+        return;
+    }
+
     let finalPaymentDetails: PaymentDetails;
 
     if (paymentMethod === 'cash') {
@@ -119,7 +144,7 @@ export default function PaymentDialog({ isOpen, onClose, order, onConfirm, appSe
   
   const hasActiveBreakdown = Object.values(cashBreakdownInputs).some(val => val && parseInt(val) > 0);
 
-  const finalizeButtonDisabled = 
+  const finalizeButtonDisabled = customerHasDebt ||
     (paymentMethod === 'cash' && ((cashDetails.amountReceived || 0) < totalAmount || (appSettings.allowTips && (cashDetails.tip || 0) > ((cashDetails.amountReceived || 0) - totalAmount)))) ||
     (paymentMethod === 'invoice' && (!order.customerId || !invoiceDueDate));
 
@@ -132,6 +157,16 @@ export default function PaymentDialog({ isOpen, onClose, order, onConfirm, appSe
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {customerHasDebt && debtDetails && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Cliente con Deuda Pendiente</AlertTitle>
+              <AlertDescription>
+                Este cliente tiene {debtDetails.count} factura(s) pendiente(s) por un total de {appSettings.currencySymbol}{debtDetails.total.toLocaleString('es-ES', { minimumFractionDigits: 2 })}.
+                El pedido no puede completarse hasta que se liquide la deuda en Cuentas por Cobrar.
+              </AlertDescription>
+            </Alert>
+          )}
           <div className="text-3xl font-bold text-right text-primary">
               Total: {appSettings.currencySymbol}{totalAmount.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
           </div>
