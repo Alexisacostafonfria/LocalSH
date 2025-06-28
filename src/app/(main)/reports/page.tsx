@@ -1,3 +1,4 @@
+
 // src/app/(main)/reports/page.tsx
 "use client";
 
@@ -12,7 +13,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, isWithinInterval, subDays, subWeeks, subMonths, startOfDay, endOfDay, addWeeks, addMonths, isValid, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import { Download, BarChart3, Coins, ShoppingBag, ArchiveRestore, TrendingUp, PieChart, Search, Filter, Printer, CalendarIcon, Loader2, AlertTriangle, Package, Layers, FileText, ClipboardList, CheckCircle, Ban, Hourglass } from 'lucide-react';
+import { Download, BarChart3, Coins, ShoppingBag, ArchiveRestore, TrendingUp, PieChart, Search, Filter, Printer, CalendarIcon, Loader2, AlertTriangle, Package, Layers, FileText, ClipboardList, CheckCircle, Ban, Hourglass, DollarSign } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
