@@ -22,6 +22,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Calendar } from '../ui/calendar';
 import { format, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useAddToCartToast } from '@/context/ToastContext';
 
 interface SaleDialogProps {
   isOpen: boolean;
@@ -93,6 +94,7 @@ export default function SaleDialog({
 
 
   const { toast } = useToast();
+  const { showToast: showAddToCartToast } = useAddToCartToast();
 
   const subTotal = useMemo(() => saleItems.reduce((sum, item) => {
     const itemPrice = (typeof item.unitPrice === 'number' && isFinite(item.unitPrice)) ? item.unitPrice : 0;
@@ -318,6 +320,11 @@ export default function SaleDialog({
         totalPrice: productPrice * quantityToAdd,
       }]);
     }
+    showAddToCartToast({
+        productName: productToAdd.name,
+        imageUrl: productToAdd.imageUrl,
+        quantity: quantityToAdd,
+    });
     return true;
   }
 
@@ -341,7 +348,6 @@ export default function SaleDialog({
     }
     
     if (addProductToSaleItems(product, quantityNum)) {
-      toast({ title: "Producto Añadido", description: `${quantityNum} x ${product.name} añadido(s) al carrito.` });
       setSelectedProduct('');
       setQuantity(1);
       barcodeInputRef.current?.focus();
@@ -362,9 +368,7 @@ export default function SaleDialog({
       return;
     }
 
-    if (addProductToSaleItems(product, 1)) { // Default quantity 1 for barcode scan
-        toast({ title: "Producto Escaneado", description: `${product.name} añadido al carrito (Cantidad +1).` });
-    }
+    addProductToSaleItems(product, 1);
   };
 
   const handleBarcodeKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
