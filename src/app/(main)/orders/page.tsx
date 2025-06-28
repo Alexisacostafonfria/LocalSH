@@ -9,14 +9,15 @@ import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Order, Product, Customer, AppSettings, BusinessSettings, OrderStatus, ORDER_STATUS_MAP, PaymentDetails, Sale, AccountingSettings, DEFAULT_ACCOUNTING_SETTINGS } from '@/types';
 import useLocalStorageState from '@/hooks/useLocalStorageState';
 import OrderDialog from '@/components/orders/OrderDialog';
-import PaymentDialog from '@/components/orders/PaymentDialog'; // New
+import PaymentDialog from '@/components/orders/PaymentDialog';
 import OrderTicket from '@/components/orders/OrderTicket';
-import SaleReceipt from '@/components/sales/SaleReceipt'; // For final receipt
+import OrderConfirmationReceipt from '@/components/orders/OrderConfirmationReceipt'; // New
+import SaleReceipt from '@/components/sales/SaleReceipt';
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, MoreVertical, Printer, Package, ClipboardList, Loader2, CheckCircle, Ban, Truck, CreditCard, CookingPot } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -49,9 +50,8 @@ export default function OrdersPage() {
   
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [orderToPay, setOrderToPay] = useState<Order | null>(null);
-
-  const [orderToPrintPrep, setOrderToPrintPrep] = useState<Order | null>(null);
-  const [saleToPrint, setSaleToPrint] = useState<Sale | null>(null);
+  
+  const [documentToPrint, setDocumentToPrint] = useState<{ type: 'prep' | 'sale' | 'confirmation', data: Order | Sale } | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
   
   const [orderToConfirm, setOrderToConfirm] = useState<{ order: Order, newStatus: OrderStatus } | null>(null);
@@ -62,6 +62,11 @@ export default function OrdersPage() {
     setIsMounted(true);
   }, []);
 
+  const initiatePrint = (data: Order | Sale, type: 'prep' | 'sale' | 'confirmation') => {
+    setDocumentToPrint({ type, data });
+    setIsPrinting(true);
+  };
+  
   const handleAddOrUpdateOrder = (order: Order) => {
     const existingOrderIndex = orders.findIndex(o => o.id === order.id);
     if (existingOrderIndex > -1) {
@@ -74,6 +79,7 @@ export default function OrdersPage() {
       const newOrder = { ...order, orderNumber: highestOrderNumber + 1 };
       setOrders(prev => [newOrder, ...prev].sort((a,b) => b.orderNumber - a.orderNumber));
       toast({ title: 'Pedido Creado', description: `Se ha creado el pedido #${newOrder.orderNumber}.` });
+      initiatePrint(newOrder, 'confirmation'); // Automatically print confirmation receipt for new orders
     }
   };
 
@@ -123,7 +129,6 @@ export default function OrdersPage() {
   };
 
   const handleCompleteOrder = (completedOrder: Order, paymentDetails: PaymentDetails, fees?: { description: string; amount: number; }[]) => {
-    // Determine payment method from paymentDetails structure
     let paymentMethod: 'cash' | 'transfer' | 'invoice';
     if ('amountReceived' in paymentDetails) {
       paymentMethod = 'cash';
@@ -134,8 +139,6 @@ export default function OrdersPage() {
     }
 
     const totalFees = fees ? fees.reduce((sum, fee) => sum + fee.amount, 0) : 0;
-
-    // 1. Create Sale Object
     const newSale: Sale = {
       id: crypto.randomUUID(),
       timestamp: new Date().toISOString(),
@@ -148,14 +151,12 @@ export default function OrdersPage() {
       subTotal: completedOrder.totalAmount,
       totalAmount: completedOrder.totalAmount + totalFees,
       fees: fees,
-      paymentMethod: paymentMethod, // Correctly determined method
+      paymentMethod: paymentMethod,
       paymentDetails: paymentDetails,
     };
     
-    // 2. Update Sales
     setSales(prev => [newSale, ...prev].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
 
-    // 3. Update Product Stock
     const updatedProducts = products.map(p => {
         const itemInOrder = completedOrder.items.find(item => item.productId === p.id);
         if (itemInOrder) {
@@ -166,11 +167,9 @@ export default function OrdersPage() {
     });
     setProducts(updatedProducts);
     
-    // 4. Update Order Status
     const updatedOrders = orders.map(o => o.id === completedOrder.id ? { ...o, status: 'completed' } : o);
     setOrders(updatedOrders);
 
-    // 5. Trigger Final Receipt Print
     initiatePrint(newSale, 'sale');
     
     toast({ title: 'Pedido Completado y Venta Registrada', description: `La venta para el pedido #${completedOrder.orderNumber} se ha creado. Stock actualizado.` });
@@ -178,30 +177,17 @@ export default function OrdersPage() {
     setOrderToPay(null);
   };
 
-
   const openDialog = (order: Order | null = null) => {
     setEditingOrder(order);
     setIsOrderDialogOpen(true);
   };
-  
-  const initiatePrint = (data: Order | Sale, type: 'prep' | 'sale') => {
-    if (type === 'prep') {
-        setOrderToPrintPrep(data as Order);
-        setSaleToPrint(null);
-    } else {
-        setSaleToPrint(data as Sale);
-        setOrderToPrintPrep(null);
-    }
-    setIsPrinting(true);
-  };
-  
+
   useEffect(() => {
-    if (isPrinting && (orderToPrintPrep || saleToPrint)) {
+    if (isPrinting && documentToPrint) {
       const timer = setTimeout(() => window.print(), 500);
       const handleAfterPrint = () => {
         setIsPrinting(false);
-        setOrderToPrintPrep(null);
-        setSaleToPrint(null);
+        setDocumentToPrint(null);
         window.removeEventListener('afterprint', handleAfterPrint);
       };
       window.addEventListener('afterprint', handleAfterPrint);
@@ -210,7 +196,7 @@ export default function OrdersPage() {
         window.removeEventListener('afterprint', handleAfterPrint);
       };
     }
-  }, [isPrinting, orderToPrintPrep, saleToPrint]);
+  }, [isPrinting, documentToPrint]);
 
   const sortedOrders = useMemo(() => {
     const active = orders.filter(o => o.status === 'pending' || o.status === 'in-progress').sort((a,b) => a.timestamp.localeCompare(b.timestamp));
@@ -234,6 +220,8 @@ export default function OrdersPage() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onSelect={() => openDialog(order)} disabled={order.status === 'completed' || order.status === 'cancelled'}>Editar Pedido</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => initiatePrint(order, 'confirmation')}>Imprimir Comprobante de Pedido</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => initiatePrint(order, 'prep')}>Imprimir Ticket Preparación</DropdownMenuItem>
             {order.status === 'completed' && 
                 <DropdownMenuItem onSelect={() => {
@@ -321,28 +309,37 @@ export default function OrdersPage() {
         />
       )}
 
-      {isPrinting && orderToPrintPrep && isMounted && typeof document !== 'undefined' &&
+      {isPrinting && documentToPrint && isMounted && typeof document !== 'undefined' &&
         ReactDOM.createPortal(
-          <div id="printable-prep-ticket-area">
-            <OrderTicket
-              order={orderToPrintPrep}
-              appSettings={appSettings}
-              businessSettings={businessSettings}
-            />
-          </div>,
-          document.body
-        )
-      }
-
-      {isPrinting && saleToPrint && isMounted && typeof document !== 'undefined' &&
-        ReactDOM.createPortal(
-          <div id="printable-receipt-area">
-            <SaleReceipt 
-              sale={saleToPrint} 
-              appSettings={appSettings}
-              businessSettings={businessSettings} 
-            />
-          </div>,
+          <>
+            {documentToPrint.type === 'confirmation' && (
+                <div id="printable-order-confirmation-area">
+                    <OrderConfirmationReceipt
+                        order={documentToPrint.data as Order}
+                        appSettings={appSettings}
+                        businessSettings={businessSettings}
+                    />
+                </div>
+            )}
+            {documentToPrint.type === 'prep' && (
+                <div id="printable-prep-ticket-area">
+                    <OrderTicket
+                        order={documentToPrint.data as Order}
+                        appSettings={appSettings}
+                        businessSettings={businessSettings}
+                    />
+                </div>
+            )}
+            {documentToPrint.type === 'sale' && (
+                <div id="printable-receipt-area">
+                    <SaleReceipt
+                        sale={documentToPrint.data as Sale}
+                        appSettings={appSettings}
+                        businessSettings={businessSettings}
+                    />
+                </div>
+            )}
+          </>,
           document.body
         )
       }
