@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   PanelLeft, Package, ShoppingCart, Archive, BarChartBig, TrendingUp, Settings as SettingsIcon, Menu, X, Briefcase,
-  DollarSign, Users, FileText, Layers, Lightbulb, Wrench, BookOpenCheck, LogOut, Loader2, ClipboardList
+  DollarSign, Users, FileText, Layers, Lightbulb, Wrench, BookOpenCheck, LogOut, Loader2, ClipboardList, History
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -64,6 +64,7 @@ const baseNavItems = [
 
 const adminNavItems = [
   { href: "/users", icon: Users, label: "Usuarios" },
+  { href: "/audit-log", icon: History, label: "Historial de Actividad" },
   { href: "/settings", icon: Wrench, label: "Configuración" },
 ];
 

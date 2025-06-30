@@ -202,9 +202,9 @@ export const DEFAULT_ACCOUNTING_SETTINGS: AccountingSettings = {
   monthlyClosureHistory: [],
 };
 
-export type InventoryItem = Pick<Product, 'id' | 'name' | 'stock' | 'category' | 'imageUrl' | 'unitOfMeasure'> & {
+export interface InventoryItem extends Pick<Product, 'id' | 'name' | 'stock' | 'category' | 'imageUrl' | 'unitOfMeasure'> {
   isLowStock?: boolean;
-};
+}
 
 export interface SalesDataPoint {
   date: string; // YYYY-MM-DD
@@ -243,6 +243,26 @@ export const DEFAULT_AUTH_STATE: AuthState = {
   users: [],
 };
 
+export type ActionType = 
+    | 'LOGIN' | 'LOGOUT'
+    | 'PRODUCT_CREATED' | 'PRODUCT_UPDATED' | 'PRODUCT_DELETED'
+    | 'SALE_CREATED'
+    | 'ORDER_CREATED' | 'ORDER_UPDATED' | 'ORDER_STATUS_CHANGED' | 'ORDER_COMPLETED'
+    | 'USER_CREATED' | 'USER_UPDATED' | 'USER_DELETED'
+    | 'ACCOUNTING_DAY_STARTED' | 'ACCOUNTING_DAY_CLOSED'
+    | 'SETTINGS_UPDATED' | 'SYSTEM_DATA_RESTORED';
+
+export interface AuditLogEntry {
+    id: string;
+    timestamp: string; // ISO String
+    userId: string;
+    username: string;
+    actionType: ActionType;
+    entityType?: string; // e.g., 'Product', 'Sale', 'User'
+    entityId?: string; // ID of the affected entity
+    description: string;
+}
+
 
 export type BackupData = {
   products: Product[];
@@ -253,6 +273,7 @@ export type BackupData = {
   appSettings: AppSettings;
   accountingSettings: AccountingSettings;
   businessSettings: BusinessSettings;
-  authData?: AuthState; // Added authData to backup
+  authData: AuthState;
+  auditLog: AuditLogEntry[];
   backupTimestamp: string;
 };

@@ -1,4 +1,3 @@
-
 // src/app/(main)/settings/page.tsx
 "use client";
 
@@ -17,6 +16,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { Save, Download, Upload, AlertTriangle, Building, Image as ImageIcon, Trash2, Users, Printer } from 'lucide-react';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -59,6 +59,7 @@ const LOCAL_STORAGE_KEYS = {
   accountingSettings: 'accountingSettings',
   businessSettings: 'businessSettings',
   authData: 'authData',
+  auditLog: 'auditLog',
 };
 
 const MAX_LOGO_SIZE_MB = 1; // 1MB limit for logo
@@ -67,6 +68,7 @@ export default function SettingsPage() {
   const [appSettings, setAppSettingsState] = useLocalStorageState<AppSettings>(LOCAL_STORAGE_KEYS.appSettings, DEFAULT_APP_SETTINGS);
   const [businessSettings, setBusinessSettingsState] = useLocalStorageState<BusinessSettings>(LOCAL_STORAGE_KEYS.businessSettings, DEFAULT_BUSINESS_SETTINGS);
   const [authState, setAuthState] = useLocalStorageState<AuthState>(LOCAL_STORAGE_KEYS.authData, DEFAULT_AUTH_STATE);
+  const { logAction } = useAuditLog();
   
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
@@ -144,6 +146,7 @@ export default function SettingsPage() {
 
   const onAppSubmit = (data: AppSettings) => {
     setAppSettingsState(data);
+    logAction({ actionType: 'SETTINGS_UPDATED', entityType: 'Application', description: 'Actualizó las preferencias generales de la aplicación.' });
     toast({
       title: "Configuración Guardada",
       description: "Tus preferencias generales han sido actualizadas.",
@@ -152,6 +155,7 @@ export default function SettingsPage() {
 
   const onBusinessSubmit = (data: BusinessSettings) => {
     setBusinessSettingsState(data);
+    logAction({ actionType: 'SETTINGS_UPDATED', entityType: 'Business', description: 'Actualizó la información del negocio.' });
     toast({
       title: "Información del Negocio Guardada",
       description: "Los datos de tu negocio han sido actualizados.",
@@ -207,6 +211,7 @@ export default function SettingsPage() {
         accountingSettings: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.accountingSettings) || JSON.stringify(DEFAULT_ACCOUNTING_SETTINGS)),
         businessSettings: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.businessSettings) || JSON.stringify(DEFAULT_BUSINESS_SETTINGS)),
         authData: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.authData) || JSON.stringify(DEFAULT_AUTH_STATE)),
+        auditLog: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.auditLog) || '[]'),
         backupTimestamp: new Date().toISOString(),
       };
 
@@ -256,9 +261,9 @@ export default function SettingsPage() {
         
         for (const key of requiredKeys) {
             if (!(key in parsedData)) {
-                // Check for invoicePayments separately for backward compatibility
-                if (key === 'invoicePayments' && !('invoicePayments' in parsedData)) {
-                    continue; // It's ok if old backups don't have this
+                // Check for optional keys for backward compatibility
+                if (['invoicePayments', 'auditLog'].includes(key) && !(key in parsedData)) {
+                    continue; // It's ok if old backups don't have these
                 }
                 throw new Error(`El archivo de copia de seguridad es inválido o le falta la clave: "${key}".`);
             }
@@ -296,13 +301,14 @@ export default function SettingsPage() {
         localStorage.setItem(LOCAL_STORAGE_KEYS.sales, JSON.stringify(parsedData.sales || []));
         localStorage.setItem(LOCAL_STORAGE_KEYS.customers, JSON.stringify(parsedData.customers || []));
         localStorage.setItem(LOCAL_STORAGE_KEYS.orders, JSON.stringify(parsedData.orders || []));
-        localStorage.setItem(LOCAL_STORAGE_KEYS.invoicePayments, JSON.stringify(parsedData.invoicePayments || [])); // Restore new data
+        localStorage.setItem(LOCAL_STORAGE_KEYS.invoicePayments, JSON.stringify(parsedData.invoicePayments || []));
         localStorage.setItem(LOCAL_STORAGE_KEYS.appSettings, JSON.stringify(parsedData.appSettings || DEFAULT_APP_SETTINGS));
         localStorage.setItem(LOCAL_STORAGE_KEYS.accountingSettings, JSON.stringify(parsedData.accountingSettings || DEFAULT_ACCOUNTING_SETTINGS));
         localStorage.setItem(LOCAL_STORAGE_KEYS.businessSettings, JSON.stringify(parsedData.businessSettings || DEFAULT_BUSINESS_SETTINGS));
         localStorage.setItem(LOCAL_STORAGE_KEYS.authData, JSON.stringify(parsedData.authData || DEFAULT_AUTH_STATE));
+        localStorage.setItem(LOCAL_STORAGE_KEYS.auditLog, JSON.stringify(parsedData.auditLog || []));
 
-
+        logAction({ actionType: 'SYSTEM_DATA_RESTORED', description: 'Restauró los datos del sistema desde un archivo de copia de seguridad.' });
         toast({
             title: "Restauración Exitosa",
             description: "Los datos han sido restaurados. La aplicación se recargará.",
