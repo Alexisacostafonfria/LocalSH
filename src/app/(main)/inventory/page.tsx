@@ -3,30 +3,67 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Product, InventoryItem, AppSettings, DEFAULT_APP_SETTINGS } from '@/types';
+import { Product, InventoryItem, AppSettings, DEFAULT_APP_SETTINGS, AuthState, DEFAULT_AUTH_STATE } from '@/types';
 import useLocalStorageState from '@/hooks/useLocalStorageState';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Archive, Search, PackageCheck, PackageX, AlertTriangle, Loader2 } from 'lucide-react';
+import { Archive, Search, PackageCheck, PackageX, AlertTriangle, Loader2, PlusCircle } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useAuditLog } from '@/hooks/useAuditLog';
+import { Button } from '@/components/ui/button';
+import StockAdjustmentDialog from '@/components/inventory/StockAdjustmentDialog';
 
 export default function InventoryPage() {
   const [products, setProducts] = useLocalStorageState<Product[]>('products', []);
   const [appSettings] = useLocalStorageState<AppSettings>('appSettings', DEFAULT_APP_SETTINGS);
+  const [authState] = useLocalStorageState<AuthState>('authData', DEFAULT_AUTH_STATE);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isAdjustmentDialogOpen, setIsAdjustmentDialogOpen] = useState(false);
+
+  const { toast } = useToast();
+  const { logAction } = useAuditLog();
+  const isAdmin = authState.currentUser?.role === 'admin';
   
   useEffect(() => {
     // With localStorage, data is available synchronously after initial render.
     setIsLoading(false);
   }, []);
+  
+  const handleStockAdjustment = (productId: string, quantityAdded: number, notes: string) => {
+    setProducts(prevProducts => {
+      const productIndex = prevProducts.findIndex(p => p.id === productId);
+      if (productIndex === -1) {
+        toast({ title: "Error", description: "Producto no encontrado.", variant: "destructive" });
+        return prevProducts;
+      }
+      const updatedProducts = [...prevProducts];
+      const productToUpdate = updatedProducts[productIndex];
+      const newStock = productToUpdate.stock + quantityAdded;
+      updatedProducts[productIndex] = { ...productToUpdate, stock: newStock };
+      
+      logAction({
+        actionType: 'INVENTORY_ADJUSTMENT',
+        entityType: 'Product',
+        entityId: productId,
+        description: `Añadió ${quantityAdded} unidad(es) al stock de "${productToUpdate.name}". Nuevo stock: ${newStock}. Notas: ${notes || 'N/A'}`
+      });
+
+      toast({
+        title: "Inventario Actualizado",
+        description: `Se añadió stock a "${productToUpdate.name}".`
+      });
+
+      return updatedProducts;
+    });
+  };
 
   const inventoryItems: InventoryItem[] = useMemo(() => {
     return products
@@ -60,7 +97,13 @@ export default function InventoryPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Seguimiento de Inventario" description="Visualiza y gestiona los niveles de stock de tus productos." />
+      <PageHeader title="Seguimiento de Inventario" description="Visualiza y gestiona los niveles de stock de tus productos.">
+        {isAdmin && (
+          <Button onClick={() => setIsAdjustmentDialogOpen(true)}>
+            <PlusCircle className="mr-2 h-5 w-5" /> Ajustar Stock
+          </Button>
+        )}
+      </PageHeader>
 
       {fetchError && (
         <Alert variant="destructive">
@@ -185,6 +228,14 @@ export default function InventoryPage() {
           )}
         </CardContent>
       </Card>
+      {isAdmin && (
+        <StockAdjustmentDialog
+          isOpen={isAdjustmentDialogOpen}
+          onClose={() => setIsAdjustmentDialogOpen(false)}
+          products={products}
+          onConfirm={handleStockAdjustment}
+        />
+      )}
     </div>
   );
 }
