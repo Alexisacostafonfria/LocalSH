@@ -3,16 +3,9 @@
 
 import React from 'react';
 import Image from 'next/image';
-import type { BusinessSettings } from '@/types'; // Removed AppSettings
+import type { BusinessSettings, ProductMovement } from '@/types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-
-export interface ProductMovement {
-  productId: string;
-  productName: string;
-  quantitySold: number;
-  remainingStock: number;
-}
 
 interface ProductMovementsReportPrintLayoutProps {
   movements: ProductMovement[];
@@ -25,6 +18,9 @@ const ProductMovementsReportPrintLayout: React.FC<ProductMovementsReportPrintLay
   operationalDateDisplay,
   businessSettings,
 }) => {
+  const totalSold = movements.reduce((sum, item) => sum + item.quantitySold, 0);
+  const totalAdded = movements.reduce((sum, item) => sum + item.quantityAdded, 0);
+
   return (
     <div className="p-4 bg-white text-black text-sm font-sans">
       <header className="mb-6 border-b pb-4">
@@ -61,24 +57,37 @@ const ProductMovementsReportPrintLayout: React.FC<ProductMovementsReportPrintLay
                   <div key={movement.productId} className="py-2 border-b last:border-b-0 break-inside-avoid-page">
                       <p className="font-bold">{movement.productName}</p>
                       <p className="text-gray-500 text-xs">ID: {movement.productId.substring(0,16)}...</p>
-                      <div className="flex justify-between mt-1">
-                          <span>Cantidad Vendida Hoy:</span>
-                          <span className="font-semibold">{movement.quantitySold}</span>
+                      <div className="grid grid-cols-2 gap-x-4 mt-1">
+                          <div className="text-red-600">
+                              <div className="flex justify-between">
+                                  <span>Salidas (Vendido):</span>
+                                  <span className="font-semibold">{movement.quantitySold}</span>
+                              </div>
+                          </div>
+                          <div className="text-green-600">
+                               <div className="flex justify-between">
+                                  <span>Entradas (Ajuste):</span>
+                                  <span className="font-semibold">{movement.quantityAdded}</span>
+                              </div>
+                          </div>
                       </div>
-                       <div className="flex justify-between">
-                          <span>Stock Restante:</span>
+                       <div className="flex justify-between mt-1 pt-1 border-t border-dashed">
+                          <span>Stock Final:</span>
                           <span className="font-semibold">{movement.remainingStock}</span>
                       </div>
                   </div>
               ))
           )}
-          {/* Footer */}
           {movements.length > 0 && (
-          <div className="flex justify-between font-bold text-sm bg-gray-100 p-2 mt-2 rounded-md">
-              <span>Total Unidades Vendidas:</span>
-              <span>
-                  {movements.reduce((sum, item) => sum + item.quantitySold, 0)}
-              </span>
+          <div className="mt-4 space-y-1 bg-gray-100 p-2 rounded-md font-semibold text-sm">
+              <div className="flex justify-between text-red-700">
+                  <span>Total Unidades Vendidas:</span>
+                  <span>{totalSold}</span>
+              </div>
+              <div className="flex justify-between text-green-700">
+                  <span>Total Unidades Añadidas:</span>
+                  <span>{totalAdded}</span>
+              </div>
           </div>
           )}
       </div>

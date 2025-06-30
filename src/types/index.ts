@@ -211,6 +211,14 @@ export interface SalesDataPoint {
   salesVolume: number;
 }
 
+export interface ProductMovement {
+  productId: string;
+  productName: string;
+  quantitySold: number;
+  quantityAdded: number;
+  remainingStock: number;
+}
+
 // User Management Types
 export type UserRole = 'admin' | 'cashier';
 

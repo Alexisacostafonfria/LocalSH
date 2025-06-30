@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Product, AppSettings, DEFAULT_APP_SETTINGS, BusinessSettings, DEFAULT_BUSINESS_SETTINGS, Sale, AccountingSettings, DEFAULT_ACCOUNTING_SETTINGS, AuthState, DEFAULT_AUTH_STATE } from '@/types';
+import { Product, AppSettings, DEFAULT_APP_SETTINGS, BusinessSettings, DEFAULT_BUSINESS_SETTINGS, Sale, AccountingSettings, DEFAULT_ACCOUNTING_SETTINGS, AuthState, DEFAULT_AUTH_STATE, ProductMovement, AuditLogEntry } from '@/types';
 import Image from 'next/image';
 import { PageHeader } from '@/components/PageHeader';
 import {
@@ -36,8 +36,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { cn } from '@/lib/utils';
 import ProductBarcode from '@/components/products/ProductBarcode';
 import ProductListPrintLayout from '@/components/products/ProductListPrintLayout';
-import ProductMovementsReportPrintLayout, { ProductMovement } from '@/components/products/ProductMovementsReportPrintLayout';
-import { format, parseISO, startOfDay } from 'date-fns';
+import ProductMovementsReportPrintLayout from '@/components/products/ProductMovementsReportPrintLayout';
+import { format, parseISO, startOfDay, endOfDay, isWithinInterval, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
 import useLocalStorageState from '@/hooks/useLocalStorageState';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -68,6 +68,7 @@ type ViewMode = 'grid' | 'list';
 export default function ProductsPage() {
   const [products, setProducts] = useLocalStorageState<Product[]>('products', []);
   const [sales] = useLocalStorageState<Sale[]>('sales', []); 
+  const [auditLog] = useLocalStorageState<AuditLogEntry[]>('auditLog', []);
   const [appSettings] = useLocalStorageState<AppSettings>('appSettings', DEFAULT_APP_SETTINGS);
   const [businessSettings] = useLocalStorageState<BusinessSettings>('businessSettings', DEFAULT_BUSINESS_SETTINGS);
   const [accountingSettings] = useLocalStorageState<AccountingSettings>('accountingSettings', DEFAULT_ACCOUNTING_SETTINGS);
@@ -340,15 +341,24 @@ export default function ProductsPage() {
     }
 
     const currentOpDateISO = startOfDay(parseISO(accountingSettings.currentOperationalDate)).toISOString();
+    const currentOpDayStart = startOfDay(parseISO(accountingSettings.currentOperationalDate));
+    const currentOpDayEnd = endOfDay(parseISO(accountingSettings.currentOperationalDate));
+
     const salesForCurrentDay = sales.filter(sale => {
       const saleOpDate = sale.operationalDate ? startOfDay(parseISO(sale.operationalDate)).toISOString() : startOfDay(parseISO(sale.timestamp)).toISOString();
       return saleOpDate === currentOpDateISO;
     });
 
-    if (salesForCurrentDay.length === 0) {
+    const adjustmentsForCurrentDay = auditLog.filter(log => {
+        if (log.actionType !== 'INVENTORY_ADJUSTMENT') return false;
+        const logDate = parseISO(log.timestamp);
+        return isValid(logDate) && isWithinInterval(logDate, { start: currentOpDayStart, end: currentOpDayEnd });
+    });
+
+    if (salesForCurrentDay.length === 0 && adjustmentsForCurrentDay.length === 0) {
       toast({
         title: "Sin Movimientos",
-        description: `No hay ventas registradas para el día ${format(parseISO(currentOpDateISO), "PPP", { locale: es })}.`,
+        description: `No hay ventas ni ajustes de stock registrados para el día ${format(parseISO(currentOpDateISO), "PPP", { locale: es })}.`,
         variant: "default",
       });
       return;
@@ -356,20 +366,44 @@ export default function ProductsPage() {
 
     const aggregatedMovements: { [productId: string]: ProductMovement } = {};
 
+    const ensureProductInAggregation = (productId: string) => {
+        if (!aggregatedMovements[productId]) {
+            const productInfo = products.find(p => p.id === productId);
+            if (productInfo) {
+                aggregatedMovements[productId] = {
+                    productId: productId,
+                    productName: productInfo.name || 'Producto Desconocido',
+                    quantitySold: 0,
+                    quantityAdded: 0,
+                    remainingStock: productInfo.stock ?? 0,
+                };
+            }
+        }
+    };
+
     salesForCurrentDay.forEach(sale => {
       sale.items.forEach(item => {
-        const productInfo = products.find(p => p.id === item.productId);
+        ensureProductInAggregation(item.productId);
         if (aggregatedMovements[item.productId]) {
-          aggregatedMovements[item.productId].quantitySold += item.quantity;
-        } else {
-          aggregatedMovements[item.productId] = {
-            productId: item.productId,
-            productName: productInfo?.name || 'Producto Desconocido',
-            quantitySold: item.quantity,
-            remainingStock: productInfo?.stock ?? 0, // Use remaining stock from DB
-          };
+            aggregatedMovements[item.productId].quantitySold += item.quantity;
         }
       });
+    });
+
+    const adjustmentRegex = /Añadió (\d+)/;
+    adjustmentsForCurrentDay.forEach(log => {
+        if (log.entityId) {
+            const match = log.description.match(adjustmentRegex);
+            if (match && match[1]) {
+                const quantityAdded = parseInt(match[1], 10);
+                if (!isNaN(quantityAdded)) {
+                    ensureProductInAggregation(log.entityId);
+                    if (aggregatedMovements[log.entityId]) {
+                        aggregatedMovements[log.entityId].quantityAdded += quantityAdded;
+                    }
+                }
+            }
+        }
     });
 
     const movementsArray = Object.values(aggregatedMovements).sort((a,b) => a.productName.localeCompare(b.productName));
@@ -377,7 +411,7 @@ export default function ProductsPage() {
     if (movementsArray.length === 0) {
          toast({
             title: "Sin Movimientos de Productos",
-            description: `No se vendieron productos específicos el ${format(parseISO(currentOpDateISO), "PPP", { locale: es })}.`,
+            description: `No se registraron movimientos para el día ${format(parseISO(currentOpDateISO), "PPP", { locale: es })}.`,
             variant: "default",
         });
         return;
