@@ -262,11 +262,9 @@ export default function AccountingPage() {
   };
 
   const totalCountedCash = useMemo(() => {
-    return Object.values(countedCashBreakdownInputs).reduce((total, countStr) => {
-      const denKey = Object.keys(countedCashBreakdownInputs).find(k => countedCashBreakdownInputs[k] === countStr);
-      if (!denKey) return total;
-      const count = parseFloat(countStr);
-      const denominationValue = parseFloat(denKey);
+    return Object.entries(countedCashBreakdownInputs).reduce((total, [denominationKey, countStr]) => {
+      const count = parseInt(countStr);
+      const denominationValue = parseFloat(denominationKey);
       if (!isNaN(count) && count > 0 && !isNaN(denominationValue)) {
         return total + (denominationValue * count);
       }
