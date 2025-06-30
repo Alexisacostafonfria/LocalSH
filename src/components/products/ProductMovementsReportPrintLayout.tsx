@@ -1,4 +1,3 @@
-
 // src/components/products/ProductMovementsReportPrintLayout.tsx
 "use client";
 
