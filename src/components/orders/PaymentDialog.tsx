@@ -228,7 +228,7 @@ export default function PaymentDialog({ isOpen, onClose, order, onConfirm, appSe
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="icon" title="Detallar efectivo"><Coins className="h-5 w-5" /></Button>
                   </PopoverTrigger>
-                  <PopoverContent>
+                  <PopoverContent side="right" align="start">
                     <div className="grid gap-4">
                       <h4 className="font-medium">Desglose de Efectivo</h4>
                       <div className="grid grid-cols-2 gap-2">
