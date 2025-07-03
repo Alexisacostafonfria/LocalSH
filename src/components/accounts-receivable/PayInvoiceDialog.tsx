@@ -1,4 +1,3 @@
-
 // src/components/accounts-receivable/PayInvoiceDialog.tsx
 "use client";
 
@@ -10,10 +9,18 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AppSettings, Sale, InvoicePaymentRecord, InvoicePaymentDetails, AccountingSettings, DEFAULT_ACCOUNTING_SETTINGS } from '@/types';
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, DollarSign, AlertTriangle, Coins } from 'lucide-react';
+import { CheckCircle2, DollarSign, AlertTriangle, Coins, Eye } from 'lucide-react';
 import useLocalStorageState from '@/hooks/useLocalStorageState';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { ScrollArea } from '@/components/ui/scroll-area';
+
 
 interface PayInvoiceDialogProps {
   isOpen: boolean;
@@ -132,6 +139,35 @@ export default function PayInvoiceDialog({ isOpen, onClose, invoice, onConfirm, 
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="item-1">
+              <AccordionTrigger className="text-sm">
+                <div className="flex items-center gap-2">
+                  <Eye className="h-4 w-4" />
+                  <span>Revisar Detalles de la Factura</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <ScrollArea className="h-40 border rounded-md p-2 bg-muted/30">
+                  {invoice.items && invoice.items.length > 0 ? (
+                    invoice.items.map(item => (
+                      <div key={item.productId} className="flex justify-between items-center py-1.5 border-b last:border-b-0">
+                        <div>
+                          <p className="font-medium text-sm">{item.productName}</p>
+                          <p className="text-xs text-muted-foreground">{item.quantity} x {appSettings.currencySymbol}{item.unitPrice.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</p>
+                        </div>
+                        <p className="font-semibold text-sm">{appSettings.currencySymbol}{item.totalPrice.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">No hay ítems detallados en esta factura.</p>
+                  )}
+                </ScrollArea>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+
           <div className="text-3xl font-bold text-right text-primary">
               Monto a Pagar: {appSettings.currencySymbol}{invoiceTotal.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
           </div>
