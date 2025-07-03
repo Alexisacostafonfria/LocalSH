@@ -832,7 +832,7 @@ export default function SaleDialog({
                                   <Coins className="h-5 w-5" />
                               </Button>
                           </PopoverTrigger>
-                          <PopoverContent side="right" align="start" className="bg-popover w-auto"> 
+                          <PopoverContent side="right" align="center" className="bg-popover w-auto"> 
                               <div className="grid gap-4">
                               <div className="space-y-2">
                                   <h4 className="font-medium leading-none">Desglose de Efectivo</h4>

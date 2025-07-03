@@ -196,7 +196,7 @@ export default function PayInvoiceDialog({ isOpen, onClose, invoice, onConfirm, 
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="icon" title="Detallar efectivo"><Coins className="h-5 w-5" /></Button>
                   </PopoverTrigger>
-                  <PopoverContent side="right" align="start">
+                  <PopoverContent side="right" align="center">
                     <div className="grid gap-4">
                       <h4 className="font-medium">Desglose de Efectivo</h4>
                       <div className="grid grid-cols-2 gap-2">

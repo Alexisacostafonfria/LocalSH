@@ -179,7 +179,7 @@ export default function PaymentDialog({ isOpen, onClose, order, onConfirm, appSe
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Cliente con Deuda Pendiente</AlertTitle>
               <AlertDescription>
-                 Este cliente tiene {debtDetails.count} factura(s) por un total de {appSettings.currencySymbol}{debtDetails.total.toLocaleString('es-ES', { minimumFractionDigits: 2 })}. Solo se puede proceder generando una nueva factura (renegociación). Los otros métodos de pago están deshabilitados.
+                 Este cliente tiene {debtDetails.count} factura(s) por un total de {appSettings.currencySymbol}{debtDetails.total.toLocaleString('es-ES', { minimumFractionDigits: 2 })}. Solo se puede proceder generando una nueva factura para renegociar. Los otros métodos de pago están deshabilitados.
               </AlertDescription>
             </Alert>
           )}
@@ -228,7 +228,7 @@ export default function PaymentDialog({ isOpen, onClose, order, onConfirm, appSe
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="icon" title="Detallar efectivo"><Coins className="h-5 w-5" /></Button>
                   </PopoverTrigger>
-                  <PopoverContent side="right" align="start">
+                  <PopoverContent side="right" align="center">
                     <div className="grid gap-4">
                       <h4 className="font-medium">Desglose de Efectivo</h4>
                       <div className="grid grid-cols-2 gap-2">
