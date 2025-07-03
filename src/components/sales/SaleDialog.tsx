@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Product, Customer, Sale, SaleItem, AppSettings, CashPaymentDetails, TransferPaymentDetails, AccountingSettings, DEFAULT_ACCOUNTING_SETTINGS, InvoicePaymentDetails } from '@/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { X, Plus, Trash2, UserPlus, AlertCircle, Coins, ArrowLeft, ArrowRight, CheckCircle2, AlertTriangle, ScanLine, FileText, Calendar as CalendarIcon } from 'lucide-react';
+import { X, Plus, Trash2, UserPlus, AlertCircle, Coins, ArrowLeft, ArrowRight, CheckCircle2, AlertTriangle, ScanLine, FileText, Calendar as CalendarIcon, ClipboardCheck } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -34,7 +34,7 @@ interface SaleDialogProps {
   onUpdateCustomers: (customers: Customer[]) => void;
 }
 
-type SaleDialogStep = 'products' | 'customer' | 'payment';
+type SaleDialogStep = 'products' | 'customer' | 'confirmation' | 'payment';
 
 const initialCashDetails: CashPaymentDetails = { amountReceived: 0, changeGiven: 0, tip: 0, breakdown: {} };
 const initialTransferDetails: TransferPaymentDetails = { reference: '', customerName: '', personalId: '', mobileNumber: '', cardNumber: '' };
@@ -584,7 +584,7 @@ export default function SaleDialog({
                 </div>
               </div>
 
-              <div className="text-center text-sm text-muted-foreground my-2">O añadir manualmente:</div>
+              <div className="text-center text-sm text-muted-foreground my-2">O añadir manually:</div>
               
               <div className="flex gap-2 items-end">
                 <div className="flex-grow">
@@ -708,6 +708,53 @@ export default function SaleDialog({
                   <Button size="sm" onClick={handleSaveNewSystemCustomer} disabled={!currentTransactionCustomer?.name}>Guardar en Sistema</Button>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        );
+      case 'confirmation':
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-headline">Confirmar Compra</CardTitle>
+              <DialogDescription>
+                Por favor, revise los detalles de la compra con el cliente antes de proceder al pago.
+              </DialogDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 max-h-[50vh] overflow-y-auto pr-3">
+              <div className="p-3 rounded-md bg-muted/30">
+                <h4 className="font-semibold text-base mb-1">Cliente:</h4>
+                <p className="text-muted-foreground">{currentTransactionCustomer?.name || 'Consumidor Final'}</p>
+                {currentTransactionCustomer?.phone && <p className="text-xs text-muted-foreground">Tel: {currentTransactionCustomer.phone}</p>}
+                {currentTransactionCustomer?.personalId && <p className="text-xs text-muted-foreground">ID: {currentTransactionCustomer.personalId}</p>}
+              </div>
+
+              <div className="p-3 rounded-md bg-muted/30">
+                <h4 className="font-semibold text-base mb-2">Resumen de Productos:</h4>
+                <ScrollArea className="h-48 border rounded-md p-0">
+                  <div className="p-2">
+                  {saleItems.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">No hay productos en el carrito.</p>
+                  ) : (
+                    saleItems.map(item => (
+                    <div key={item.productId} className="flex justify-between items-center py-2 border-b last:border-b-0">
+                      <div>
+                        <p className="font-medium">{item.productName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {item.quantity} x {appSettings.currencySymbol}{(isFinite(item.unitPrice) ? item.unitPrice : 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                      <p className="font-semibold">
+                        {appSettings.currencySymbol}{(isFinite(item.totalPrice) ? item.totalPrice : 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  )))}
+                  </div>
+                </ScrollArea>
+              </div>
+
+              <div className="text-2xl font-bold text-right text-primary pt-2 border-t mt-4">
+                Total a Pagar: {appSettings.currencySymbol}{(isFinite(subTotal) ? subTotal : 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}
+              </div>
             </CardContent>
           </Card>
         );
@@ -906,7 +953,8 @@ export default function SaleDialog({
     switch (currentStep) {
       case 'products': return 'Paso 1: Seleccionar Productos';
       case 'customer': return 'Paso 2: Datos del Cliente';
-      case 'payment': return 'Paso 3: Registrar Pago';
+      case 'confirmation': return 'Paso 3: Confirmar Compra';
+      case 'payment': return 'Paso 4: Registrar Pago';
       default: return 'Registrar Nueva Venta';
     }
   };
@@ -915,7 +963,8 @@ export default function SaleDialog({
      switch (currentStep) {
       case 'products': return 'Escanee códigos de barra o añada productos manualmente al carrito.';
       case 'customer': return 'Seleccione un cliente o añada uno nuevo al sistema.';
-      case 'payment': return 'Seleccione el método de pago y complete los detalles.';
+      case 'confirmation': return 'Revise los productos y el total con el cliente antes de proceder al pago.';
+      case 'payment': return 'Seleccione el método de pago y complete los detalles finalizando la venta.';
       default: return 'Complete los pasos para registrar una nueva venta.';
     }
   };
@@ -944,21 +993,26 @@ export default function SaleDialog({
           {renderStepContent()}
         </div>
 
-        <DialogFooter className="pt-4 border-t flex justify-between">
+        <DialogFooter className="pt-4 border-t flex justify-between items-center">
           <div> 
             {currentStep === 'customer' && (
               <Button variant="outline" onClick={() => setCurrentStep('products')}>
-                <ArrowLeft className="mr-2 h-4 w-4" /> Atrás (Productos)
+                <ArrowLeft className="mr-2 h-4 w-4" /> Productos
+              </Button>
+            )}
+             {currentStep === 'confirmation' && (
+              <Button variant="outline" onClick={() => setCurrentStep('customer')}>
+                <ArrowLeft className="mr-2 h-4 w-4" /> Cliente
               </Button>
             )}
             {currentStep === 'payment' && (
-              <Button variant="outline" onClick={() => setCurrentStep('customer')}>
-                <ArrowLeft className="mr-2 h-4 w-4" /> Atrás (Cliente)
+              <Button variant="outline" onClick={() => setCurrentStep('confirmation')}>
+                <ArrowLeft className="mr-2 h-4 w-4" /> Confirmar
               </Button>
             )}
           </div>
-          <div> 
-            <Button variant="ghost" onClick={handleClose} className="mr-2">Cancelar</Button>
+          <div className="flex items-center gap-2"> 
+            <Button variant="ghost" onClick={handleClose}>Cancelar Venta</Button>
             {currentStep === 'products' && (
               <Button 
                 onClick={() => setCurrentStep('customer')} 
@@ -970,12 +1024,21 @@ export default function SaleDialog({
             )}
             {currentStep === 'customer' && (
               <Button 
-                onClick={() => setCurrentStep('payment')}
+                onClick={() => setCurrentStep('confirmation')}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground"
                 disabled={!isDayEffectivelyOpen}
               >
-                Siguiente (Pago) <ArrowRight className="ml-2 h-4 w-4" />
+                Siguiente (Confirmar) <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
+            )}
+            {currentStep === 'confirmation' && (
+                <Button
+                    onClick={() => setCurrentStep('payment')}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                    disabled={!isDayEffectivelyOpen}
+                >
+                    <ClipboardCheck className="mr-2 h-4 w-4" /> Confirmar y Pagar
+                </Button>
             )}
             {currentStep === 'payment' && (
               <Button 
