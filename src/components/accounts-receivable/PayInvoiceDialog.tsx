@@ -39,6 +39,7 @@ export default function PayInvoiceDialog({ isOpen, onClose, invoice, onConfirm, 
   const [accountingSettings] = useLocalStorageState<AccountingSettings>('accountingSettings', DEFAULT_ACCOUNTING_SETTINGS);
 
   const [amountReceived, setAmountReceived] = useState<number>(0);
+  const [tip, setTip] = useState<number>(0);
   const [cashBreakdownInputs, setCashBreakdownInputs] = useState<Record<string, string>>({});
   const [isCashBreakdownPopoverOpen, setIsCashBreakdownPopoverOpen] = useState(false);
 
@@ -51,14 +52,16 @@ export default function PayInvoiceDialog({ isOpen, onClose, invoice, onConfirm, 
 
   const changeGiven = useMemo(() => {
     const received = typeof amountReceived === 'number' && isFinite(amountReceived) ? amountReceived : 0;
-    return Math.max(0, received - invoiceTotal);
-  }, [amountReceived, invoiceTotal]);
+    const currentTip = typeof tip === 'number' && isFinite(tip) ? tip : 0;
+    return Math.max(0, received - invoiceTotal - currentTip);
+  }, [amountReceived, invoiceTotal, tip]);
 
   useEffect(() => {
     if (!isOpen) {
       setPaymentMethod('cash');
       setReference('');
       setAmountReceived(0);
+      setTip(0);
       setCashBreakdownInputs({});
     }
   }, [isOpen]);
@@ -100,10 +103,17 @@ export default function PayInvoiceDialog({ isOpen, onClose, invoice, onConfirm, 
         return;
     }
 
-    if (paymentMethod === 'cash' && amountReceived < invoiceTotal) {
-        toast({ title: "Pago Insuficiente", description: "El monto recibido es menor al total de la factura.", variant: "destructive"});
-        return;
+    if (paymentMethod === 'cash') {
+        if (amountReceived < invoiceTotal) {
+            toast({ title: "Pago Insuficiente", description: "El monto recibido es menor al total de la factura.", variant: "destructive"});
+            return;
+        }
+        if (tip > (amountReceived - invoiceTotal)) {
+            toast({ title: "Propina Inválida", description: "La propina no puede ser mayor que el cambio disponible.", variant: "destructive"});
+            return;
+        }
     }
+
 
     const todayISO = new Date().toISOString();
     const updatedPaymentDetails: InvoicePaymentDetails = {
@@ -123,12 +133,14 @@ export default function PayInvoiceDialog({ isOpen, onClose, invoice, onConfirm, 
         amountPaid: invoiceTotal,
         method: paymentMethod,
         reference: paymentMethod === 'transfer' ? reference : undefined,
+        tip: paymentMethod === 'cash' && tip > 0 ? tip : undefined,
     };
     
     onConfirm(updatedInvoice, paymentRecord);
   };
 
-  const isConfirmDisabled = !isDayEffectivelyOpen || (paymentMethod === 'cash' && amountReceived < invoiceTotal);
+  const isConfirmDisabled = !isDayEffectivelyOpen || 
+      (paymentMethod === 'cash' && (amountReceived < invoiceTotal || tip > Math.max(0, amountReceived - invoiceTotal)));
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -212,6 +224,23 @@ export default function PayInvoiceDialog({ isOpen, onClose, invoice, onConfirm, 
                   </PopoverContent>
                 </Popover>
               </div>
+              {appSettings.allowTips && amountReceived >= invoiceTotal && (
+                <div className="pt-2">
+                    <Label htmlFor="tip">Propina (del cambio disponible)</Label>
+                    <Input 
+                        id="tip" 
+                        type="number" 
+                        placeholder="0.00" 
+                        value={tip || ''} 
+                        onChange={e => setTip(parseFloat(e.target.value) || 0)} 
+                        min="0"
+                        max={Math.max(0, amountReceived - invoiceTotal).toFixed(2)}
+                    />
+                    {tip > Math.max(0, amountReceived - invoiceTotal) && (
+                        <p className="text-xs text-destructive mt-1">La propina no puede ser mayor que el cambio.</p>
+                    )}
+                </div>
+              )}
               <div className="text-lg font-semibold text-orange-500 pt-2">
                   Cambio a entregar: {appSettings.currencySymbol}{changeGiven.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
               </div>

@@ -242,13 +242,30 @@ export default function AccountingPage() {
     const grossProfit = totalRevenue - totalCogs;
 
     const totalTransactions = salesForOperationalDate.length;
-    const cashSalesDetails = salesForOperationalDate.filter(s => s.paymentMethod === 'cash').map(s => s.paymentDetails as CashPaymentDetails);
-    const cashSalesAmount = salesForOperationalDate.filter(s => s.paymentMethod === 'cash').reduce((sum, sale) => sum + sale.totalAmount, 0);
-    const transferSalesAmount = salesForOperationalDate.filter(s => s.paymentMethod === 'transfer').reduce((sum, s) => sum + s.totalAmount, 0);
-    const totalTips = cashSalesDetails.reduce((sum, details) => sum + (details.tip || 0), 0);
-    const invoicePaymentsInCash = invoicePaymentsForOperationalDate.filter(p => p.method === 'cash').reduce((sum, p) => sum + p.amountPaid, 0);
+    
+    const cashSalesAmount = salesForOperationalDate
+      .filter(s => s.paymentMethod === 'cash')
+      .reduce((sum, sale) => sum + sale.totalAmount, 0);
+
+    const transferSalesAmount = salesForOperationalDate
+      .filter(s => s.paymentMethod === 'transfer')
+      .reduce((sum, s) => sum + s.totalAmount, 0);
+
+    const tipsFromSales = salesForOperationalDate
+        .filter(s => s.paymentMethod === 'cash' && s.paymentDetails)
+        .reduce((sum, s) => sum + ((s.paymentDetails as CashPaymentDetails).tip || 0), 0);
+    
+    const invoicePaymentsInCashRecords = invoicePaymentsForOperationalDate.filter(p => p.method === 'cash');
+
+    const invoicePaymentsInCash = invoicePaymentsInCashRecords.reduce((sum, p) => sum + p.amountPaid, 0);
+    
+    const tipsFromInvoicePayments = invoicePaymentsInCashRecords.reduce((sum, p) => sum + (p.tip || 0), 0);
+
     const invoicePaymentsInTransfer = invoicePaymentsForOperationalDate.filter(p => p.method === 'transfer').reduce((sum, p) => sum + p.amountPaid, 0);
-    const expectedCashInBox = cashSalesAmount + totalTips + invoicePaymentsInCash;
+    
+    const totalTips = tipsFromSales + tipsFromInvoicePayments;
+
+    const expectedCashInBox = cashSalesAmount + invoicePaymentsInCash + totalTips;
 
     return {
         totalRevenue, totalCogs, grossProfit, totalTransactions, cashSalesAmount,
@@ -454,7 +471,7 @@ export default function AccountingPage() {
                         <div className="p-4 bg-muted/30 rounded-lg shadow"><h3 className="text-sm font-medium text-muted-foreground flex items-center"><Package className="h-4 w-4 mr-2" />Total Transacciones</h3><p className="text-2xl font-bold">{dailySummary.totalTransactions}</p></div>
                         <div className="p-4 bg-muted/30 rounded-lg shadow"><h3 className="text-sm font-medium text-muted-foreground flex items-center"><Coins className="h-4 w-4 mr-2" />Ventas en Efectivo</h3><p className="text-2xl font-bold">{appSettings.currencySymbol}{dailySummary.cashSalesAmount.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</p></div>
                         <div className="p-4 bg-muted/30 rounded-lg shadow"><h3 className="text-sm font-medium text-muted-foreground flex items-center"><Landmark className="h-4 w-4 mr-2" />Ventas por Transferencia</h3><p className="text-2xl font-bold">{appSettings.currencySymbol}{dailySummary.transferSalesAmount.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</p></div>
-                        <div className="p-4 bg-green-500/10 rounded-lg shadow border border-green-500/30 col-span-full"><h3 className="text-sm font-medium text-green-600 flex items-center"><ClipboardList className="h-4 w-4 mr-2" />Efectivo Esperado en Caja</h3><p className="text-2xl font-bold text-green-700">{appSettings.currencySymbol}{dailySummary.expectedCashInBox.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</p><p className="text-xs text-muted-foreground">(Ventas Efectivo + Propinas Efectivo + Cobros Facturas Efectivo)</p></div>
+                        <div className="p-4 bg-green-500/10 rounded-lg shadow border border-green-500/30 col-span-full"><h3 className="text-sm font-medium text-green-600 flex items-center"><ClipboardList className="h-4 w-4 mr-2" />Efectivo Esperado en Caja</h3><p className="text-2xl font-bold text-green-700">{appSettings.currencySymbol}{dailySummary.expectedCashInBox.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</p><p className="text-xs text-muted-foreground">(Ventas Efectivo + Cobros Facturas Efectivo + Total Propinas)</p></div>
                     </div></CardContent>
                 </Card>
                 <Card>

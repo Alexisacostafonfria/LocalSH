@@ -110,6 +110,7 @@ export interface InvoicePaymentRecord {
     amountPaid: number;
     method: 'cash' | 'transfer';
     reference?: string; // Optional reference for the payment (e.g., transfer ref)
+    tip?: number;
 }
 
 
