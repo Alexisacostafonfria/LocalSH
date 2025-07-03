@@ -1,3 +1,4 @@
+
 // src/components/accounts-receivable/PayInvoiceDialog.tsx
 "use client";
 
@@ -59,11 +60,8 @@ export default function PayInvoiceDialog({ isOpen, onClose, invoice, onConfirm, 
       setReference('');
       setAmountReceived(0);
       setCashBreakdownInputs({});
-    } else {
-      // Pre-fill amount received with invoice total for convenience
-      setAmountReceived(invoiceTotal);
     }
-  }, [isOpen, invoiceTotal]);
+  }, [isOpen]);
   
   const hasActiveBreakdown = Object.values(cashBreakdownInputs).some(val => val && parseInt(val) > 0);
 
