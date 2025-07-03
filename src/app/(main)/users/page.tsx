@@ -14,7 +14,7 @@ import { User, UserRole, AuthState, DEFAULT_USERS_STATE, DEFAULT_AUTH_STATE, DEF
 import useLocalStorageState from '@/hooks/useLocalStorageState';
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Users, AlertTriangle, Trash2, Edit2 } from 'lucide-react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const initialNewUserFormState = { username: '', name: '', role: 'cashier' as UserRole };
 
@@ -245,7 +245,6 @@ export default function UsersPage() {
                         <Button variant="ghost" size="icon" onClick={() => openEditForm(user)} title="Editar Usuario">
                             <Edit2 className="h-4 w-4"/>
                         </Button>
-                       <AlertDialogTrigger asChild>
                          <Button 
                             variant="ghost" 
                             size="icon" 
@@ -255,7 +254,6 @@ export default function UsersPage() {
                           >
                            <Trash2 className="h-4 w-4 text-destructive" />
                          </Button>
-                       </AlertDialogTrigger>
                     </TableCell>
                   </TableRow>
                 ))}
