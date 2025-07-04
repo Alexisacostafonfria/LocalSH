@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   PanelLeft, Package, ShoppingCart, Archive, BarChartBig, TrendingUp, Settings as SettingsIcon, Menu, X, Briefcase,
   DollarSign, Users, FileText, Layers, Lightbulb, Wrench, BookOpenCheck, LogOut, Loader2, ClipboardList, History,
-  Database // Import Database icon
+  Database
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -67,7 +67,8 @@ const adminNavItems = [
   { href: "/users", icon: Users, label: "Usuarios" },
   { href: "/audit-log", icon: History, label: "Historial de Actividad" },
   { href: "/settings", icon: Wrench, label: "Configuración" },
-  { href: "/migration-plan", icon: Database, label: "Plan de Migración" }, // New item
+  { href: "/migration-plan", icon: Database, label: "Plan de Migración" },
+  { href: "/manual", icon: BookOpenCheck, label: "Manual de Usuario" },
 ];
 
 
@@ -105,7 +106,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const visibleNavItems = [
     ...baseNavItems,
-    ...adminNavItems.map(item => ({...item, disabled: !isAdmin}))
+    ...adminNavItems.map(item => ({...item, disabled: !isAdmin && item.href !== '/manual' }))
   ];
 
   // Show a global loader while we check auth status, but only for protected pages.

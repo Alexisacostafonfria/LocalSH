@@ -80,7 +80,7 @@ h1, h2, h3, h4, h5, h6 {
     padding: 0 !important;
   }
 
-  body > *:not(#printableOperationsReportArea):not(#printable-receipt-area):not(#printableProductListArea):not(#printableMovementsReportArea):not(#printableClosureReportArea):not(#printable-prep-ticket-area):not(#printableAccountsReceivableReportArea):not(#printableInvoiceContractArea):not(#printableSaleA4Area):not(#printableOrdersReportArea):not(#printable-order-confirmation-area) {
+  body > *:not(#printableOperationsReportArea):not(#printable-receipt-area):not(#printableProductListArea):not(#printableMovementsReportArea):not(#printableClosureReportArea):not(#printable-prep-ticket-area):not(#printableAccountsReceivableReportArea):not(#printableInvoiceContractArea):not(#printableSaleA4Area):not(#printableOrdersReportArea):not(#printable-order-confirmation-area):not(#printableManualArea) {
     display: none !important;
     visibility: hidden !important;
   }
@@ -96,7 +96,8 @@ h1, h2, h3, h4, h5, h6 {
   #printableInvoiceContractArea,
   #printableSaleA4Area,
   #printableOrdersReportArea,
-  #printable-order-confirmation-area {
+  #printable-order-confirmation-area,
+  #printableManualArea {
     display: block !important;
     visibility: visible !important;
     position: absolute !important;
@@ -121,7 +122,8 @@ h1, h2, h3, h4, h5, h6 {
   #printableAccountsReceivableReportArea,
   #printableInvoiceContractArea,
   #printableSaleA4Area,
-  #printableOrdersReportArea {
+  #printableOrdersReportArea,
+  #printableManualArea {
     font-size: 10pt !important;
   }
   #printableOperationsReportArea *,
@@ -131,7 +133,8 @@ h1, h2, h3, h4, h5, h6 {
   #printableAccountsReceivableReportArea *,
   #printableInvoiceContractArea *,
   #printableSaleA4Area *,
-  #printableOrdersReportArea * {
+  #printableOrdersReportArea *,
+  #printableManualArea * {
     visibility: visible !important;
     color: black !important;
     background-color: transparent !important;
@@ -143,7 +146,8 @@ h1, h2, h3, h4, h5, h6 {
   #printableAccountsReceivableReportArea table, #printableAccountsReceivableReportArea th, #printableAccountsReceivableReportArea td,
   #printableInvoiceContractArea table, #printableInvoiceContractArea th, #printableInvoiceContractArea td,
   #printableSaleA4Area table, #printableSaleA4Area th, #printableSaleA4Area td,
-  #printableOrdersReportArea table, #printableOrdersReportArea th, #printableOrdersReportArea td {
+  #printableOrdersReportArea table, #printableOrdersReportArea th, #printableOrdersReportArea td,
+  #printableManualArea table, #printableManualArea th, #printableManualArea td {
     border-color: #666 !important;
   }
   #printableOperationsReportArea th,
@@ -153,7 +157,8 @@ h1, h2, h3, h4, h5, h6 {
   #printableAccountsReceivableReportArea th,
   #printableInvoiceContractArea th,
   #printableSaleA4Area th,
-  #printableOrdersReportArea th {
+  #printableOrdersReportArea th,
+  #printableManualArea th {
     background-color: #f2f2f2 !important;
   }
   #printableOperationsReportArea .break-inside-avoid-page,
@@ -163,7 +168,8 @@ h1, h2, h3, h4, h5, h6 {
   #printableAccountsReceivableReportArea .break-inside-avoid-page,
   #printableInvoiceContractArea .break-inside-avoid-page,
   #printableSaleA4Area .break-inside-avoid-page,
-  #printableOrdersReportArea .break-inside-avoid-page {
+  #printableOrdersReportArea .break-inside-avoid-page,
+  #printableManualArea .break-inside-avoid-page {
     page-break-inside: avoid;
   }
   #printableOperationsReportArea .no-print,
@@ -173,7 +179,8 @@ h1, h2, h3, h4, h5, h6 {
   #printableAccountsReceivableReportArea .no-print,
   #printableInvoiceContractArea .no-print,
   #printableSaleA4Area .no-print,
-  #printableOrdersReportArea .no-print {
+  #printableOrdersReportArea .no-print,
+  #printableManualArea .no-print {
       display: none !important;
   }
 
@@ -200,6 +207,9 @@ h1, h2, h3, h4, h5, h6 {
   
   @page orders-report-page { size: A4 portrait; margin: 1cm; }
   #printableOrdersReportArea { page: orders-report-page; }
+
+  @page manual-page { size: A4 portrait; margin: 1cm; }
+  #printableManualArea { page: manual-page; }
 
   /* Estilos específicos para RECIBOS Y TICKETS DE PREPARACIÓN */
    #printable-receipt-area,
