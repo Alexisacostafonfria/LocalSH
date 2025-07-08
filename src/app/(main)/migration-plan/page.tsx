@@ -17,129 +17,149 @@ const sqlScript = `
 
 -- Tabla: users
 CREATE TABLE IF NOT EXISTS users (
-  id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL PRIMARY KEY,
-  username VARCHAR(255) NOT NULL UNIQUE,
-  name VARCHAR(255) NOT NULL,
+  id VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  username VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  name VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   role ENUM('admin', 'cashier') NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabla: products
 CREATE TABLE IF NOT EXISTS products (
-  id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  category VARCHAR(255) NOT NULL,
+  id VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  name VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  category VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   price DECIMAL(15, 2) NOT NULL,
   cost_price DECIMAL(15, 2) DEFAULT 0.00,
   stock INT NOT NULL DEFAULT 0,
-  unit_of_measure VARCHAR(50),
-  image_url TEXT,
-  description TEXT,
+  unit_of_measure VARCHAR(50) COLLATE utf8mb4_unicode_ci,
+  image_url TEXT COLLATE utf8mb4_unicode_ci,
+  description TEXT COLLATE utf8mb4_unicode_ci,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
   INDEX idx_products_name (name),
   INDEX idx_products_category (category)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabla: customers
 CREATE TABLE IF NOT EXISTS customers (
-  id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  phone VARCHAR(50),
-  email VARCHAR(255),
-  personal_id VARCHAR(50) UNIQUE,
-  card_number VARCHAR(255), -- Se recomienda encriptar este campo
+  id VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  name VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  phone VARCHAR(50) COLLATE utf8mb4_unicode_ci,
+  email VARCHAR(255) COLLATE utf8mb4_unicode_ci,
+  personal_id VARCHAR(50) COLLATE utf8mb4_unicode_ci,
+  card_number VARCHAR(255) COLLATE utf8mb4_unicode_ci,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY (personal_id),
   INDEX idx_customers_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabla: orders
 CREATE TABLE IF NOT EXISTS orders (
-  id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL PRIMARY KEY,
-  order_number INT NOT NULL AUTO_INCREMENT UNIQUE,
+  id VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  order_number INT NOT NULL AUTO_INCREMENT,
   timestamp DATETIME NOT NULL,
-  customer_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  customer_name VARCHAR(255) NOT NULL,
-  customer_phone VARCHAR(50),
+  customer_id VARCHAR(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  customer_name VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  customer_phone VARCHAR(50) COLLATE utf8mb4_unicode_ci,
   total_amount DECIMAL(15, 2) NOT NULL,
   status ENUM('pending', 'in-progress', 'ready', 'completed', 'cancelled') NOT NULL,
-  notes TEXT,
+  notes TEXT COLLATE utf8mb4_unicode_ci,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
+  PRIMARY KEY (id),
+  UNIQUE KEY (order_number),
+  KEY fk_orders_customer_id (customer_id),
+  CONSTRAINT orders_ibfk_1 FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabla: order_items
 CREATE TABLE IF NOT EXISTS order_items (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  order_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  product_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  product_name VARCHAR(255) NOT NULL,
+  id INT AUTO_INCREMENT,
+  order_id VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  product_id VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  product_name VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   quantity INT NOT NULL,
   unit_price DECIMAL(15, 2) NOT NULL,
   total_price DECIMAL(15, 2) NOT NULL,
-  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
-  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT
+  PRIMARY KEY (id),
+  KEY fk_order_items_order_id (order_id),
+  KEY fk_order_items_product_id (product_id),
+  CONSTRAINT order_items_ibfk_1 FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+  CONSTRAINT order_items_ibfk_2 FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabla: sales
 CREATE TABLE IF NOT EXISTS sales (
-  id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL PRIMARY KEY,
+  id VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   timestamp DATETIME NOT NULL,
   operational_date DATE NOT NULL,
   origin ENUM('pos', 'order') NOT NULL,
-  order_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  customer_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  customer_name VARCHAR(255),
-  user_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  order_id VARCHAR(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  customer_id VARCHAR(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  customer_name VARCHAR(255) COLLATE utf8mb4_unicode_ci,
+  user_id VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   sub_total DECIMAL(15, 2) NOT NULL,
   discount DECIMAL(15, 2) DEFAULT 0.00,
   fees JSON,
   total_amount DECIMAL(15, 2) NOT NULL,
   payment_method ENUM('cash', 'transfer', 'invoice') NOT NULL,
   payment_details JSON NOT NULL,
+  PRIMARY KEY (id),
   INDEX idx_sales_operational_date (operational_date),
-  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL,
-  FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT
+  KEY fk_sales_order_id (order_id),
+  KEY fk_sales_customer_id (customer_id),
+  KEY fk_sales_user_id (user_id),
+  CONSTRAINT sales_ibfk_1 FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL,
+  CONSTRAINT sales_ibfk_2 FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL,
+  CONSTRAINT sales_ibfk_3 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabla: sale_items
 CREATE TABLE IF NOT EXISTS sale_items (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  sale_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  product_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  product_name VARCHAR(255) NOT NULL,
+  id INT AUTO_INCREMENT,
+  sale_id VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  product_id VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  product_name VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   quantity INT NOT NULL,
   unit_price DECIMAL(15, 2) NOT NULL,
   total_price DECIMAL(15, 2) NOT NULL,
-  FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE,
-  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT
+  PRIMARY KEY (id),
+  KEY fk_sale_items_sale_id (sale_id),
+  KEY fk_sale_items_product_id (product_id),
+  CONSTRAINT sale_items_ibfk_1 FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE,
+  CONSTRAINT sale_items_ibfk_2 FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabla: invoice_payments
 CREATE TABLE IF NOT EXISTS invoice_payments (
-  id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL PRIMARY KEY,
-  invoice_sale_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  id VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  invoice_sale_id VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   payment_timestamp DATETIME NOT NULL,
   operational_date DATE NOT NULL,
   amount_paid DECIMAL(15, 2) NOT NULL,
   method ENUM('cash', 'transfer') NOT NULL,
-  reference VARCHAR(255),
+  reference VARCHAR(255) COLLATE utf8mb4_unicode_ci,
   tip DECIMAL(15, 2) DEFAULT 0.00,
-  FOREIGN KEY (invoice_sale_id) REFERENCES sales(id) ON DELETE CASCADE
+  PRIMARY KEY (id),
+  KEY fk_invoice_payments_invoice_sale_id (invoice_sale_id),
+  CONSTRAINT invoice_payments_ibfk_1 FOREIGN KEY (invoice_sale_id) REFERENCES sales(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabla: daily_closures
 CREATE TABLE IF NOT EXISTS daily_closures (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  closure_date DATE NOT NULL UNIQUE,
+  id INT AUTO_INCREMENT,
+  closure_date DATE NOT NULL,
   expected_cash DECIMAL(15, 2) NOT NULL,
   counted_cash DECIMAL(15, 2) NOT NULL,
   cash_difference DECIMAL(15, 2) NOT NULL,
-  notes TEXT,
+  notes TEXT COLLATE utf8mb4_unicode_ci,
   total_revenue DECIMAL(15, 2) NOT NULL,
   total_cogs DECIMAL(15, 2) NOT NULL,
   gross_profit DECIMAL(15, 2) NOT NULL,
@@ -149,12 +169,14 @@ CREATE TABLE IF NOT EXISTS daily_closures (
   total_tips DECIMAL(15, 2) NOT NULL,
   invoice_payments_cash DECIMAL(15, 2) NOT NULL,
   invoice_payments_transfer DECIMAL(15, 2) NOT NULL,
-  counted_cash_breakdown JSON
+  counted_cash_breakdown JSON,
+  PRIMARY KEY (id),
+  UNIQUE KEY (closure_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabla: monthly_closures
 CREATE TABLE IF NOT EXISTS monthly_closures (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id INT AUTO_INCREMENT,
     year INT NOT NULL,
     month INT NOT NULL,
     generation_date DATETIME NOT NULL,
@@ -163,27 +185,31 @@ CREATE TABLE IF NOT EXISTS monthly_closures (
     gross_profit DECIMAL(15, 2) NOT NULL,
     total_transactions INT NOT NULL,
     total_tips DECIMAL(15, 2) NOT NULL,
+    PRIMARY KEY (id),
     UNIQUE KEY uk_year_month (year, month)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabla: audit_log
 CREATE TABLE IF NOT EXISTS audit_log (
-  id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL PRIMARY KEY,
+  id VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   timestamp DATETIME NOT NULL,
-  user_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  username VARCHAR(255) NOT NULL,
-  action_type VARCHAR(50) NOT NULL,
-  entity_type VARCHAR(50),
-  entity_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  description TEXT NOT NULL,
+  user_id VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  username VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  action_type VARCHAR(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  entity_type VARCHAR(50) COLLATE utf8mb4_unicode_ci,
+  entity_id VARCHAR(255) COLLATE utf8mb4_unicode_ci,
+  description TEXT COLLATE utf8mb4_unicode_ci NOT NULL,
+  PRIMARY KEY (id),
   INDEX idx_audit_log_timestamp (timestamp),
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT
+  KEY fk_audit_log_user_id (user_id),
+  CONSTRAINT audit_log_ibfk_1 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabla: settings (Key-Value para configuraciones)
 CREATE TABLE IF NOT EXISTS settings (
-  setting_key VARCHAR(255) PRIMARY KEY,
-  setting_value TEXT
+  setting_key VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  setting_value TEXT COLLATE utf8mb4_unicode_ci,
+  PRIMARY KEY (setting_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ¡No olvide insertar los datos de configuración inicial (appSettings y businessSettings) en la tabla 'settings'!
