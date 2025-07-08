@@ -67,7 +67,6 @@ const adminNavItems = [
   { href: "/users", icon: Users, label: "Usuarios" },
   { href: "/audit-log", icon: History, label: "Historial de Actividad" },
   { href: "/settings", icon: Wrench, label: "Configuración" },
-  { href: "/migration-plan", icon: Database, label: "Plan de Migración" },
   { href: "/manual", icon: BookOpenCheck, label: "Manual de Usuario" },
 ];
 
