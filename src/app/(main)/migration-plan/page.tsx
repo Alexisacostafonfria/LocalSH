@@ -17,7 +17,7 @@ const sqlScript = `
 
 -- Tabla: users
 CREATE TABLE IF NOT EXISTS users (
-  id VARCHAR(255) PRIMARY KEY,
+  id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci PRIMARY KEY,
   username VARCHAR(255) NOT NULL UNIQUE,
   name VARCHAR(255) NOT NULL,
   role ENUM('admin', 'cashier') NOT NULL,
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- Tabla: products
 CREATE TABLE IF NOT EXISTS products (
-  id VARCHAR(255) PRIMARY KEY,
+  id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   category VARCHAR(255) NOT NULL,
   price DECIMAL(15, 2) NOT NULL,
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS products (
 
 -- Tabla: customers
 CREATE TABLE IF NOT EXISTS customers (
-  id VARCHAR(255) PRIMARY KEY,
+  id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   phone VARCHAR(50),
   email VARCHAR(255),
@@ -57,10 +57,10 @@ CREATE TABLE IF NOT EXISTS customers (
 
 -- Tabla: orders
 CREATE TABLE IF NOT EXISTS orders (
-  id VARCHAR(255) PRIMARY KEY,
+  id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci PRIMARY KEY,
   order_number INT NOT NULL AUTO_INCREMENT UNIQUE,
   timestamp DATETIME NOT NULL,
-  customer_id VARCHAR(255),
+  customer_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   customer_name VARCHAR(255) NOT NULL,
   customer_phone VARCHAR(50),
   total_amount DECIMAL(15, 2) NOT NULL,
@@ -74,8 +74,8 @@ CREATE TABLE IF NOT EXISTS orders (
 -- Tabla: order_items
 CREATE TABLE IF NOT EXISTS order_items (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  order_id VARCHAR(255) NOT NULL,
-  product_id VARCHAR(255) NOT NULL,
+  order_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  product_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   product_name VARCHAR(255) NOT NULL,
   quantity INT NOT NULL,
   unit_price DECIMAL(15, 2) NOT NULL,
@@ -86,14 +86,14 @@ CREATE TABLE IF NOT EXISTS order_items (
 
 -- Tabla: sales
 CREATE TABLE IF NOT EXISTS sales (
-  id VARCHAR(255) PRIMARY KEY,
+  id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci PRIMARY KEY,
   timestamp DATETIME NOT NULL,
   operational_date DATE NOT NULL,
   origin ENUM('pos', 'order') NOT NULL,
-  order_id VARCHAR(255),
-  customer_id VARCHAR(255),
+  order_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  customer_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   customer_name VARCHAR(255),
-  user_id VARCHAR(255) NOT NULL,
+  user_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   sub_total DECIMAL(15, 2) NOT NULL,
   discount DECIMAL(15, 2) DEFAULT 0.00,
   fees JSON,
@@ -109,8 +109,8 @@ CREATE TABLE IF NOT EXISTS sales (
 -- Tabla: sale_items
 CREATE TABLE IF NOT EXISTS sale_items (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  sale_id VARCHAR(255) NOT NULL,
-  product_id VARCHAR(255) NOT NULL,
+  sale_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  product_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   product_name VARCHAR(255) NOT NULL,
   quantity INT NOT NULL,
   unit_price DECIMAL(15, 2) NOT NULL,
@@ -121,8 +121,8 @@ CREATE TABLE IF NOT EXISTS sale_items (
 
 -- Tabla: invoice_payments
 CREATE TABLE IF NOT EXISTS invoice_payments (
-  id VARCHAR(255) PRIMARY KEY,
-  invoice_sale_id VARCHAR(255) NOT NULL,
+  id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci PRIMARY KEY,
+  invoice_sale_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   payment_timestamp DATETIME NOT NULL,
   operational_date DATE NOT NULL,
   amount_paid DECIMAL(15, 2) NOT NULL,
@@ -168,13 +168,13 @@ CREATE TABLE IF NOT EXISTS monthly_closures (
 
 -- Tabla: audit_log
 CREATE TABLE IF NOT EXISTS audit_log (
-  id VARCHAR(255) PRIMARY KEY,
+  id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci PRIMARY KEY,
   timestamp DATETIME NOT NULL,
-  user_id VARCHAR(255) NOT NULL,
+  user_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   username VARCHAR(255) NOT NULL,
   action_type VARCHAR(50) NOT NULL,
   entity_type VARCHAR(50),
-  entity_id VARCHAR(255),
+  entity_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   description TEXT NOT NULL,
   INDEX idx_audit_log_timestamp (timestamp),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT
