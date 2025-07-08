@@ -19,7 +19,6 @@ export interface Customer {
   email?: string;
   personalId?: string;
   cardNumber?: string;
-  transferIdentifier?: string;
 }
 
 export interface SaleItem {

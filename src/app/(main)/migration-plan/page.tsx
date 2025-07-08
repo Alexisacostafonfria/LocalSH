@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Database, ChevronsRight, Key, Rows, Link2 } from 'lucide-react';
+import { Database, ChevronsRight, Key, Rows, Link2, History } from 'lucide-react';
 
 const MigrationPlanPage = () => {
   return (
@@ -87,9 +87,13 @@ const MigrationPlanPage = () => {
                 <TableRow><TableCell>`timestamp`</TableCell><TableCell><Badge variant="outline">DATETIME</Badge></TableCell><TableCell>Fecha y hora de la venta.</TableCell></TableRow>
                 <TableRow><TableCell>`operational_date`</TableCell><TableCell><Badge variant="outline">DATE</Badge></TableCell><TableCell>Día operativo contable.</TableCell></TableRow>
                 <TableRow><TableCell>`origin`</TableCell><TableCell><Badge variant="outline">ENUM('pos', 'order')</Badge></TableCell><TableCell>Origen de la venta.</TableCell></TableRow>
+                <TableRow><TableCell><Link2 className="inline h-4 w-4 mr-2 text-gray-500" />`order_id`</TableCell><TableCell><Badge variant="outline">VARCHAR(255)</Badge></TableCell><TableCell>FK a `orders.id` (si `origin` es `order`).</TableCell></TableRow>
                 <TableRow><TableCell><Link2 className="inline h-4 w-4 mr-2 text-gray-500" />`customer_id`</TableCell><TableCell><Badge variant="outline">VARCHAR(255)</Badge></TableCell><TableCell>FK a `customers.id`. Puede ser nulo.</TableCell></TableRow>
+                <TableRow><TableCell>`customer_name`</TableCell><TableCell><Badge variant="outline">VARCHAR(255)</Badge></TableCell><TableCell>Nombre del cliente (denormalizado).</TableCell></TableRow>
                 <TableRow><TableCell><Link2 className="inline h-4 w-4 mr-2 text-gray-500" />`user_id`</TableCell><TableCell><Badge variant="outline">VARCHAR(255)</Badge></TableCell><TableCell>FK a `users.id`.</TableCell></TableRow>
                 <TableRow><TableCell>`sub_total`</TableCell><TableCell><Badge variant="outline">DECIMAL(10, 2)</Badge></TableCell><TableCell>Subtotal antes de descuentos y cargos.</TableCell></TableRow>
+                <TableRow><TableCell>`discount`</TableCell><TableCell><Badge variant="outline">DECIMAL(10, 2)</Badge></TableCell><TableCell>Monto del descuento aplicado.</TableCell></TableRow>
+                <TableRow><TableCell>`fees`</TableCell><TableCell><Badge variant="outline">JSON</Badge></TableCell><TableCell>JSON con cargos adicionales (ej: fee por factura).</TableCell></TableRow>
                 <TableRow><TableCell>`total_amount`</TableCell><TableCell><Badge variant="outline">DECIMAL(10, 2)</Badge></TableCell><TableCell>Monto total final.</TableCell></TableRow>
                 <TableRow><TableCell>`payment_method`</TableCell><TableCell><Badge variant="outline">ENUM('cash', 'transfer', 'invoice')</Badge></TableCell><TableCell>Método de pago.</TableCell></TableRow>
                 <TableRow><TableCell>`payment_details`</TableCell><TableCell><Badge variant="outline">JSON</Badge></TableCell><TableCell>JSON con detalles específicos del pago.</TableCell></TableRow>
@@ -106,6 +110,7 @@ const MigrationPlanPage = () => {
                 <TableRow><TableCell><Key className="inline h-4 w-4 mr-2 text-primary" />`id`</TableCell><TableCell><Badge variant="outline">INT AUTO_INCREMENT</Badge></TableCell><TableCell>Clave primaria.</TableCell></TableRow>
                 <TableRow><TableCell><Link2 className="inline h-4 w-4 mr-2 text-gray-500" />`sale_id`</TableCell><TableCell><Badge variant="outline">VARCHAR(255)</Badge></TableCell><TableCell>FK a `sales.id`.</TableCell></TableRow>
                 <TableRow><TableCell><Link2 className="inline h-4 w-4 mr-2 text-gray-500" />`product_id`</TableCell><TableCell><Badge variant="outline">VARCHAR(255)</Badge></TableCell><TableCell>FK a `products.id`.</TableCell></TableRow>
+                <TableRow><TableCell>`product_name`</TableCell><TableCell><Badge variant="outline">VARCHAR(255)</Badge></TableCell><TableCell>Nombre del producto (denormalizado).</TableCell></TableRow>
                 <TableRow><TableCell>`quantity`</TableCell><TableCell><Badge variant="outline">INT</Badge></TableCell><TableCell>Cantidad vendida.</TableCell></TableRow>
                 <TableRow><TableCell>`unit_price`</TableCell><TableCell><Badge variant="outline">DECIMAL(10, 2)</Badge></TableCell><TableCell>Precio unitario al momento de la venta.</TableCell></TableRow>
                 <TableRow><TableCell>`total_price`</TableCell><TableCell><Badge variant="outline">DECIMAL(10, 2)</Badge></TableCell><TableCell>Precio total del item (cantidad * precio unitario).</TableCell></TableRow>
@@ -113,6 +118,24 @@ const MigrationPlanPage = () => {
             </Table>
           </div>
           
+           {/* Audit Log Table */}
+          <div>
+            <h3 className="font-semibold text-lg mb-2 flex items-center gap-2"><History className="h-5 w-5" /> Tabla: `audit_log`</h3>
+            <Table>
+               <TableHeader><TableRow><TableHead>Columna</TableHead><TableHead>Tipo</TableHead><TableHead>Descripción</TableHead></TableRow></TableHeader>
+              <TableBody>
+                <TableRow><TableCell><Key className="inline h-4 w-4 mr-2 text-primary" />`id`</TableCell><TableCell><Badge variant="outline">VARCHAR(255)</Badge></TableCell><TableCell>Clave primaria (UUID).</TableCell></TableRow>
+                <TableRow><TableCell>`timestamp`</TableCell><TableCell><Badge variant="outline">DATETIME</Badge></TableCell><TableCell>Fecha y hora del evento.</TableCell></TableRow>
+                <TableRow><TableCell><Link2 className="inline h-4 w-4 mr-2 text-gray-500" />`user_id`</TableCell><TableCell><Badge variant="outline">VARCHAR(255)</Badge></TableCell><TableCell>FK a `users.id`.</TableCell></TableRow>
+                <TableRow><TableCell>`username`</TableCell><TableCell><Badge variant="outline">VARCHAR(255)</Badge></TableCell><TableCell>Nombre del usuario (denormalizado).</TableCell></TableRow>
+                <TableRow><TableCell>`action_type`</TableCell><TableCell><Badge variant="outline">VARCHAR(50)</Badge></TableCell><TableCell>Tipo de acción (ej: 'PRODUCT_CREATED').</TableCell></TableRow>
+                <TableRow><TableCell>`entity_type`</TableCell><TableCell><Badge variant="outline">VARCHAR(50)</Badge></TableCell><TableCell>Tipo de entidad afectada (ej: 'Product').</TableCell></TableRow>
+                <TableRow><TableCell>`entity_id`</TableCell><TableCell><Badge variant="outline">VARCHAR(255)</Badge></TableCell><TableCell>ID de la entidad afectada.</TableCell></TableRow>
+                <TableRow><TableCell>`description`</TableCell><TableCell><Badge variant="outline">TEXT</Badge></TableCell><TableCell>Descripción detallada de la acción.</TableCell></TableRow>
+              </TableBody>
+            </Table>
+          </div>
+
            {/* Otros Modelos (resumido) */}
           <div>
              <h3 className="font-semibold text-lg mb-2">Otras Tablas Requeridas</h3>
@@ -120,10 +143,9 @@ const MigrationPlanPage = () => {
              <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
                 <li><strong className="font-semibold">`orders`</strong>: Para almacenar los pedidos, con FK a `customers` y `users`.</li>
                 <li><strong className="font-semibold">`order_items`</strong>: Detalle de los productos en cada pedido, con FK a `orders` y `products`.</li>
-                <li><strong className="font-semibold">`invoice_payments`</strong>: Para registrar los pagos a facturas, con FK a `sales`.</li>
+                <li><strong className="font-semibold">`invoice_payments`</strong>: Para registrar los pagos a facturas, con FK a `sales`. Debe incluir una columna `tip` (DECIMAL(10,2)).</li>
                 <li><strong className="font-semibold">`daily_closures`</strong>: Para los cierres de caja diarios.</li>
                 <li><strong className="font-semibold">`users`</strong>: Para la gestión de usuarios y roles.</li>
-                <li><strong className="font-semibold">`audit_log`</strong>: Para el historial de actividad, con FK a `users`.</li>
                 <li><strong className="font-semibold">`app_settings`</strong> y <strong className="font-semibold">`business_settings`</strong>: Tablas para almacenar la configuración de la aplicación y del negocio (o una tabla `settings` con pares clave-valor).</li>
              </ul>
           </div>
