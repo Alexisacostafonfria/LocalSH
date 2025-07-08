@@ -2,7 +2,7 @@
 // src/app/(main)/users/page.tsx
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,9 +20,6 @@ const initialNewUserFormState = { username: '', name: '', role: 'cashier' as Use
 
 export default function UsersPage() {
   const [authState, setAuthState] = useLocalStorageState<AuthState>('authData', DEFAULT_AUTH_STATE);
-  const [users, setUsers] = useState<User[]>([]);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-
   const [isMounted, setIsMounted] = useState(false);
   const [newUserForm, setNewUserForm] = useState(initialNewUserFormState);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -32,32 +29,18 @@ export default function UsersPage() {
 
   useEffect(() => {
     setIsMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (isMounted) {
-      let currentUsers = authState.users;
-      let currentLoggedInUser = authState.currentUser;
-
-      if (!currentUsers || currentUsers.length === 0) {
-        currentUsers = [...DEFAULT_USERS_STATE]; // Initialize with default admin
-      }
-      
-      if (!currentLoggedInUser && currentUsers.some(u => u.id === DEFAULT_ADMIN_USER_ID)) {
-        currentLoggedInUser = currentUsers.find(u => u.id === DEFAULT_ADMIN_USER_ID) || null;
-      }
-      
-      setUsers(currentUsers);
-      setCurrentUser(currentLoggedInUser);
-
-      // Persist if changes were made during initialization
-      if (JSON.stringify(authState.users) !== JSON.stringify(currentUsers) || 
-          JSON.stringify(authState.currentUser) !== JSON.stringify(currentLoggedInUser)) {
-        setAuthState(prev => ({ ...prev, users: currentUsers, currentUser: currentLoggedInUser }));
-      }
+    // On mount, ensure default admin exists if no users are present
+    if (authState.users.length === 0) {
+      setAuthState(prev => ({
+        ...prev,
+        users: [...DEFAULT_USERS_STATE],
+        currentUser: prev.currentUser || DEFAULT_USERS_STATE[0]
+      }));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMounted, authState.users, authState.currentUser]); // Only depend on initial authState parts for this effect.
+  }, []); // Run only once on mount
+
+  const { users = [], currentUser } = authState;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -104,7 +87,6 @@ export default function UsersPage() {
       updatedUsers = [...users, newUser];
       toast({ title: "Usuario Creado", description: `"${newUser.name}" añadido.` });
     }
-    setUsers(updatedUsers);
     setAuthState(prev => ({ ...prev, users: updatedUsers }));
     setNewUserForm(initialNewUserFormState);
     setEditingUser(null);
@@ -129,7 +111,6 @@ export default function UsersPage() {
     }
 
     const updatedUsers = users.filter(u => u.id !== userToDelete.id);
-    setUsers(updatedUsers);
     setAuthState(prev => ({ ...prev, users: updatedUsers }));
     toast({ title: "Usuario Eliminado", description: `"${userToDelete.name}" ha sido eliminado.` });
     setUserToDelete(null);

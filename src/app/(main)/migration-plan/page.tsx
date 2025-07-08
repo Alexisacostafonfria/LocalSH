@@ -10,7 +10,8 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Database, ChevronsRight, Key, Rows, Link2, History, Code2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-const sqlScript = `
+export default function MigrationPlanPage() {
+  const sqlScript = `
 -- Script de Generación de Tablas para Local Sales Hub (MySQL 8.0+)
 -- Arquitectura basada en claves primarias INT AUTO_INCREMENT para máxima compatibilidad y rendimiento.
 -- --------------------------------------------------------------------------------------
@@ -203,9 +204,6 @@ CREATE TABLE IF NOT EXISTS settings (
   setting_value TEXT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 `;
-
-
-export default function MigrationPlanPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
