@@ -205,7 +205,7 @@ CREATE TABLE IF NOT EXISTS settings (
 `;
 
 
-const MigrationPlanPage = () => {
+export default function MigrationPlanPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -343,6 +343,4 @@ const MigrationPlanPage = () => {
       </Card>
     </div>
   );
-};
-
-export default MigrationPlanPage;
+}
