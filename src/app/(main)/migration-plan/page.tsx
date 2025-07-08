@@ -1,3 +1,4 @@
+
 // src/app/(main)/migration-plan/page.tsx
 "use client";
 
@@ -16,17 +17,17 @@ const sqlScript = `
 
 -- Tabla: users
 CREATE TABLE IF NOT EXISTS users (
-  id VARCHAR(255) PRIMARY KEY,
+  id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci PRIMARY KEY,
   username VARCHAR(255) NOT NULL UNIQUE,
   name VARCHAR(255) NOT NULL,
   role ENUM('admin', 'cashier') NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabla: products
 CREATE TABLE IF NOT EXISTS products (
-  id VARCHAR(255) PRIMARY KEY,
+  id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   category VARCHAR(255) NOT NULL,
   price DECIMAL(15, 2) NOT NULL,
@@ -39,11 +40,11 @@ CREATE TABLE IF NOT EXISTS products (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_products_name (name),
   INDEX idx_products_category (category)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabla: customers
 CREATE TABLE IF NOT EXISTS customers (
-  id VARCHAR(255) PRIMARY KEY,
+  id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   phone VARCHAR(50),
   email VARCHAR(255),
@@ -52,14 +53,14 @@ CREATE TABLE IF NOT EXISTS customers (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_customers_name (name)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabla: orders
 CREATE TABLE IF NOT EXISTS orders (
-  id VARCHAR(255) PRIMARY KEY,
+  id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci PRIMARY KEY,
   order_number INT NOT NULL AUTO_INCREMENT UNIQUE,
   timestamp DATETIME NOT NULL,
-  customer_id VARCHAR(255),
+  customer_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   customer_name VARCHAR(255) NOT NULL,
   customer_phone VARCHAR(50),
   total_amount DECIMAL(15, 2) NOT NULL,
@@ -68,31 +69,31 @@ CREATE TABLE IF NOT EXISTS orders (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabla: order_items
 CREATE TABLE IF NOT EXISTS order_items (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  order_id VARCHAR(255) NOT NULL,
-  product_id VARCHAR(255) NOT NULL,
+  order_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  product_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   product_name VARCHAR(255) NOT NULL,
   quantity INT NOT NULL,
   unit_price DECIMAL(15, 2) NOT NULL,
   total_price DECIMAL(15, 2) NOT NULL,
   FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
   FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabla: sales
 CREATE TABLE IF NOT EXISTS sales (
-  id VARCHAR(255) PRIMARY KEY,
+  id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci PRIMARY KEY,
   timestamp DATETIME NOT NULL,
   operational_date DATE NOT NULL,
   origin ENUM('pos', 'order') NOT NULL,
-  order_id VARCHAR(255),
-  customer_id VARCHAR(255),
+  order_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  customer_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   customer_name VARCHAR(255),
-  user_id VARCHAR(255) NOT NULL,
+  user_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   sub_total DECIMAL(15, 2) NOT NULL,
   discount DECIMAL(15, 2) DEFAULT 0.00,
   fees JSON,
@@ -103,25 +104,25 @@ CREATE TABLE IF NOT EXISTS sales (
   FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL,
   FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabla: sale_items
 CREATE TABLE IF NOT EXISTS sale_items (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  sale_id VARCHAR(255) NOT NULL,
-  product_id VARCHAR(255) NOT NULL,
+  sale_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  product_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   product_name VARCHAR(255) NOT NULL,
   quantity INT NOT NULL,
   unit_price DECIMAL(15, 2) NOT NULL,
   total_price DECIMAL(15, 2) NOT NULL,
   FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE,
   FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabla: invoice_payments
 CREATE TABLE IF NOT EXISTS invoice_payments (
   id VARCHAR(255) PRIMARY KEY,
-  invoice_sale_id VARCHAR(255) NOT NULL,
+  invoice_sale_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   payment_timestamp DATETIME NOT NULL,
   operational_date DATE NOT NULL,
   amount_paid DECIMAL(15, 2) NOT NULL,
@@ -129,7 +130,7 @@ CREATE TABLE IF NOT EXISTS invoice_payments (
   reference VARCHAR(255),
   tip DECIMAL(15, 2) DEFAULT 0.00,
   FOREIGN KEY (invoice_sale_id) REFERENCES sales(id) ON DELETE CASCADE
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabla: daily_closures
 CREATE TABLE IF NOT EXISTS daily_closures (
@@ -149,7 +150,7 @@ CREATE TABLE IF NOT EXISTS daily_closures (
   invoice_payments_cash DECIMAL(15, 2) NOT NULL,
   invoice_payments_transfer DECIMAL(15, 2) NOT NULL,
   counted_cash_breakdown JSON
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabla: monthly_closures
 CREATE TABLE IF NOT EXISTS monthly_closures (
@@ -163,13 +164,13 @@ CREATE TABLE IF NOT EXISTS monthly_closures (
     total_transactions INT NOT NULL,
     total_tips DECIMAL(15, 2) NOT NULL,
     UNIQUE KEY uk_year_month (year, month)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabla: audit_log
 CREATE TABLE IF NOT EXISTS audit_log (
   id VARCHAR(255) PRIMARY KEY,
   timestamp DATETIME NOT NULL,
-  user_id VARCHAR(255) NOT NULL,
+  user_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   username VARCHAR(255) NOT NULL,
   action_type VARCHAR(50) NOT NULL,
   entity_type VARCHAR(50),
@@ -177,13 +178,13 @@ CREATE TABLE IF NOT EXISTS audit_log (
   description TEXT NOT NULL,
   INDEX idx_audit_log_timestamp (timestamp),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabla: settings (Key-Value para configuraciones)
 CREATE TABLE IF NOT EXISTS settings (
   setting_key VARCHAR(255) PRIMARY KEY,
   setting_value TEXT
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ¡No olvide insertar los datos de configuración inicial (appSettings y businessSettings) en la tabla 'settings'!
 -- Ejemplo: INSERT INTO settings (setting_key, setting_value) VALUES ('appSettings', '{"lowStockThreshold":10, ...}');
