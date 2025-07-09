@@ -1,3 +1,4 @@
+'use server';
 // src/lib/db.ts
 import mysql from 'mysql2/promise';
 

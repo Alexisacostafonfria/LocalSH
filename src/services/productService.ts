@@ -1,3 +1,4 @@
+'use server';
 // src/services/productService.ts
 import { getDbConnection } from '@/lib/db';
 import { Product } from '@/types';
