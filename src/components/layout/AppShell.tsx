@@ -1,3 +1,4 @@
+
 // src/components/layout/AppShell.tsx
 "use client";
 
@@ -68,6 +69,7 @@ const adminNavItems = [
   { href: "/audit-log", icon: History, label: "Historial de Actividad" },
   { href: "/settings", icon: Wrench, label: "Configuración" },
   { href: "/manual", icon: BookOpenCheck, label: "Manual de Usuario" },
+  { href: "/migration-plan", icon: Database, label: "Utilidad DB" },
 ];
 
 

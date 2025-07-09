@@ -1,1 +1,1 @@
-// This file is no longer in use as the migration plan page has been removed.
+// Este archivo ha sido eliminado porque su contenido fue movido a la página de utilidad de base de datos.
