@@ -66,7 +66,7 @@ const initialProductFormState: ProductFormData = {
 type ViewMode = 'grid' | 'list';
 
 export default function ProductsPage() {
-  const [products, setProducts] = useLocalStorageState<Product[]>('products', []);
+  const [products, setProducts] = useState<Product[]>([]);
   const [sales] = useLocalStorageState<Sale[]>('sales', []); 
   const [auditLog] = useLocalStorageState<AuditLogEntry[]>('auditLog', []);
   const [appSettings] = useLocalStorageState<AppSettings>('appSettings', DEFAULT_APP_SETTINGS);
@@ -99,8 +99,24 @@ export default function ProductsPage() {
 
   useEffect(() => {
     setIsClientMounted(true);
-    // With localStorage, loading is synchronous and instant after the hook initializes.
-    setIsLoading(false);
+    const fetchProducts = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch('/api/products');
+        if (!response.ok) {
+          throw new Error('Failed to fetch products');
+        }
+        const data = await response.json();
+        setProducts(data);
+        setFetchError(null);
+      } catch (error) {
+        console.error(error);
+        setFetchError('No se pudieron cargar los productos. Intente recargar la página.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchProducts();
   }, []);
 
   useEffect(() => {
@@ -184,7 +200,7 @@ export default function ProductsPage() {
   };
 
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
      if (!isAdmin) {
       toast({ title: "Acceso Denegado", description: "No tienes permiso para realizar esta acción.", variant: "destructive" });
       return;
@@ -219,20 +235,50 @@ export default function ProductsPage() {
       description: productForm.description,
     };
     
-    if (editingProduct) {
-      setProducts(prev => prev.map(p => p.id === editingProduct.id ? productPayload : p));
-      toast({ title: "Producto Actualizado", description: `"${productPayload.name}" ha sido guardado.` });
-    } else {
-      setProducts(prev => [...prev, productPayload]);
-      toast({ title: "Producto Creado", description: `"${productPayload.name}" ha sido guardado.` });
-    }
+    try {
+      let response;
+      if (editingProduct) {
+        response = await fetch(`/api/products/${editingProduct.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(productPayload),
+        });
+      } else {
+        response = await fetch('/api/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(productPayload),
+        });
+      }
 
-    setIsDialogOpen(false);
-    setEditingProduct(null);
-    setProductForm(initialProductFormState);
-    setImagePreviewUrl(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+      if (!response.ok) {
+        throw new Error(editingProduct ? 'Failed to update product' : 'Failed to create product');
+      }
+      
+      const savedProduct = await response.json();
+
+      if (editingProduct) {
+        setProducts(prev => prev.map(p => p.id === editingProduct.id ? savedProduct : p));
+        toast({ title: "Producto Actualizado", description: `"${savedProduct.name}" ha sido guardado.` });
+      } else {
+        setProducts(prev => [...prev, savedProduct]);
+        toast({ title: "Producto Creado", description: `"${savedProduct.name}" ha sido guardado.` });
+      }
+
+      setIsDialogOpen(false);
+      setEditingProduct(null);
+      setProductForm(initialProductFormState);
+      setImagePreviewUrl(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Error al Guardar",
+        description: "No se pudo guardar el producto. Revise la consola del servidor de API.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -268,7 +314,7 @@ export default function ProductsPage() {
     setIsDeleteDialogOpen(true);
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!isAdmin) {
       toast({ title: "Acceso Denegado", description: "No tienes permiso para eliminar productos.", variant: "destructive" });
       setIsDeleteDialogOpen(false);
@@ -276,10 +322,28 @@ export default function ProductsPage() {
     }
     if (!productToDelete) return;
     
-    setProducts(prev => prev.filter(p => p.id !== productToDelete.id));
-    toast({ title: "Producto Eliminado", description: `"${productToDelete.name}" ha sido eliminado.`, variant: "default" });
-    setProductToDelete(null);
-    setIsDeleteDialogOpen(false);
+    try {
+      const response = await fetch(`/api/products/${productToDelete.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete product');
+      }
+
+      setProducts(prev => prev.filter(p => p.id !== productToDelete.id));
+      toast({ title: "Producto Eliminado", description: `"${productToDelete.name}" ha sido eliminado.`, variant: "default" });
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Error al Eliminar",
+        description: "No se pudo eliminar el producto. Revise la consola del servidor de API.",
+        variant: "destructive",
+      });
+    } finally {
+      setProductToDelete(null);
+      setIsDeleteDialogOpen(false);
+    }
   };
 
   const categories = useMemo(() => Array.from(new Set(products.map(p => p.category))).sort(), [products]);
