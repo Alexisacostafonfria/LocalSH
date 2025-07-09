@@ -67,9 +67,9 @@ const baseNavItems = [
 const adminNavItems = [
   { href: "/users", icon: Users, label: "Usuarios" },
   { href: "/audit-log", icon: History, label: "Historial de Actividad" },
+  { href: "/migration", icon: Database, label: "Migración de Datos" },
   { href: "/settings", icon: Wrench, label: "Configuración" },
   { href: "/manual", icon: BookOpenCheck, label: "Manual de Usuario" },
-  { href: "/migration-plan", icon: Database, label: "Utilidad DB" },
 ];
 
 
@@ -107,7 +107,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const visibleNavItems = [
     ...baseNavItems,
-    ...adminNavItems.map(item => ({...item, disabled: !isAdmin && item.href !== '/manual' }))
+    ...adminNavItems.map(item => ({...item, disabled: !isAdmin && !['/manual', '/migration'].includes(item.href) }))
   ];
 
   // Show a global loader while we check auth status, but only for protected pages.
