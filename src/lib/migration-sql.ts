@@ -1,1 +1,2 @@
-// Este archivo ha sido eliminado porque su contenido fue movido a la página de utilidad de base de datos.
+// This file has been emptied as per user request to resolve application loading issues.
+// Please await further instructions.

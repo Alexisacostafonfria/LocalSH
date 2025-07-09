@@ -67,7 +67,6 @@ const baseNavItems = [
 const adminNavItems = [
   { href: "/users", icon: Users, label: "Usuarios" },
   { href: "/audit-log", icon: History, label: "Historial de Actividad" },
-  { href: "/migration", icon: Database, label: "Migración de Datos" },
   { href: "/settings", icon: Wrench, label: "Configuración" },
   { href: "/manual", icon: BookOpenCheck, label: "Manual de Usuario" },
 ];
