@@ -1,13 +1,14 @@
 // src/lib/db.ts
 import mysql from 'mysql2/promise';
 
-// NOTE: Replace these with your actual database credentials
-// It's highly recommended to use environment variables for this (.env file)
+// NOTE: These credentials are now read from environment variables.
+// It is highly recommended to create a .env.local file in the root of your project
+// and add your database credentials there. See the .env file for an example.
 const dbConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'local_sales_hub',
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
   // You might need to add flags for some cloud providers like PlanetScale
   // ssl: {"rejectUnauthorized":true}
 };
