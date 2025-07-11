@@ -5,11 +5,11 @@ import { Product } from '@/types';
 
 /**
  * PUT /api/products/[id]
- * Updates an existing product.
+ * Updates an existing product. Expects data *without* imageUrl.
  */
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
   try {
-    const productData: Partial<Product> = await request.json();
+    const productData: Partial<Omit<Product, 'imageUrl'>> = await request.json();
     const updatedProduct = await productService.updateProduct(params.id, productData);
     if (!updatedProduct) {
         return NextResponse.json({ message: 'Product not found' }, { status: 404 });

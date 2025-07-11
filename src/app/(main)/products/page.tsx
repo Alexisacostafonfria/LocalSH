@@ -42,6 +42,22 @@ import { es } from 'date-fns/locale';
 import useLocalStorageState from '@/hooks/useLocalStorageState';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
+// Helper function to get image from localStorage
+const getProductImageFromStorage = (productId: string): string | null => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(`product-image-${productId}`);
+};
+
+// Helper function to set image in localStorage
+const setProductImageInStorage = (productId: string, imageDataUrl: string | null) => {
+  if (typeof window === 'undefined') return;
+  if (imageDataUrl) {
+    localStorage.setItem(`product-image-${productId}`, imageDataUrl);
+  } else {
+    localStorage.removeItem(`product-image-${productId}`);
+  }
+};
+
 
 interface ProductFormData extends Omit<Product, 'id' | 'stock' | 'price' | 'costPrice'> {
   id?: string; 
@@ -106,8 +122,13 @@ export default function ProductsPage() {
         if (!response.ok) {
           throw new Error('Failed to fetch products');
         }
-        const data = await response.json();
-        setProducts(data);
+        const dataFromDb: Product[] = await response.json();
+        // For each product from DB, try to get its image from local storage
+        const productsWithImages = dataFromDb.map(p => ({
+            ...p,
+            imageUrl: getProductImageFromStorage(p.id) || undefined
+        }));
+        setProducts(productsWithImages);
         setFetchError(null);
       } catch (error) {
         console.error(error);
@@ -222,17 +243,19 @@ export default function ProductsPage() {
       });
       return;
     }
+    
+    // Separate image data from the rest of the product data
+    const { imageUrl, ...productData } = productForm;
 
-    const productPayload: Product = {
+    const productPayload: Omit<Product, 'imageUrl'> = {
       id: editingProduct?.id || productForm.id || crypto.randomUUID(),
-      name: productForm.name,
-      category: productForm.category,
+      name: productData.name,
+      category: productData.category,
       price: price,
       costPrice: costPrice,
       stock: stock,
-      unitOfMeasure: productForm.unitOfMeasure,
-      imageUrl: productForm.imageUrl,
-      description: productForm.description,
+      unitOfMeasure: productData.unitOfMeasure,
+      description: productData.description,
     };
     
     try {
@@ -255,13 +278,19 @@ export default function ProductsPage() {
         throw new Error(editingProduct ? 'Failed to update product' : 'Failed to create product');
       }
       
-      const savedProduct = await response.json();
+      const savedProduct: Product = await response.json();
+
+      // After successfully saving to DB, save image to localStorage
+      setProductImageInStorage(savedProduct.id, imageUrl || null);
+      
+      // Update UI state with image from local state
+      const productForUi = { ...savedProduct, imageUrl: imageUrl };
 
       if (editingProduct) {
-        setProducts(prev => prev.map(p => p.id === editingProduct.id ? savedProduct : p));
+        setProducts(prev => prev.map(p => p.id === editingProduct.id ? productForUi : p));
         toast({ title: "Producto Actualizado", description: `"${savedProduct.name}" ha sido guardado.` });
       } else {
-        setProducts(prev => [...prev, savedProduct]);
+        setProducts(prev => [...prev, productForUi]);
         toast({ title: "Producto Creado", description: `"${savedProduct.name}" ha sido guardado.` });
       }
 
@@ -331,7 +360,9 @@ export default function ProductsPage() {
         throw new Error('Failed to delete product');
       }
 
+      // After successful deletion from DB, remove from UI and localStorage
       setProducts(prev => prev.filter(p => p.id !== productToDelete.id));
+      setProductImageInStorage(productToDelete.id, null); // Remove image from local storage
       toast({ title: "Producto Eliminado", description: `"${productToDelete.name}" ha sido eliminado.`, variant: "default" });
     } catch (error) {
       console.error(error);
