@@ -1,3 +1,4 @@
+
 'use server';
 // src/services/productService.ts
 import { getDbConnection } from '@/lib/db';
@@ -67,5 +68,8 @@ export async function updateProduct(id: string, productData: Partial<Product>): 
  */
 export async function deleteProduct(id: string): Promise<void> {
     const db = await getDbConnection();
+    // Before deleting the product, we could try to delete its image file from storage.
+    // This requires getting the product details first to find the imageUrl.
+    // For simplicity in this step, we are not deleting the image file from the local server.
     await db.execute('DELETE FROM products WHERE product_uuid = ?', [id]);
 }
