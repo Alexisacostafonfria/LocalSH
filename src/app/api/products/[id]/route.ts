@@ -5,11 +5,11 @@ import { Product } from '@/types';
 
 /**
  * PUT /api/products/[id]
- * Updates an existing product. Expects data *without* imageUrl.
+ * Updates an existing product. Expects data *with* imageUrl.
  */
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: Request, { params }: { params: { id:string } }) {
   try {
-    const productData: Partial<Omit<Product, 'imageUrl'>> = await request.json();
+    const productData: Partial<Product> = await request.json();
     const updatedProduct = await productService.updateProduct(params.id, productData);
     if (!updatedProduct) {
         return NextResponse.json({ message: 'Product not found' }, { status: 404 });
@@ -27,6 +27,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
  */
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {
+    // Note: This doesn't delete the image from Firebase Storage.
+    // A more robust implementation might handle that as well.
     await productService.deleteProduct(params.id);
     return new NextResponse(null, { status: 204 }); // No Content
   } catch (error) {

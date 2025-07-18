@@ -5,7 +5,7 @@ import { Product } from '@/types';
 
 /**
  * GET /api/products
- * Fetches all products. The imageUrl will be undefined as it's not stored in DB.
+ * Fetches all products. The imageUrl will be the public URL from cloud storage.
  */
 export async function GET() {
   try {
@@ -23,11 +23,11 @@ export async function GET() {
 
 /**
  * POST /api/products
- * Creates a new product. Expects data *without* imageUrl.
+ * Creates a new product. Expects data *with* the imageUrl.
  */
 export async function POST(request: Request) {
   try {
-    const productData: Omit<Product, 'imageUrl'> = await request.json();
+    const productData: Product = await request.json();
     // TODO: Add server-side validation here (e.g., with Zod)
     const newProduct = await productService.createProduct(productData);
     return NextResponse.json(newProduct, { status: 201 });
