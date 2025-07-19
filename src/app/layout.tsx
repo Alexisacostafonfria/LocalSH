@@ -7,6 +7,9 @@ import { AddToCartToast } from '@/components/common/AddToCartToast';
 export const metadata: Metadata = {
   title: 'Local Sales Hub',
   description: 'Manage your local sales, inventory, and forecasts.',
+  icons: {
+    icon: 'data:;base64,iVBORw0KGgo=', // Disables the default favicon request
+  },
 };
 
 export default function RootLayout({
