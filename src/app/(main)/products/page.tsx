@@ -1,4 +1,3 @@
-
 // src/app/(main)/products/page.tsx
 "use client";
 
@@ -41,7 +40,6 @@ import { format, parseISO, startOfDay, endOfDay, isWithinInterval, isValid } fro
 import { es } from 'date-fns/locale';
 import useLocalStorageState from '@/hooks/useLocalStorageState';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { revalidatePath } from 'next/cache';
 
 interface ProductFormData extends Omit<Product, 'id' | 'stock' | 'price' | 'costPrice'> {
   id?: string; 
@@ -65,7 +63,12 @@ const initialProductFormState: ProductFormData = {
 type ViewMode = 'grid' | 'list';
 
 export default function ProductsPage() {
-  const [products, setProducts] = useLocalStorageState<Product[]>('products', []);
+  // Database-driven state
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  // Local state that depends on other sources
   const [sales] = useLocalStorageState<Sale[]>('sales', []); 
   const [auditLog] = useLocalStorageState<AuditLogEntry[]>('auditLog', []);
   const [appSettings] = useLocalStorageState<AppSettings>('appSettings', DEFAULT_APP_SETTINGS);
@@ -73,8 +76,7 @@ export default function ProductsPage() {
   const [accountingSettings] = useLocalStorageState<AccountingSettings>('accountingSettings', DEFAULT_ACCOUNTING_SETTINGS);
   const [authState] = useLocalStorageState<AuthState>('authData', DEFAULT_AUTH_STATE);
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
+  // UI state
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -98,13 +100,28 @@ export default function ProductsPage() {
   const { toast } = useToast();
   const isAdmin = authState.currentUser?.role === 'admin';
 
+  const fetchProducts = useCallback(async () => {
+    setIsLoading(true);
+    setFetchError(null);
+    try {
+      const response = await fetch('/api/products');
+      if (!response.ok) {
+        throw new Error('Failed to fetch products');
+      }
+      const data: Product[] = await response.json();
+      setProducts(data);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      setFetchError('Could not load products from the database.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     setIsClientMounted(true);
-    // Data is now sourced from local storage, so we can remove the API fetch.
-    // Replace with logic to initialize from `useLocalStorageState` if needed.
-    // For now, `useLocalStorageState` handles initialization.
-    setIsLoading(false);
-  }, []);
+    fetchProducts();
+  }, [fetchProducts]);
 
   useEffect(() => {
     if (editingProduct) {
@@ -132,7 +149,6 @@ export default function ProductsPage() {
       setImagePreviewUrl(null);
     }
   }, [editingProduct]);
-
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -197,9 +213,27 @@ export default function ProductsPage() {
       return;
     }
     
-    let uploadedImageUrl = productForm.imageUrl || '';
+    let finalImageUrl = productForm.imageUrl || '';
     if (imageFile) {
-        uploadedImageUrl = imagePreviewUrl || ''; // Use the Data URI from the preview
+        const formData = new FormData();
+        formData.append('file', imageFile);
+        try {
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Error al subir la imagen.');
+            }
+            const { url } = await response.json();
+            finalImageUrl = url;
+        } catch (error) {
+            console.error("Error uploading image:", error);
+            toast({ title: "Error de Imagen", description: (error as Error).message, variant: "destructive" });
+            setIsSaving(false);
+            return;
+        }
     }
 
     const productPayload: Product = {
@@ -211,20 +245,37 @@ export default function ProductsPage() {
       stock: stock,
       unitOfMeasure: productForm.unitOfMeasure,
       description: productForm.description,
-      imageUrl: uploadedImageUrl,
+      imageUrl: finalImageUrl,
     };
     
-    // Logic to save to local storage
-    if (editingProduct) {
-        setProducts(prev => prev.map(p => p.id === editingProduct.id ? productPayload : p));
-        toast({ title: "Producto Actualizado", description: `"${productPayload.name}" ha sido guardado.` });
-    } else {
-        setProducts(prev => [...prev, productPayload]);
-        toast({ title: "Producto Creado", description: `"${productPayload.name}" ha sido guardado.` });
-    }
+    try {
+        const apiUrl = editingProduct ? `/api/products/${editingProduct.id}` : '/api/products';
+        const method = editingProduct ? 'PUT' : 'POST';
+        
+        const response = await fetch(apiUrl, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(productPayload),
+        });
 
-    setIsDialogOpen(false);
-    setIsSaving(false);
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Error al guardar el producto.');
+        }
+
+        toast({
+            title: editingProduct ? "Producto Actualizado" : "Producto Creado",
+            description: `"${productPayload.name}" ha sido guardado en la base de datos.`,
+        });
+
+        fetchProducts(); // Re-fetch to show the latest data
+        setIsDialogOpen(false);
+    } catch (error) {
+        console.error("Error saving product:", error);
+        toast({ title: "Error al Guardar", description: (error as Error).message, variant: "destructive" });
+    } finally {
+        setIsSaving(false);
+    }
   };
 
   const openAddDialog = () => {
@@ -261,11 +312,25 @@ export default function ProductsPage() {
   const handleDeleteConfirm = async () => {
     if (!isAdmin || !productToDelete) return;
     
-    setProducts(prev => prev.filter(p => p.id !== productToDelete.id));
-    toast({ title: "Producto Eliminado", description: `"${productToDelete.name}" ha sido eliminado.`, variant: "default" });
-    
-    setProductToDelete(null);
-    setIsDeleteDialogOpen(false);
+    try {
+        const response = await fetch(`/api/products/${productToDelete.id}`, {
+            method: 'DELETE',
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Error al eliminar el producto.');
+        }
+
+        toast({ title: "Producto Eliminado", description: `"${productToDelete.name}" ha sido eliminado.`, variant: "default" });
+        fetchProducts(); // Re-fetch to update the list
+    } catch (error) {
+        console.error("Error deleting product:", error);
+        toast({ title: "Error al Eliminar", description: (error as Error).message, variant: "destructive" });
+    } finally {
+        setProductToDelete(null);
+        setIsDeleteDialogOpen(false);
+    }
   };
 
   const categories = useMemo(() => Array.from(new Set(products.map(p => p.category))).sort(), [products]);
@@ -380,7 +445,7 @@ export default function ProductsPage() {
         </div>
       </PageHeader>
 
-      {fetchError && (<Alert variant="destructive"><AlertTriangle className="h-5 w-5" /><AlertTitle>Error</AlertTitle><AlertDescription>{fetchError}</AlertDescription></Alert>)}
+      {fetchError && (<Alert variant="destructive"><AlertTriangle className="h-5 w-5" /><AlertTitle>Error de Conexión</AlertTitle><AlertDescription>{fetchError}</AlertDescription></Alert>)}
 
       <Card><CardContent className="p-4"><div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-grow">
@@ -506,5 +571,3 @@ export default function ProductsPage() {
     </div>
   );
 }
-
-    
