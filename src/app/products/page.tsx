@@ -41,6 +41,7 @@ import { format, parseISO, startOfDay, endOfDay, isWithinInterval, isValid } fro
 import { es } from 'date-fns/locale';
 import useLocalStorageState from '@/hooks/useLocalStorageState';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { revalidatePath } from 'next/cache';
 
 interface ProductFormData extends Omit<Product, 'id' | 'stock' | 'price' | 'costPrice'> {
   id?: string; 
@@ -64,7 +65,7 @@ const initialProductFormState: ProductFormData = {
 type ViewMode = 'grid' | 'list';
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useLocalStorageState<Product[]>('products', []);
   const [sales] = useLocalStorageState<Sale[]>('sales', []); 
   const [auditLog] = useLocalStorageState<AuditLogEntry[]>('auditLog', []);
   const [appSettings] = useLocalStorageState<AppSettings>('appSettings', DEFAULT_APP_SETTINGS);
@@ -99,26 +100,10 @@ export default function ProductsPage() {
 
   useEffect(() => {
     setIsClientMounted(true);
-    const fetchProducts = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch('/api/products');
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to fetch products');
-        }
-        const dataFromDb: Product[] = await response.json();
-        setProducts(dataFromDb);
-        setFetchError(null);
-      } catch (error) {
-        console.error(error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error.';
-        setFetchError(`No se pudieron cargar los productos: ${errorMessage}`);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchProducts();
+    // Data is now sourced from local storage, so we can remove the API fetch.
+    // Replace with logic to initialize from `useLocalStorageState` if needed.
+    // For now, `useLocalStorageState` handles initialization.
+    setIsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -168,9 +153,12 @@ export default function ProductsPage() {
         }
         return;
       }
-      const previewUrl = URL.createObjectURL(file);
-      setImagePreviewUrl(previewUrl);
-      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreviewUrl(reader.result as string);
+        setImageFile(file);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -211,26 +199,7 @@ export default function ProductsPage() {
     
     let uploadedImageUrl = productForm.imageUrl || '';
     if (imageFile) {
-      try {
-        const formData = new FormData();
-        formData.append('file', imageFile);
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to upload image');
-        }
-        const { url } = await response.json();
-        uploadedImageUrl = url;
-      } catch (error) {
-        console.error(error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error.';
-        toast({ title: "Error de Subida", description: `No se pudo subir la imagen: ${errorMessage}`, variant: "destructive" });
-        setIsSaving(false);
-        return;
-      }
+        uploadedImageUrl = imagePreviewUrl || ''; // Use the Data URI from the preview
     }
 
     const productPayload: Product = {
@@ -245,42 +214,17 @@ export default function ProductsPage() {
       imageUrl: uploadedImageUrl,
     };
     
-    try {
-      const url = editingProduct ? `/api/products/${editingProduct.id}` : '/api/products';
-      const method = editingProduct ? 'PUT' : 'POST';
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(productPayload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Error guardando el producto');
-      }
-      
-      const savedProduct: Product = await response.json();
-
-      if (editingProduct) {
-        setProducts(prev => prev.map(p => p.id === editingProduct.id ? savedProduct : p));
-        toast({ title: "Producto Actualizado", description: `"${savedProduct.name}" ha sido guardado.` });
-      } else {
-        setProducts(prev => [...prev, savedProduct]);
-        toast({ title: "Producto Creado", description: `"${savedProduct.name}" ha sido guardado.` });
-      }
-
-      setIsDialogOpen(false);
-    } catch (error) {
-      console.error(error);
-      const errorMessage = error instanceof Error ? error.message : "Error desconocido.";
-      toast({
-        title: "Error al Guardar",
-        description: `No se pudo guardar el producto en la base de datos: ${errorMessage}`,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
+    // Logic to save to local storage
+    if (editingProduct) {
+        setProducts(prev => prev.map(p => p.id === editingProduct.id ? productPayload : p));
+        toast({ title: "Producto Actualizado", description: `"${productPayload.name}" ha sido guardado.` });
+    } else {
+        setProducts(prev => [...prev, productPayload]);
+        toast({ title: "Producto Creado", description: `"${productPayload.name}" ha sido guardado.` });
     }
+
+    setIsDialogOpen(false);
+    setIsSaving(false);
   };
 
   const openAddDialog = () => {
@@ -317,23 +261,11 @@ export default function ProductsPage() {
   const handleDeleteConfirm = async () => {
     if (!isAdmin || !productToDelete) return;
     
-    try {
-      const response = await fetch(`/api/products/${productToDelete.id}`, { method: 'DELETE' });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete product');
-      }
-      
-      setProducts(prev => prev.filter(p => p.id !== productToDelete.id));
-      toast({ title: "Producto Eliminado", description: `"${productToDelete.name}" ha sido eliminado.`, variant: "default" });
-    } catch (error) {
-      console.error(error);
-      const errorMessage = error instanceof Error ? error.message : "Error desconocido.";
-      toast({ title: "Error al Eliminar", description: `No se pudo eliminar el producto: ${errorMessage}`, variant: "destructive" });
-    } finally {
-      setProductToDelete(null);
-      setIsDeleteDialogOpen(false);
-    }
+    setProducts(prev => prev.filter(p => p.id !== productToDelete.id));
+    toast({ title: "Producto Eliminado", description: `"${productToDelete.name}" ha sido eliminado.`, variant: "default" });
+    
+    setProductToDelete(null);
+    setIsDeleteDialogOpen(false);
   };
 
   const categories = useMemo(() => Array.from(new Set(products.map(p => p.category))).sort(), [products]);
@@ -357,12 +289,92 @@ export default function ProductsPage() {
       if(fileInputRef.current) fileInputRef.current.value = "";
   }, []);
 
-  // Other handlers like print remain unchanged for now
+  const handlePrintProductList = () => {
+    if (filteredProducts.length === 0) {
+      toast({ title: "Nada que Imprimir", description: "No hay productos que coincidan con los filtros actuales.", variant: "warning" });
+      return;
+    }
+    setIsPrintingProductReport(true);
+  };
+
+  const handlePrintMovementsReport = () => {
+    if (!accountingSettings.isDayOpen || !accountingSettings.currentOperationalDate) {
+        toast({ title: "Día no operativo", description: "Debe iniciar un día operativo para generar este reporte.", variant: "warning" });
+        return;
+    }
+    const operationalDayStartISO = startOfDay(parseISO(accountingSettings.currentOperationalDate)).toISOString();
+
+    const salesForDay = sales.filter(sale => {
+        const saleOpDate = sale.operationalDate ? startOfDay(parseISO(sale.operationalDate)).toISOString() : startOfDay(parseISO(sale.timestamp)).toISOString();
+        return saleOpDate === operationalDayStartISO;
+    });
+
+    const adjustmentsForDay = auditLog.filter(log => {
+      const logOpDate = log.timestamp ? startOfDay(parseISO(log.timestamp)).toISOString() : null; // Assuming timestamp is the operational date
+      return log.actionType === 'INVENTORY_ADJUSTMENT' && logOpDate === operationalDayStartISO;
+    });
+
+    const movementsMap: { [productId: string]: ProductMovement } = {};
+
+    products.forEach(p => {
+        movementsMap[p.id] = { productId: p.id, productName: p.name, quantitySold: 0, quantityAdded: 0, remainingStock: p.stock };
+    });
+
+    salesForDay.forEach(sale => {
+      sale.items.forEach(item => {
+        if (movementsMap[item.productId]) {
+          movementsMap[item.productId].quantitySold += item.quantity;
+        }
+      });
+    });
+    
+    adjustmentsForDay.forEach(log => {
+      if (log.entityId && movementsMap[log.entityId]) {
+        // Example description: "Añadió 5 unidad(es) al stock..."
+        const match = log.description.match(/Añadió (\d+) unidad/);
+        if (match && match[1]) {
+          movementsMap[log.entityId].quantityAdded += parseInt(match[1], 10);
+        }
+      }
+    });
+
+    const movementsData = Object.values(movementsMap).filter(m => m.quantitySold > 0 || m.quantityAdded > 0);
+    
+    if (movementsData.length === 0) {
+      toast({ title: "Sin Movimientos", description: "No se registraron ventas ni ajustes de stock para el día operativo actual.", variant: "warning" });
+      return;
+    }
+
+    setMovementsReportData(movementsData);
+    setMovementsOperationalDateDisplay(format(parseISO(accountingSettings.currentOperationalDate), "PPP", { locale: es }));
+    setIsPrintingMovementsReport(true);
+  };
+
+  useEffect(() => {
+    const handlePrint = (reportId: string, setPrintingState: React.Dispatch<React.SetStateAction<boolean>>) => {
+        const timer = setTimeout(() => { window.print(); }, 500); 
+        const handleAfterPrint = () => {
+            setPrintingState(false);
+            window.removeEventListener('afterprint', handleAfterPrint);
+        };
+        window.addEventListener('afterprint', handleAfterPrint);
+        return () => { clearTimeout(timer); window.removeEventListener('afterprint', handleAfterPrint); };
+    };
+    if (isPrintingProductReport) {
+       handlePrint("printableProductListArea", setIsPrintingProductReport);
+    }
+    if (isPrintingMovementsReport) {
+       handlePrint("printableMovementsReportArea", setIsPrintingMovementsReport);
+    }
+  }, [isPrintingProductReport, isPrintingMovementsReport]);
+
 
   return (
     <div className="flex flex-col gap-4 h-full">
       <PageHeader title="Catálogo de Productos" description="Explora, busca y gestiona tus productos.">
         <div className="flex gap-2 items-center flex-wrap">
+          <Button variant="outline" size="sm" onClick={handlePrintProductList}><Printer className="h-4 w-4 mr-2"/> Lista de Productos</Button>
+          <Button variant="outline" size="sm" onClick={handlePrintMovementsReport}><BarChartHorizontalBig className="h-4 w-4 mr-2"/>Movimientos del Día</Button>
           <Button variant={viewMode === 'grid' ? 'default' : 'outline'} size="icon" onClick={() => setViewMode('grid')} title="Vista de Cuadrícula"><LayoutGrid className="h-5 w-5" /></Button>
           <Button variant={viewMode === 'list' ? 'default' : 'outline'} size="icon" onClick={() => setViewMode('list')} title="Vista de Lista"><List className="h-5 w-5" /></Button>
         </div>
@@ -393,20 +405,18 @@ export default function ProductsPage() {
             <div className="text-center py-10 text-muted-foreground"><Package className="mx-auto h-12 w-12 mb-4" /><p className="text-lg">No se encontraron productos.</p><p>Intenta ajustar tu búsqueda o añade nuevos productos.</p></div>
         ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">{filteredProducts.map(product => (
-                <Card key={product.id} className="flex flex-col overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300">
+                <Card key={product.id} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300">
                   <CardHeader className="p-0 relative">
                     <Image src={product.imageUrl || `https://placehold.co/400x300.png?text=${encodeURIComponent(product.name)}`} alt={product.name} width={400} height={300} className="object-cover w-full h-48" data-ai-hint="product item"/>
                   </CardHeader>
-                  <CardContent className="p-4 flex-grow flex flex-col">
-                    <div className="flex-grow">
-                      <CardTitle className="text-lg font-headline mb-1 truncate" title={product.name}>{product.name}</CardTitle>
-                      <p className="text-sm text-muted-foreground mb-1">{product.category}</p>
-                      <p className="text-xl font-semibold text-primary mb-1">{appSettings.currencySymbol}{(product.price || 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</p>
-                      <p className={`text-sm ${product.stock <= appSettings.lowStockThreshold && product.stock > 0 ? 'text-orange-500 font-semibold' : product.stock === 0 ? 'text-destructive font-bold' : ''}`}>Stock: {product.stock} {product.unitOfMeasure || 'unid.'}</p>
-                    </div>
-                    <div className="mt-auto"><ProductBarcode productId={product.id} className="flex justify-center items-center" /></div>
+                  <CardContent className="p-4">
+                    <CardTitle className="text-lg font-headline mb-1 truncate" title={product.name}>{product.name}</CardTitle>
+                    <p className="text-sm text-muted-foreground mb-1">{product.category}</p>
+                    <p className="text-xl font-semibold text-primary mb-1">{appSettings.currencySymbol}{(product.price || 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</p>
+                    <p className={`text-sm ${product.stock <= appSettings.lowStockThreshold && product.stock > 0 ? 'text-orange-500 font-semibold' : product.stock === 0 ? 'text-destructive font-bold' : ''}`}>Stock: {product.stock} {product.unitOfMeasure || 'unid.'}</p>
+                    <ProductBarcode productId={product.id} className="flex justify-center items-center mt-2" />
                   </CardContent>
-                  {isAdmin && (<CardFooter className="p-4 border-t flex gap-2">
+                  {isAdmin && (<CardFooter className="p-2 border-t flex gap-2">
                     <Button variant="outline" size="sm" onClick={() => openEditDialog(product)} className="flex-1"><Edit2 className="mr-1 h-4 w-4" /> Editar</Button>
                     <Button variant="destructive" size="sm" onClick={() => openDeleteDialog(product)} className="flex-1"><Trash2 className="mr-1 h-4 w-4" /> Eliminar</Button>
                   </CardFooter>)}
@@ -470,6 +480,31 @@ export default function ProductsPage() {
       )}
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle className="font-headline">¿Estás seguro?</AlertDialogTitle><AlertDialogDescription>Esta acción no se puede deshacer. Se eliminará permanentemente "{productToDelete?.name}".</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">Sí, eliminar</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+       
+      {isClientMounted && isPrintingProductReport && ReactDOM.createPortal(
+            <div id="printableProductListArea">
+                <ProductListPrintLayout
+                    products={filteredProducts}
+                    appSettings={appSettings}
+                    businessSettings={businessSettings}
+                />
+            </div>,
+            document.body
+        )}
+
+      {isClientMounted && isPrintingMovementsReport && ReactDOM.createPortal(
+            <div id="printableMovementsReportArea">
+                <ProductMovementsReportPrintLayout
+                    movements={movementsReportData}
+                    operationalDateDisplay={movementsOperationalDateDisplay}
+                    businessSettings={businessSettings}
+                />
+            </div>,
+            document.body
+      )}
+
     </div>
   );
 }
+
+    
