@@ -1,4 +1,3 @@
-
 // src/components/products/ProductListPrintLayout.tsx
 "use client";
 
