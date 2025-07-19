@@ -1,4 +1,3 @@
-
 // src/app/api/images/[...filename]/route.ts
 import { NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
