@@ -20,8 +20,11 @@ const nextConfig: NextConfig = {
       {
         protocol: 'http',
         hostname: 'localhost',
-        port: '3000',
-        pathname: '/uploads/products/**',
+        // The port can vary, so we can omit it or use a wildcard if needed,
+        // but for development, it's usually 3000 or the next available port.
+        port: '3000', 
+        // Allow images from our new dedicated API route
+        pathname: '/api/images/**',
       },
     ],
   },

@@ -1,53 +1,50 @@
 
 // src/app/api/upload/route.ts
+'use server';
+
 import { NextResponse } from 'next/server';
 import { writeFile } from 'fs/promises';
 import { join } from 'path';
 import { mkdirSync, existsSync } from 'fs';
 
-// Define el directorio de subida dentro de la carpeta `public`
-const UPLOAD_DIR = join(process.cwd(), 'public', 'uploads', 'products');
-const UPLOAD_URL_PREFIX = '/uploads/products';
+// Store uploads outside the /public directory to be served by a dedicated API route.
+// This avoids issues with Next.js development server caching of the /public folder.
+const UPLOAD_DIR = join(process.cwd(), 'local_uploads');
+const UPLOAD_URL_PREFIX = '/api/images'; // The URL points to our new image serving API
 
-// Asegúrate de que el directorio de subida exista
+// Ensure the upload directory exists
 const ensureUploadDirExists = () => {
   if (!existsSync(UPLOAD_DIR)) {
-    console.log(`Creando directorio de subida en: ${UPLOAD_DIR}`);
+    console.log(`Creating upload directory at: ${UPLOAD_DIR}`);
     mkdirSync(UPLOAD_DIR, { recursive: true });
   }
 };
 
 export async function POST(request: Request) {
   try {
-    // Asegurarse de que el directorio existe antes de cualquier operación
     ensureUploadDirExists();
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
 
     if (!file) {
-      return NextResponse.json({ message: 'No se proporcionó ningún archivo.' }, { status: 400 });
+      return NextResponse.json({ message: 'No file provided.' }, { status: 400 });
     }
 
-    // Crear un nombre de archivo único para evitar colisiones
     const uniqueFileName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
     const filePath = join(UPLOAD_DIR, uniqueFileName);
-    const fileUrlPath = `${UPLOAD_URL_PREFIX}/${uniqueFileName}`; // La ruta pública para acceder al archivo
+    const fileUrlPath = `${UPLOAD_URL_PREFIX}/${uniqueFileName}`;
 
-    // Convertir el archivo a un buffer para poder escribirlo
     const buffer = Buffer.from(await file.arrayBuffer());
-
-    // Escribir el archivo en el sistema de archivos del servidor
     await writeFile(filePath, buffer);
 
-    console.log(`Archivo guardado en: ${filePath}`);
-    console.log(`URL de acceso público: ${fileUrlPath}`);
+    console.log(`File saved to physical path: ${filePath}`);
+    console.log(`File will be served from URL: ${fileUrlPath}`);
 
-    // Devolver la URL pública
     return NextResponse.json({ url: fileUrlPath }, { status: 201 });
   } catch (error) {
-    console.error('Error al subir el archivo localmente:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Error desconocido.';
-    return NextResponse.json({ message: `Error al subir el archivo: ${errorMessage}` }, { status: 500 });
+    console.error('Error uploading file locally:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error.';
+    return NextResponse.json({ message: `Error uploading file: ${errorMessage}` }, { status: 500 });
   }
 }

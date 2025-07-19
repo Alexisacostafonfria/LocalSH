@@ -44,6 +44,7 @@
     "genkit": "^1.8.0",
     "jsbarcode": "^3.11.6",
     "lucide-react": "^0.475.0",
+    "mime-types": "^2.1.35",
     "mysql2": "^3.10.1",
     "next": "15.2.3",
     "patch-package": "^8.0.0",
@@ -58,6 +59,7 @@
   },
   "devDependencies": {
     "@types/jsbarcode": "^3.1.5",
+    "@types/mime-types": "^2.1.4",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
