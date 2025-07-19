@@ -30,8 +30,8 @@ h1, h2, h3, h4, h5, h6 {
     --accent-foreground: 203 17% 10%; /* Darker text on bright accent */
     --destructive: 0 63% 31%;
     --destructive-foreground: 0 0% 98%;
-    --warning: 48 96% 59%; /* Yellow for warning */
-    --warning-foreground: 48 96% 15%; /* Dark text on warning yellow */
+    --warning: 48 96% 59%; /* Yellow for warning background */
+    --warning-foreground: 0 0% 0%; /* Black for warning text */
     --warning-border: 210 40% 98%; /* "White" border (using theme foreground) */
     --border: 203 17% 28%;
     --input: 203 17% 28%;
