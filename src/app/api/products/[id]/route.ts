@@ -5,18 +5,22 @@ import { Product } from '@/types';
 
 /**
  * PUT /api/products/[id]
- * Updates an existing product. Expects data *with* imageUrl.
+ * Updates an existing product.
  */
-export async function PUT(request: Request, { params }: { params: { id:string } }) {
+export async function PUT(request: Request, { params }: { params: { id: string } }) {
+  const { id } = params;
+  if (!id) {
+    return NextResponse.json({ message: 'Product ID is required' }, { status: 400 });
+  }
   try {
     const productData: Partial<Product> = await request.json();
-    const updatedProduct = await productService.updateProduct(params.id, productData);
+    const updatedProduct = await productService.updateProduct(id, productData);
     if (!updatedProduct) {
         return NextResponse.json({ message: 'Product not found' }, { status: 404 });
     }
     return NextResponse.json(updatedProduct);
   } catch (error) {
-    console.error(`API Error updating product ${params.id}:`, error);
+    console.error(`API Error updating product ${id}:`, error);
     return NextResponse.json({ message: 'Error updating product in API' }, { status: 500 });
   }
 }
@@ -26,13 +30,15 @@ export async function PUT(request: Request, { params }: { params: { id:string } 
  * Deletes a product.
  */
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+  const { id } = params;
+   if (!id) {
+    return NextResponse.json({ message: 'Product ID is required' }, { status: 400 });
+  }
   try {
-    // Note: This doesn't delete the image from Firebase Storage.
-    // A more robust implementation might handle that as well.
-    await productService.deleteProduct(params.id);
+    await productService.deleteProduct(id);
     return new NextResponse(null, { status: 204 }); // No Content
   } catch (error) {
-    console.error(`API Error deleting product ${params.id}:`, error);
+    console.error(`API Error deleting product ${id}:`, error);
     return NextResponse.json({ message: 'Error deleting product in API' }, { status: 500 });
   }
 }

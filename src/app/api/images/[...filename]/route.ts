@@ -7,22 +7,23 @@ import mime from 'mime-types';
 const UPLOAD_DIR = join(process.cwd(), 'local_uploads');
 
 export async function GET(request: Request, { params }: { params: { filename: string[] } }) {
+  // The 'filename' parameter is an array of path segments.
+  // We need to join them to form the complete filename.
   const filename = params.filename.join('/');
 
   if (!filename) {
     return new NextResponse('File not specified', { status: 400 });
   }
 
-  // Basic security check to prevent directory traversal
+  // Security check to prevent accessing files outside the upload directory
   if (filename.includes('..')) {
     return new NextResponse('Invalid path', { status: 400 });
   }
 
-  try {
-    const filePath = join(UPLOAD_DIR, filename);
-    const fileBuffer = await readFile(filePath);
+  const filePath = join(UPLOAD_DIR, filename);
 
-    // Determine content type from file extension
+  try {
+    const fileBuffer = await readFile(filePath);
     const contentType = mime.lookup(filePath) || 'application/octet-stream';
 
     return new NextResponse(fileBuffer, {
@@ -33,13 +34,13 @@ export async function GET(request: Request, { params }: { params: { filename: st
       },
     });
   } catch (error) {
-    // Check if the error is a file not found error
+    // Log the error for server-side debugging
     if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
-      console.warn(`Image not found at path: ${join(UPLOAD_DIR, filename)}`);
+      console.error(`[API Image Server] File not found at path: ${filePath}`);
       return new NextResponse(`Image not found: ${filename}`, { status: 404 });
     }
     
-    console.error(`Error reading file ${filename}:`, error);
+    console.error(`[API Image Server] Error reading file ${filePath}:`, error);
     return new NextResponse('Error retrieving file', { status: 500 });
   }
 }
