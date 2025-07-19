@@ -1,6 +1,6 @@
+
 // src/app/api/upload/route.ts
 import { NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
 import { writeFile } from 'fs/promises';
 import { join } from 'path';
 import { mkdirSync, existsSync } from 'fs';
@@ -42,9 +42,6 @@ export async function POST(request: Request) {
 
     console.log(`Archivo guardado en: ${filePath}`);
     console.log(`URL de acceso público: ${fileUrlPath}`);
-
-    // Revalidar la ruta de subida para que Next.js reconozca el nuevo archivo inmediatamente.
-    revalidatePath(UPLOAD_URL_PREFIX);
 
     // Devolver la URL pública
     return NextResponse.json({ url: fileUrlPath }, { status: 201 });
