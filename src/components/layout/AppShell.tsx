@@ -1,3 +1,4 @@
+
 // src/components/layout/AppShell.tsx
 "use client";
 
@@ -55,6 +56,7 @@ const NavItem: React.FC<NavItemProps> = ({ href, icon: Icon, label, pathname, on
 const baseNavItems = [
   { href: "/dashboard", icon: Layers, label: "Dashboard" },
   { href: "/products", icon: Package, label: "Catálogo" },
+  { href: "/customers", icon: Users, label: "Clientes" },
   { href: "/sales", icon: ShoppingCart, label: "Ventas" },
   { href: "/orders", icon: ClipboardList, label: "Pedidos" },
   { href: "/inventory", icon: Archive, label: "Inventario" },
@@ -206,3 +208,5 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
+    
