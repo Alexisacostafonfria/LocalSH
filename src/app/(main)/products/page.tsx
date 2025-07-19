@@ -106,13 +106,14 @@ export default function ProductsPage() {
     try {
       const response = await fetch('/api/products');
       if (!response.ok) {
-        throw new Error('Failed to fetch products');
+        const errorData = await response.json().catch(() => ({ message: 'Error desconocido al obtener productos.' }));
+        throw new Error(errorData.message);
       }
       const data: Product[] = await response.json();
       setProducts(data);
     } catch (error) {
       console.error("Error fetching products:", error);
-      setFetchError('Could not load products from the database.');
+      setFetchError(error instanceof Error ? error.message : 'No se pudieron cargar los productos desde la base de datos.');
     } finally {
       setIsLoading(false);
     }
