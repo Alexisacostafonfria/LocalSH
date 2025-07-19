@@ -405,16 +405,16 @@ export default function ProductsPage() {
             <div className="text-center py-10 text-muted-foreground"><Package className="mx-auto h-12 w-12 mb-4" /><p className="text-lg">No se encontraron productos.</p><p>Intenta ajustar tu búsqueda o añade nuevos productos.</p></div>
         ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">{filteredProducts.map(product => (
-                <Card key={product.id} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300">
+                <Card key={product.id} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300 flex flex-col">
                   <CardHeader className="p-0 relative">
                     <Image src={product.imageUrl || `https://placehold.co/400x300.png?text=${encodeURIComponent(product.name)}`} alt={product.name} width={400} height={300} className="object-cover w-full h-48" data-ai-hint="product item"/>
                   </CardHeader>
-                  <CardContent className="p-4">
-                    <CardTitle className="text-lg font-headline mb-1 truncate" title={product.name}>{product.name}</CardTitle>
+                  <CardContent className="p-4 flex-grow flex flex-col">
+                    <CardTitle className="text-lg font-headline mb-1 h-14 line-clamp-2" title={product.name}>{product.name}</CardTitle>
                     <p className="text-sm text-muted-foreground mb-1">{product.category}</p>
                     <p className="text-xl font-semibold text-primary mb-1">{appSettings.currencySymbol}{(product.price || 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</p>
                     <p className={`text-sm ${product.stock <= appSettings.lowStockThreshold && product.stock > 0 ? 'text-orange-500 font-semibold' : product.stock === 0 ? 'text-destructive font-bold' : ''}`}>Stock: {product.stock} {product.unitOfMeasure || 'unid.'}</p>
-                    <ProductBarcode productId={product.id} className="flex justify-center items-center mt-2" />
+                    <ProductBarcode productId={product.id} className="flex justify-center items-center mt-auto pt-2" />
                   </CardContent>
                   {isAdmin && (<CardFooter className="p-2 border-t flex gap-2">
                     <Button variant="outline" size="sm" onClick={() => openEditDialog(product)} className="flex-1"><Edit2 className="mr-1 h-4 w-4" /> Editar</Button>
