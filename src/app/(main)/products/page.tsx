@@ -480,9 +480,11 @@ export default function ProductsPage() {
                     <p className="text-sm text-muted-foreground mb-1">{product.category}</p>
                     <p className="text-xl font-semibold text-primary mb-1">{appSettings.currencySymbol}{(product.price || 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2 })}</p>
                     <p className={`text-sm ${product.stock <= appSettings.lowStockThreshold && product.stock > 0 ? 'text-orange-500 font-semibold' : product.stock === 0 ? 'text-destructive font-bold' : ''}`}>Stock: {product.stock} {product.unitOfMeasure || 'unid.'}</p>
-                    <ProductBarcode productId={product.id} className="flex justify-center items-center mt-auto pt-2" />
+                    <div className="mt-auto pt-2">
+                        <ProductBarcode productId={product.id} className="flex justify-center items-center" />
+                    </div>
                   </CardContent>
-                  {isAdmin && (<CardFooter className="p-2 border-t flex gap-2">
+                  {isAdmin && (<CardFooter className="p-2 border-t flex flex-wrap gap-2">
                     <Button variant="outline" size="sm" onClick={() => openEditDialog(product)} className="flex-1"><Edit2 className="mr-1 h-4 w-4" /> Editar</Button>
                     <Button variant="destructive" size="sm" onClick={() => openDeleteDialog(product)} className="flex-1"><Trash2 className="mr-1 h-4 w-4" /> Eliminar</Button>
                   </CardFooter>)}
