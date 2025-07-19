@@ -1,11 +1,13 @@
 // src/app/api/upload/route.ts
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { writeFile } from 'fs/promises';
 import { join } from 'path';
 import { mkdirSync, existsSync } from 'fs';
 
 // Define el directorio de subida dentro de la carpeta `public`
 const UPLOAD_DIR = join(process.cwd(), 'public', 'uploads', 'products');
+const UPLOAD_URL_PREFIX = '/uploads/products';
 
 // Asegúrate de que el directorio de subida exista
 const ensureUploadDirExists = () => {
@@ -30,7 +32,7 @@ export async function POST(request: Request) {
     // Crear un nombre de archivo único para evitar colisiones
     const uniqueFileName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
     const filePath = join(UPLOAD_DIR, uniqueFileName);
-    const fileUrlPath = `/uploads/products/${uniqueFileName}`; // La ruta pública para acceder al archivo
+    const fileUrlPath = `${UPLOAD_URL_PREFIX}/${uniqueFileName}`; // La ruta pública para acceder al archivo
 
     // Convertir el archivo a un buffer para poder escribirlo
     const buffer = Buffer.from(await file.arrayBuffer());
@@ -40,6 +42,9 @@ export async function POST(request: Request) {
 
     console.log(`Archivo guardado en: ${filePath}`);
     console.log(`URL de acceso público: ${fileUrlPath}`);
+
+    // Revalidar la ruta de subida para que Next.js reconozca el nuevo archivo inmediatamente.
+    revalidatePath(UPLOAD_URL_PREFIX);
 
     // Devolver la URL pública
     return NextResponse.json({ url: fileUrlPath }, { status: 201 });
