@@ -1,4 +1,6 @@
 // src/app/api/products/[id]/route.ts
+'use server';
+
 import { NextResponse } from 'next/server';
 import * as productService from '@/services/productService';
 import { Product } from '@/types';
