@@ -3,7 +3,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import ReactDOM from 'react-dom'; // Import ReactDOM for Portals
+import ReactDOM from 'react-dom';
 import { PlusCircle, ShoppingCart, Printer, Search, Filter, CalendarIcon, Loader2, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -17,8 +17,8 @@ import useLocalStorageState from '@/hooks/useLocalStorageState';
 import SaleDialog from '@/components/sales/SaleDialog';
 import SaleReceipt from '@/components/sales/SaleReceipt';
 import InvoiceContractPrintLayout from '@/components/sales/InvoiceContractPrintLayout';
-import PrintOptionsDialog from '@/components/sales/PrintOptionsDialog'; // Import new dialog
-import SaleA4Layout from '@/components/sales/SaleA4Layout'; // Import new A4 layout
+import PrintOptionsDialog from '@/components/sales/PrintOptionsDialog';
+import SaleA4Layout from '@/components/sales/SaleA4Layout';
 import { format, parseISO, isValid, startOfDay, endOfDay, isWithinInterval, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { DateRange } from "react-day-picker";
@@ -35,15 +35,17 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
 export default function SalesPage() {
-  const [sales, setSales] = useLocalStorageState<Sale[]>('sales', []);
-  const [products, setProducts] = useLocalStorageState<Product[]>('products', []);
-  const [customers, setCustomers] = useLocalStorageState<Customer[]>('customers', []);
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
   const [appSettings] = useLocalStorageState<AppSettings>('appSettings', DEFAULT_APP_SETTINGS);
   const [businessSettings] = useLocalStorageState<BusinessSettings>('businessSettings', DEFAULT_BUSINESS_SETTINGS);
   const [accountingSettings] = useLocalStorageState<AccountingSettings>('accountingSettings', DEFAULT_ACCOUNTING_SETTINGS);
 
-  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
   const [isSaleDialogOpen, setIsSaleDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPaymentMethod, setFilterPaymentMethod] = useState<'cash' | 'transfer' | 'invoice' | ''>('');
@@ -65,25 +67,48 @@ export default function SalesPage() {
   const [isPrinting, setIsPrinting] = useState(false);
 
   const { toast } = useToast();
+  
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    setFetchError(null);
+    try {
+        const [salesRes, productsRes, customersRes] = await Promise.all([
+            fetch('/api/sales'),
+            fetch('/api/products'),
+            fetch('/api/customers'),
+        ]);
+
+        if (!salesRes.ok) throw new Error('Failed to fetch sales');
+        if (!productsRes.ok) throw new Error('Failed to fetch products');
+        if (!customersRes.ok) throw new Error('Failed to fetch customers');
+
+        const salesData = await salesRes.json();
+        const productsData = await productsRes.json();
+        const customersData = await customersRes.json();
+
+        setSales(salesData);
+        setProducts(productsData);
+        setCustomers(customersData);
+
+    } catch (error) {
+        console.error("Error fetching data:", error);
+        setFetchError(error instanceof Error ? error.message : 'No se pudieron cargar los datos desde la base de datos.');
+    } finally {
+        setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     setIsClientMounted(true);
-    setIsLoadingProducts(false);
-  }, []);
+    fetchData();
+  }, [fetchData]);
 
   const handleAddSale = (newSale: Sale) => {
+    // Optimistically update the UI while data is re-fetched in the background
     setSales(prevSales => [newSale, ...prevSales].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
-    
-    // Stock is now deducted for ALL sales, including invoices, as the goods have left the inventory.
-    const updatedProducts = products.map(p => {
-        const itemSold = newSale.items.find(item => item.productId === p.id);
-        if (itemSold) {
-            const newStock = p.stock - itemSold.quantity;
-            return { ...p, stock: Math.max(0, newStock) };
-        }
-        return p;
-    });
-    setProducts(updatedProducts);
+
+    // Re-fetch all data to ensure consistency (e.g., product stock updated)
+    fetchData();
 
     toast({
         title: "Venta Registrada",
@@ -92,7 +117,6 @@ export default function SalesPage() {
 
     if (newSale.paymentMethod === 'invoice') {
         const customer = customers.find(c => c.id === newSale.customerId);
-        // Find previous UNPAID invoices for this customer, excluding the one we just created.
         const previousInvoices = sales.filter(s =>
             s.customerId === newSale.customerId &&
             s.id !== newSale.id &&
@@ -129,7 +153,7 @@ export default function SalesPage() {
     return salesToFilter.filter(sale =>
       (sale.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (sale.customerName && sale.customerName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      sale.items.some(item => item.productName.toLowerCase().includes(searchTerm.toLowerCase()))) &&
+      (sale.items && sale.items.some(item => item.productName.toLowerCase().includes(searchTerm.toLowerCase())))) &&
       (filterPaymentMethod === '' || sale.paymentMethod === filterPaymentMethod)
     );
   }, [sales, searchTerm, filterPaymentMethod, filterDateRange, getSaleDateForFilter]);
@@ -186,7 +210,7 @@ export default function SalesPage() {
       {fetchError && (
           <Alert variant="destructive">
             <AlertTriangle className="h-5 w-5" />
-            <AlertTitle>Error</AlertTitle>
+            <AlertTitle>Error de Conexión</AlertTitle>
             <AlertDescription>{fetchError}</AlertDescription>
           </Alert>
       )}
@@ -263,11 +287,11 @@ export default function SalesPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {isLoadingProducts ? (
+          {isLoading ? (
               <div className="flex justify-center items-center py-10">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
-          ) : filteredSales.length === 0 ? (
+          ) : filteredSales.length === 0 && !fetchError ? (
             <div className="text-center py-10 text-muted-foreground">
               <ShoppingCart className="mx-auto h-12 w-12 mb-4" />
               <p className="text-lg">No hay ventas registradas para los filtros seleccionados.</p>
@@ -298,7 +322,7 @@ export default function SalesPage() {
                         : <span className="text-muted-foreground text-xs">N/A</span>}
                     </TableCell>
                     <TableCell>{sale.customerName || <span className="text-muted-foreground text-xs">N/A</span>}</TableCell>
-                    <TableCell className="text-center">{sale.items.reduce((sum, item) => sum + item.quantity, 0)}</TableCell>
+                    <TableCell className="text-center">{sale.items ? sale.items.reduce((sum, item) => sum + item.quantity, 0) : 0}</TableCell>
                     <TableCell className="text-right font-semibold">
                       {appSettings.currencySymbol}{sale.totalAmount.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </TableCell>

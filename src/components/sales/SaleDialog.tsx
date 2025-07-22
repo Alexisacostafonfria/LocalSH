@@ -4,7 +4,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import ReactDOM from 'react-dom'; // Import ReactDOM for Portals
+import ReactDOM from 'react-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -20,7 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import useLocalStorageState from '@/hooks/useLocalStorageState';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Calendar } from '../ui/calendar';
-import { format, addDays } from 'date-fns';
+import { format, addDays, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useAddToCartToast } from '@/context/ToastContext';
 
@@ -87,7 +87,19 @@ export default function SaleDialog({
   const [currentTransactionCustomer, setCurrentTransactionCustomer] = useState<CurrentTransactionCustomerData>(initialTransactionCustomerData);
   
   const [accountingSettings] = useLocalStorageState<AccountingSettings>('accountingSettings', DEFAULT_ACCOUNTING_SETTINGS);
-  const [sales] = useLocalStorageState<Sale[]>('sales', []);
+  
+  // Use a local state for sales to check for debt, avoiding dependency on the parent's potentially stale state
+  const [sales, setSales] = useState<Sale[]>([]);
+  useEffect(() => {
+    // Sync local sales state when the dialog opens
+    if (isOpen) {
+        const storedSales = localStorage.getItem('sales'); // Fallback to localStorage if needed or fetch
+        if (storedSales) {
+            setSales(JSON.parse(storedSales));
+        }
+    }
+  }, [isOpen]);
+
 
   const [customerHasDebt, setCustomerHasDebt] = useState(false);
   const [debtDetails, setDebtDetails] = useState<{count: number, total: number} | null>(null);
@@ -149,7 +161,7 @@ export default function SaleDialog({
 
 
   useEffect(() => {
-      if (selectedCustomerId && selectedCustomerId !== ANONYMOUS_CUSTOMER_VALUE) {
+      if (selectedCustomerId && selectedCustomerId !== ANONYMOUS_CUSTOMER_VALUE && sales.length > 0) {
           const customerInvoices = sales.filter(s =>
               s.customerId === selectedCustomerId &&
               s.paymentMethod === 'invoice' &&
@@ -271,16 +283,6 @@ export default function SaleDialog({
     setCurrentTransactionCustomer(prev => ({ ...prev, cardNumber: formattedValue.slice(0,19) }));
   };
 
-  const getSafeNumericDisplayValue = (num: number | undefined | null, allowZero: boolean = false) => {
-    if (typeof num !== 'number' || !isFinite(num)) {
-      return "";
-    }
-    if (!allowZero && num === 0) {
-      return "";
-    }
-    return String(num);
-  };
-  
   const getAmountReceivedDisplayValue = () => {
     const currentAmountReceived = isFinite(cashDetails.amountReceived) ? cashDetails.amountReceived : 0;
     if (hasActiveBreakdown) return String(currentAmountReceived); 
@@ -356,7 +358,7 @@ export default function SaleDialog({
 
   const handleBarcodeScan = (scannedCode: string) => {
     if (!scannedCode.trim()) return;
-    const cleanScannedCode = scannedCode.trim(); // Lector ya envía sin guiones y con longitud esperada
+    const cleanScannedCode = scannedCode.trim();
 
     const product = availableProducts.find(p => {
       const cleanProductId = p.id.replace(/-/g, '').substring(0, 16);
@@ -414,7 +416,7 @@ export default function SaleDialog({
   };
 
 
-  const handleFinalizeSale = () => {
+  const handleFinalizeSale = async () => {
     const saleId = crypto.randomUUID();
     if (!isDayEffectivelyOpen) {
         toast({ title: "Día Operativo Cerrado", description: "No se puede registrar la venta. Inicie un nuevo día operativo.", variant: "destructive" });
@@ -507,9 +509,25 @@ export default function SaleDialog({
       paymentMethod,
       paymentDetails: finalPaymentDetails,
     };
-    onAddSale(sale);
-    resetDialog();
-    onClose();
+    
+    try {
+        const response = await fetch('/api/sales', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(sale),
+        });
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Error al guardar la venta.');
+        }
+        const newSaleResult = await response.json();
+        onAddSale(newSaleResult);
+        resetDialog();
+        onClose();
+    } catch(error) {
+        console.error("Error creating sale:", error);
+        toast({ title: "Error al Guardar Venta", description: (error as Error).message, variant: "destructive" });
+    }
   };
 
   const resetDialog = () => {
@@ -584,7 +602,7 @@ export default function SaleDialog({
                 </div>
               </div>
 
-              <div className="text-center text-sm text-muted-foreground my-2">O añadir manually:</div>
+              <div className="text-center text-sm text-muted-foreground my-2">O añadir manualmente:</div>
               
               <div className="flex gap-2 items-end">
                 <div className="flex-grow">
