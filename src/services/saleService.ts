@@ -30,11 +30,11 @@ export async function getSales(): Promise<Sale[]> {
     const db = await getDbConnection();
     const [salesRows] = await db.execute<any[]>(
         `SELECT 
-            s.sale_uuid as id, s.timestamp, s.operational_date as operationalDate, s.origin,
+            s.sale_uuid as id, s.sale_timestamp as timestamp, s.operational_date as operationalDate, s.origin,
             s.customer_uuid as customerId, s.customer_name as customerName,
             s.sub_total as subTotal, s.total_amount as totalAmount, s.payment_method as paymentMethod,
             s.user_id as userId
-         FROM sales s ORDER BY s.timestamp DESC`
+         FROM sales s ORDER BY s.sale_timestamp DESC`
     );
 
     const sales: Sale[] = [];
@@ -77,7 +77,7 @@ export async function createSale(sale: Sale): Promise<Sale> {
     try {
         // 1. Insert into sales table
         await db.execute(
-            `INSERT INTO sales (sale_uuid, timestamp, operational_date, origin, customer_uuid, customer_name, sub_total, total_amount, payment_method, user_id)
+            `INSERT INTO sales (sale_uuid, sale_timestamp, operational_date, origin, customer_uuid, customer_name, sub_total, total_amount, payment_method, user_id)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [sale.id, new Date(sale.timestamp), sale.operationalDate ? new Date(sale.operationalDate) : null, sale.origin, sale.customerId, sale.customerName, sale.subTotal, sale.totalAmount, sale.paymentMethod, sale.userId]
         );
