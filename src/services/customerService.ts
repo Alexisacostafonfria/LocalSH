@@ -11,7 +11,7 @@ import { RowDataPacket } from 'mysql2';
 export async function getCustomers(): Promise<Customer[]> {
   const db = await getDbConnection();
   const [rows] = await db.execute<RowDataPacket[]>(
-    'SELECT customer_uuid as id, name, phone, email, personal_id as personalId, card_number as cardNumber FROM customers ORDER BY name ASC'
+    'SELECT customer_uuid as id, name, phone, email, address, personal_id as personalId, card_number as cardNumber FROM customers ORDER BY name ASC'
   );
   return rows as Customer[];
 }
@@ -21,10 +21,10 @@ export async function getCustomers(): Promise<Customer[]> {
  */
 export async function createCustomer(customer: Customer): Promise<Customer> {
   const db = await getDbConnection();
-  const { id, name, phone, email, personalId, cardNumber } = customer;
+  const { id, name, phone, email, address, personalId, cardNumber } = customer;
   await db.execute(
-    'INSERT INTO customers (customer_uuid, name, phone, email, personal_id, card_number) VALUES (?, ?, ?, ?, ?, ?)',
-    [id, name, phone || null, email || null, personalId || null, cardNumber || null]
+    'INSERT INTO customers (customer_uuid, name, phone, email, address, personal_id, card_number) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [id, name, phone || null, email || null, address || null, personalId || null, cardNumber || null]
   );
   return customer;
 }
@@ -37,7 +37,7 @@ export async function updateCustomer(id: string, customerData: Partial<Customer>
     
     const fields = Object.keys(customerData).filter(key => key !== 'id' && customerData[key as keyof typeof customerData] !== undefined);
     if (fields.length === 0) {
-        const [rows] = await db.execute<RowDataPacket[]>('SELECT customer_uuid as id, name, phone, email, personal_id as personalId, card_number as cardNumber FROM customers WHERE customer_uuid = ?', [id]);
+        const [rows] = await db.execute<RowDataPacket[]>('SELECT customer_uuid as id, name, phone, email, address, personal_id as personalId, card_number as cardNumber FROM customers WHERE customer_uuid = ?', [id]);
         return rows[0] as Customer || null;
     }
 
@@ -55,7 +55,7 @@ export async function updateCustomer(id: string, customerData: Partial<Customer>
         [...values, id]
     );
 
-    const [updatedRows] = await db.execute<RowDataPacket[]>('SELECT customer_uuid as id, name, phone, email, personal_id as personalId, card_number as cardNumber FROM customers WHERE customer_uuid = ?', [id]);
+    const [updatedRows] = await db.execute<RowDataPacket[]>('SELECT customer_uuid as id, name, phone, email, address, personal_id as personalId, card_number as cardNumber FROM customers WHERE customer_uuid = ?', [id]);
     return updatedRows[0] as Customer || null;
 }
 
@@ -68,5 +68,3 @@ export async function deleteCustomer(id: string): Promise<void> {
     // who has outstanding invoices or a history of sales you want to preserve.
     await db.execute('DELETE FROM customers WHERE customer_uuid = ?', [id]);
 }
-
-    

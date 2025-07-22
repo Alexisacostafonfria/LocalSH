@@ -34,6 +34,7 @@ const initialCustomerFormState: CustomerFormData = {
   name: '',
   phone: '',
   email: '',
+  address: '',
   personalId: '',
   cardNumber: '',
 };
@@ -85,6 +86,7 @@ export default function CustomersPage() {
         name: editingCustomer.name,
         phone: editingCustomer.phone || '',
         email: editingCustomer.email || '',
+        address: editingCustomer.address || '',
         personalId: editingCustomer.personalId || '',
         cardNumber: editingCustomer.cardNumber || '',
       });
@@ -132,6 +134,7 @@ export default function CustomersPage() {
       name: customerForm.name,
       phone: customerForm.phone || undefined,
       email: customerForm.email || undefined,
+      address: customerForm.address || undefined,
       personalId: customerForm.personalId || undefined,
       cardNumber: customerForm.cardNumber || undefined,
     };
@@ -223,6 +226,7 @@ export default function CustomersPage() {
     return customers.filter(customer =>
         customer.name.toLowerCase().includes(searchTermLower) ||
         (customer.phone && customer.phone.toLowerCase().includes(searchTermLower)) ||
+        (customer.address && customer.address.toLowerCase().includes(searchTermLower)) ||
         (customer.personalId && customer.personalId.toLowerCase().includes(searchTermLower))
     ).sort((a, b) => a.name.localeCompare(b.name));
   }, [customers, searchTerm]);
@@ -235,12 +239,12 @@ export default function CustomersPage() {
         </Button>
       </PageHeader>
 
-      {fetchError && (<Alert variant="destructive"><AlertTriangle className="h-5 w-5" /><AlertTitle>Error de Conexión</AlertTitle><AlertDescription>{fetchError} <br/>Asegúrate de haber creado la tabla `customers` en tu base de datos. Puedes encontrar el SQL en `src/lib/schema.sql`.</AlertDescription></Alert>)}
+      {fetchError && (<Alert variant="destructive"><AlertTriangle className="h-5 w-5" /><AlertTitle>Error de Conexión</AlertTitle><AlertDescription>{fetchError} <br/>Asegúrate de haber creado la tabla `customers` en tu base de datos y de haber añadido la columna `address`.</AlertDescription></Alert>)}
 
       <Card><CardContent className="p-4"><div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-grow">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input type="search" placeholder="Buscar por nombre, teléfono, ID personal..." className="pl-8 w-full" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            <Input type="search" placeholder="Buscar por nombre, teléfono, dirección, ID..." className="pl-8 w-full" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
       </div></CardContent></Card>
 
@@ -253,16 +257,16 @@ export default function CustomersPage() {
               <TableHeader><TableRow>
                 <TableHead>Nombre</TableHead>
                 <TableHead className="hidden md:table-cell">Teléfono</TableHead>
-                <TableHead className="hidden md:table-cell">ID Personal</TableHead>
-                <TableHead className="hidden md:table-cell">Tarjeta</TableHead>
+                <TableHead className="hidden lg:table-cell">Dirección</TableHead>
+                <TableHead className="hidden lg:table-cell">ID Personal</TableHead>
                 {isAdmin && <TableHead className="text-right">Acciones</TableHead>}
               </TableRow></TableHeader>
               <TableBody>{filteredCustomers.map(customer => (
                   <TableRow key={customer.id}>
                     <TableCell className="font-medium max-w-[200px] truncate" title={customer.name}>{customer.name}</TableCell>
                     <TableCell className="hidden md:table-cell">{customer.phone || 'N/A'}</TableCell>
-                    <TableCell className="hidden md:table-cell">{customer.personalId || 'N/A'}</TableCell>
-                    <TableCell className="hidden md:table-cell font-mono text-xs">{customer.cardNumber || 'N/A'}</TableCell>
+                    <TableCell className="hidden lg:table-cell max-w-[250px] truncate" title={customer.address}>{customer.address || 'N/A'}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{customer.personalId || 'N/A'}</TableCell>
                     {isAdmin && (<TableCell className="text-right"><div className="flex gap-1 justify-end">
                         <Button variant="ghost" size="icon" onClick={() => openEditDialog(customer)} title="Editar"><Edit2 className="h-4 w-4" /></Button>
                         <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(customer)} title="Eliminar"><Trash2 className="h-4 w-4 text-destructive" /></Button>
@@ -281,6 +285,7 @@ export default function CustomersPage() {
               <div className="md:col-span-2"><Label htmlFor="name">Nombre Completo *</Label><Input id="name" name="name" value={customerForm.name} onChange={handleInputChange} /></div>
               <div><Label htmlFor="phone">Teléfono</Label><Input id="phone" name="phone" value={customerForm.phone} onChange={handleInputChange} /></div>
               <div><Label htmlFor="email">Email</Label><Input id="email" name="email" type="email" value={customerForm.email} onChange={handleInputChange} /></div>
+              <div className="md:col-span-2"><Label htmlFor="address">Dirección Personal</Label><Input id="address" name="address" value={customerForm.address} onChange={handleInputChange} /></div>
               <div className="md:col-span-2"><Label htmlFor="personalId">ID Personal (DNI, CUIT, etc.)</Label><Input id="personalId" name="personalId" value={customerForm.personalId} onChange={handleInputChange} /></div>
               <div className="md:col-span-2"><Label htmlFor="cardNumber">Nro. Tarjeta (16 dígitos)</Label><Input id="cardNumber" name="cardNumber" value={customerForm.cardNumber} onChange={handleCardNumberChange} maxLength={19}/></div>
             </div>
@@ -296,5 +301,3 @@ export default function CustomersPage() {
     </div>
   );
 }
-
-    
