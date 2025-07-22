@@ -10,8 +10,8 @@ import { Customer } from '@/types';
  * PUT /api/customers/[id]
  * Updates an existing customer.
  */
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
-  const { id } = params;
+export async function PUT(request: Request, context: { params: { id: string } }) {
+  const { id } = context.params;
   if (!id) {
     return NextResponse.json({ message: 'Customer ID is required' }, { status: 400 });
   }
@@ -32,8 +32,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
  * DELETE /api/customers/[id]
  * Deletes a customer.
  */
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
-  const { id } = params;
+export async function DELETE(request: Request, context: { params: { id: string } }) {
+  const { id } = context.params;
    if (!id) {
     return NextResponse.json({ message: 'Customer ID is required' }, { status: 400 });
   }
@@ -45,5 +45,3 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     return NextResponse.json({ message: 'Error deleting customer in API' }, { status: 500 });
   }
 }
-
-    
