@@ -30,7 +30,7 @@ export async function getSales(): Promise<Sale[]> {
     const db = await getDbConnection();
     const [salesRows] = await db.execute<any[]>(
         `SELECT 
-            s.sale_uuid as id, s.timestamp as timestamp, s.operational_date as operationalDate, s.origin,
+            s.sale_uuid as id, s.timestamp, s.operational_date as operationalDate, s.origin,
             s.customer_uuid as customerId, s.customer_name as customerName,
             s.sub_total as subTotal, s.total_amount as totalAmount, s.payment_method as paymentMethod,
             s.user_id as userId
