@@ -4,6 +4,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -143,7 +144,7 @@ export default function SaleDialog({
           }));
       }
     } else {
-      const cust = customers.find(c => c.id === selectedCustomerId);
+      const cust = customers.find(c => c.id == selectedCustomerId);
       if (cust) {
         setCurrentTransactionCustomer({
           id: cust.id,
@@ -162,7 +163,7 @@ export default function SaleDialog({
   useEffect(() => {
       if (selectedCustomerId && selectedCustomerId !== ANONYMOUS_CUSTOMER_VALUE && sales.length > 0) {
           const customerInvoices = sales.filter(s =>
-              s.customerId === selectedCustomerId &&
+              s.customerId == selectedCustomerId &&
               s.paymentMethod === 'invoice' &&
               (s.paymentDetails as InvoicePaymentDetails).status !== 'paid'
           );
@@ -341,7 +342,7 @@ export default function SaleDialog({
       return;
     }
 
-    const product = availableProducts.find(p => p.id === selectedProduct);
+    const product = availableProducts.find(p => p.id == selectedProduct);
     if (!product) {
       toast({ title: "Error", description: "Producto no encontrado.", variant: "destructive" });
       return;
