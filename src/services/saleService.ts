@@ -18,13 +18,15 @@ export async function getSales(): Promise<Sale[]> {
             s.operational_date as operationalDate,
             s.origin,
             s.customer_id as customerId,
-            s.customer_name as customerName,
+            c.name as customerName,
             s.sub_total as subTotal,
             s.total_amount as totalAmount,
             s.payment_method as paymentMethod,
             s.payment_details as paymentDetails,
             s.user_id as userId
-         FROM sales s ORDER BY s.created_at DESC`
+         FROM sales s
+         LEFT JOIN customers c ON s.customer_id = c.id
+         ORDER BY s.created_at DESC`
     );
 
     const sales: Sale[] = salesRows.map(saleRow => {
@@ -45,7 +47,7 @@ export async function getSales(): Promise<Sale[]> {
             operationalDate: saleRow.operationalDate ? new Date(saleRow.operationalDate).toISOString() : undefined,
             paymentDetails: parsedPaymentDetails,
             items: [], 
-        } as Sale;
+        } as unknown as Sale;
     });
 
     for (const sale of sales) {
@@ -71,12 +73,11 @@ export async function createSale(sale: Sale): Promise<Sale> {
     try {
         // 1. Insert into sales table using correct column names from user's schema
         await db.execute(
-            `INSERT INTO sales (sale_uuid, customer_id, customer_name, user_id, origin, sub_total, total_amount, payment_method, payment_details, operational_date, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO sales (sale_uuid, customer_id, user_id, origin, sub_total, total_amount, payment_method, payment_details, operational_date, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 sale.id,
                 sale.customerId, // Should be the numeric ID or null
-                sale.customerName,
                 sale.userId, // Should be the numeric ID or null
                 sale.origin,
                 sale.subTotal,
