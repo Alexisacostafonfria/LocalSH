@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Product, Customer, Sale, SaleItem, AppSettings, CashPaymentDetails, TransferPaymentDetails, AccountingSettings, DEFAULT_ACCOUNTING_SETTINGS, InvoicePaymentDetails } from '@/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { X, Plus, Trash2, UserPlus, AlertCircle, Coins, ArrowLeft, ArrowRight, CheckCircle2, AlertTriangle, ScanLine, FileText, Calendar as CalendarIcon, ClipboardCheck } from 'lucide-react';
+import { X, Plus, Trash2, UserPlus, AlertCircle, Coins, ArrowLeft, ArrowRight, CheckCircle2, AlertTriangle, ScanLine, FileText, Calendar as CalendarIcon, ClipboardCheck, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -30,6 +30,7 @@ interface SaleDialogProps {
   onAddSale: (sale: Sale) => void;
   appSettings: AppSettings;
   onUpdateCustomers: (customers: Customer[]) => void;
+  isDataLoading: boolean;
 }
 
 type SaleDialogStep = 'products' | 'customer' | 'confirmation' | 'payment';
@@ -65,6 +66,7 @@ export default function SaleDialog({
   onAddSale,
   appSettings,
   onUpdateCustomers,
+  isDataLoading,
 }: SaleDialogProps) {
   const [currentStep, setCurrentStep] = useState<SaleDialogStep>('products');
   const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
@@ -575,6 +577,14 @@ export default function SaleDialog({
 
 
   const renderStepContent = () => {
+    if (isDataLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center h-full">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="mt-2 text-muted-foreground">Cargando productos...</p>
+            </div>
+        );
+    }
     switch (currentStep) {
       case 'products':
         return (
@@ -1030,7 +1040,7 @@ export default function SaleDialog({
             {currentStep === 'products' && (
               <Button 
                 onClick={() => setCurrentStep('customer')} 
-                disabled={saleItems.length === 0 || !isDayEffectivelyOpen}
+                disabled={saleItems.length === 0 || !isDayEffectivelyOpen || isDataLoading}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 Siguiente (Cliente) <ArrowRight className="ml-2 h-4 w-4" />
@@ -1040,7 +1050,7 @@ export default function SaleDialog({
               <Button 
                 onClick={() => setCurrentStep('confirmation')}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                disabled={!isDayEffectivelyOpen}
+                disabled={!isDayEffectivelyOpen || isDataLoading}
               >
                 Siguiente (Confirmar) <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -1049,7 +1059,7 @@ export default function SaleDialog({
                 <Button
                     onClick={() => setCurrentStep('payment')}
                     className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                    disabled={!isDayEffectivelyOpen}
+                    disabled={!isDayEffectivelyOpen || isDataLoading}
                 >
                     <ClipboardCheck className="mr-2 h-4 w-4" /> Confirmar y Pagar
                 </Button>
@@ -1057,7 +1067,7 @@ export default function SaleDialog({
             {currentStep === 'payment' && (
               <Button 
                 onClick={handleFinalizeSale} 
-                disabled={finalizeSaleButtonDisabled}
+                disabled={finalizeSaleButtonDisabled || isDataLoading}
                 className="bg-green-600 hover:bg-green-600/90 text-white"
               >
                 <CheckCircle2 className="mr-2 h-4 w-4" /> Finalizar Venta ({appSettings.currencySymbol}{totalAmount.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })})

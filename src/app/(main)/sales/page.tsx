@@ -202,8 +202,9 @@ export default function SalesPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Registro de Ventas" description="Registra nuevas transacciones y visualiza el historial de ventas.">
-        <Button onClick={() => setIsSaleDialogOpen(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-          <PlusCircle className="mr-2 h-5 w-5" /> Registrar Venta
+        <Button onClick={() => setIsSaleDialogOpen(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isLoading}>
+          {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <PlusCircle className="mr-2 h-5 w-5" />}
+          {isLoading ? 'Cargando...' : 'Registrar Venta'}
         </Button>
       </PageHeader>
       
@@ -353,6 +354,7 @@ export default function SalesPage() {
           onAddSale={handleAddSale}
           appSettings={appSettings}
           onUpdateCustomers={setCustomers}
+          isDataLoading={isLoading}
         />
       )}
       
