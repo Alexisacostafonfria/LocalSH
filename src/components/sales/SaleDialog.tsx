@@ -4,7 +4,6 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import ReactDOM from 'react-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -22,7 +21,6 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Calendar } from '../ui/calendar';
 import { format, addDays, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useAddToCartToast } from '@/context/ToastContext';
 
 interface SaleDialogProps {
   isOpen: boolean;
@@ -106,7 +104,6 @@ export default function SaleDialog({
 
 
   const { toast } = useToast();
-  const { showToast: showAddToCartToast } = useAddToCartToast();
 
   const subTotal = useMemo(() => saleItems.reduce((sum, item) => {
     const itemPrice = (typeof item.unitPrice === 'number' && isFinite(item.unitPrice)) ? item.unitPrice : 0;
@@ -322,10 +319,9 @@ export default function SaleDialog({
         totalPrice: productPrice * quantityToAdd,
       }]);
     }
-    showAddToCartToast({
-        productName: productToAdd.name,
-        imageUrl: productToAdd.imageUrl,
-        quantity: quantityToAdd,
+    toast({
+        title: 'Añadido al Carrito',
+        description: `${quantityToAdd} x ${productToAdd.name}`,
     });
     return true;
   }

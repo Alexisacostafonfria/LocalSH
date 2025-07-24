@@ -15,7 +15,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { X, Plus, Trash2, UserPlus, Save } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
-import { useAddToCartToast } from '@/context/ToastContext';
 
 interface OrderDialogProps {
   isOpen: boolean;
@@ -39,7 +38,6 @@ export default function OrderDialog({ isOpen, onClose, products: availableProduc
   const [notes, setNotes] = useState('');
 
   const { toast } = useToast();
-  const { showToast: showAddToCartToast } = useAddToCartToast();
 
   useEffect(() => {
     if (editingOrder) {
@@ -107,10 +105,9 @@ export default function OrderDialog({ isOpen, onClose, products: availableProduc
         totalPrice: product.price * quantity,
       }]);
     }
-    showAddToCartToast({
-        productName: product.name,
-        imageUrl: product.imageUrl,
-        quantity: quantity,
+    toast({
+        title: "Producto Añadido",
+        description: `${quantity} x ${product.name} añadido(s) al pedido.`,
     });
     setSelectedProduct('');
     setQuantity(1);
