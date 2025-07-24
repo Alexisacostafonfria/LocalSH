@@ -22,7 +22,7 @@ export async function PUT(request: Request, context: { params: { id: string } })
         return NextResponse.json({ message: 'Customer not found' }, { status: 404 });
     }
     return NextResponse.json(updatedCustomer);
-  } catch (error) {
+  } catch (error)
     console.error(`API Error updating customer ${id}:`, error);
     return NextResponse.json({ message: 'Error updating customer in API' }, { status: 500 });
   }

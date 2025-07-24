@@ -9,8 +9,8 @@ import { Product } from '@/types';
  * PUT /api/products/[id]
  * Updates an existing product.
  */
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
-  const { id } = params;
+export async function PUT(request: Request, context: { params: { id: string } }) {
+  const { id } = context.params;
   if (!id) {
     return NextResponse.json({ message: 'Product ID is required' }, { status: 400 });
   }
@@ -31,8 +31,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
  * DELETE /api/products/[id]
  * Deletes a product.
  */
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
-  const { id } = params;
+export async function DELETE(request: Request, context: { params: { id: string } }) {
+  const { id } = context.params;
    if (!id) {
     return NextResponse.json({ message: 'Product ID is required' }, { status: 400 });
   }
