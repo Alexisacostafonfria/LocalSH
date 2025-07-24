@@ -2,7 +2,7 @@
 'use server';
 // src/services/saleService.ts
 import { getDbConnection } from '@/lib/db';
-import { Sale, SaleItem, CashPaymentDetails, TransferPaymentDetails, InvoicePaymentDetails } from '@/types';
+import { Sale, SaleItem } from '@/types';
 import { RowDataPacket } from 'mysql2';
 
 /**
@@ -17,7 +17,7 @@ export async function getSales(): Promise<Sale[]> {
             s.created_at as timestamp,
             s.operational_date as operationalDate,
             s.origin,
-            s.customer_uuid as customerId,
+            s.customer_id as customerId,
             s.customer_name as customerName,
             s.sub_total as subTotal,
             s.total_amount as totalAmount,
@@ -69,22 +69,22 @@ export async function createSale(sale: Sale): Promise<Sale> {
     await db.beginTransaction();
 
     try {
-        // 1. Insert into sales table using correct column names
+        // 1. Insert into sales table using correct column names from user's schema
         await db.execute(
-            `INSERT INTO sales (sale_uuid, customer_uuid, customer_name, user_id, origin, sub_total, total_amount, payment_method, payment_details, operational_date, created_at)
+            `INSERT INTO sales (sale_uuid, customer_id, customer_name, user_id, origin, sub_total, total_amount, payment_method, payment_details, operational_date, created_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 sale.id,
-                sale.customerId,
+                sale.customerId, // Should be the numeric ID or null
                 sale.customerName,
-                sale.userId,
+                sale.userId, // Should be the numeric ID or null
                 sale.origin,
                 sale.subTotal,
                 sale.totalAmount,
                 sale.paymentMethod,
                 JSON.stringify(sale.paymentDetails),
                 sale.operationalDate ? new Date(sale.operationalDate) : new Date(),
-                new Date(sale.timestamp) // Uses the 'created_at' column in the DB
+                new Date(sale.timestamp)
             ]
         );
 
@@ -105,8 +105,6 @@ export async function createSale(sale: Sale): Promise<Sale> {
             );
             const [checkStock] = await db.execute<RowDataPacket[]>('SELECT stock FROM products WHERE product_uuid = ?', [item.productId]);
             if (checkStock.length > 0 && checkStock[0].stock < 0) {
-                // This would indicate a race condition if not for the transaction.
-                // With the transaction, it's a logic error if stock goes negative.
                 throw new Error(`Stock for product ${item.productName} would become negative.`);
             }
         }
