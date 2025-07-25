@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Product, Customer, Sale, SaleItem, AppSettings, CashPaymentDetails, TransferPaymentDetails, AccountingSettings, DEFAULT_ACCOUNTING_SETTINGS, InvoicePaymentDetails } from '@/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { X, Plus, Trash2, UserPlus, AlertCircle, Coins, ArrowLeft, ArrowRight, CheckCircle2, AlertTriangle, ScanLine, FileText, Calendar as CalendarIcon, ClipboardCheck, Loader2 } from 'lucide-react';
+import { X, Plus, Trash2, UserPlus, AlertCircle, Coins, ArrowLeft, ArrowRight, CheckCircle2, AlertTriangle, ScanLine, FileText, Calendar as CalendarIcon, ClipboardCheck, Loader2, Save } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -86,6 +86,7 @@ export default function SaleDialog({
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>(ANONYMOUS_CUSTOMER_VALUE); 
   const [isAddingNewSystemCustomer, setIsAddingNewSystemCustomer] = useState(false);
   const [currentTransactionCustomer, setCurrentTransactionCustomer] = useState<CurrentTransactionCustomerData>(initialTransactionCustomerData);
+  const [isSavingCustomer, setIsSavingCustomer] = useState(false);
   
   const [accountingSettings] = useLocalStorageState<AccountingSettings>('accountingSettings', DEFAULT_ACCOUNTING_SETTINGS);
   
@@ -397,25 +398,47 @@ export default function SaleDialog({
     }
   };
 
-  const handleSaveNewSystemCustomer = () => {
+  const handleSaveNewSystemCustomer = async () => {
     if (!currentTransactionCustomer.name) {
-      toast({ title: "Error", description: "El nombre del cliente es obligatorio para guardarlo en el sistema.", variant: "destructive" });
-      return;
+        toast({ title: "Error", description: "El nombre del cliente es obligatorio para guardarlo en el sistema.", variant: "destructive" });
+        return;
     }
-    const customerToAddToSystem: Customer = {
-      id: crypto.randomUUID(),
-      db_id: 0, // Placeholder, will be set by the DB
-      name: currentTransactionCustomer.name,
-      phone: currentTransactionCustomer.phone || undefined,
-      email: currentTransactionCustomer.email || undefined,
-      personalId: currentTransactionCustomer.personalId || undefined,
-      cardNumber: currentTransactionCustomer.cardNumber || undefined,
-    };
-    const updatedCustomersList = [...customers, customerToAddToSystem];
-    onUpdateCustomers(updatedCustomersList);
-    setSelectedCustomerId(customerToAddToSystem.id); 
-    setIsAddingNewSystemCustomer(false); 
-    toast({ title: "Cliente Guardado", description: `${customerToAddToSystem.name} ha sido añadido al sistema.` });
+    setIsSavingCustomer(true);
+    try {
+        const customerToAddToSystem: Omit<Customer, 'db_id'> = {
+            id: crypto.randomUUID(),
+            name: currentTransactionCustomer.name,
+            phone: currentTransactionCustomer.phone || undefined,
+            email: currentTransactionCustomer.email || undefined,
+            personalId: currentTransactionCustomer.personalId || undefined,
+            cardNumber: currentTransactionCustomer.cardNumber || undefined,
+        };
+        
+        const response = await fetch('/api/customers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(customerToAddToSystem),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Error al guardar el nuevo cliente.');
+        }
+
+        const newCustomerFromDb: Customer = await response.json();
+        
+        const updatedCustomersList = [...customers, newCustomerFromDb];
+        onUpdateCustomers(updatedCustomersList); // Update parent state
+        setSelectedCustomerId(newCustomerFromDb.id); 
+        setIsAddingNewSystemCustomer(false); 
+        toast({ title: "Cliente Guardado", description: `${newCustomerFromDb.name} ha sido añadido a la base de datos.` });
+
+    } catch (error) {
+        console.error("Failed to save new customer:", error);
+        toast({ title: "Error al Guardar Cliente", description: (error as Error).message, variant: "destructive" });
+    } finally {
+        setIsSavingCustomer(false);
+    }
   };
 
 
@@ -751,7 +774,10 @@ export default function SaleDialog({
                           maxLength={19}
                       />
                   </div>
-                  <Button size="sm" onClick={handleSaveNewSystemCustomer} disabled={!currentTransactionCustomer?.name}>Guardar en Sistema</Button>
+                  <Button size="sm" onClick={handleSaveNewSystemCustomer} disabled={!currentTransactionCustomer?.name || isSavingCustomer}>
+                    {isSavingCustomer ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />} 
+                    {isSavingCustomer ? 'Guardando...' : 'Guardar en Sistema'}
+                  </Button>
                 </div>
               )}
             </CardContent>
