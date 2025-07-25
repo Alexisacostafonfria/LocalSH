@@ -78,7 +78,7 @@ export default function SaleDialog({
   
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer' | 'invoice'>('cash');
   const [cashDetails, setCashDetails] = useState<CashPaymentDetails>(initialCashDetails);
-  const [transferDetails, setTransferDetails] = useState<TransferPaymentDetails>(initialTransferDetails);
+  const [transferDetails, setTransferDetails] = useState<TransferPaymentDetails>(initialTransferDetails); 
   const [invoiceDueDate, setInvoiceDueDate] = useState<Date | undefined>(addDays(new Date(), 15));
   const [cashBreakdownInputs, setCashBreakdownInputs] = useState<Record<string, string>>({});
   const [isCashBreakdownPopoverOpen, setIsCashBreakdownPopoverOpen] = useState(false);
@@ -290,8 +290,8 @@ export default function SaleDialog({
   };
 
   const addProductToSaleItems = (productToAdd: Product, quantityToAdd: number) => {
-    const productPrice = (typeof productToAdd.price === 'number' && isFinite(productToAdd.price)) ? productToAdd.price : 0;
-    if (productPrice <= 0) {
+    const productPrice = Number(productToAdd.price);
+    if (!isFinite(productPrice) || productPrice <= 0) {
         toast({ title: "Error de Precio", description: `El producto "${productToAdd.name}" tiene un precio inválido o cero. Por favor, actualice el precio en el catálogo.`, variant: "destructive" });
         return false;
     }
@@ -624,9 +624,9 @@ export default function SaleDialog({
                     </SelectTrigger>
                     <SelectContent>
                       {availableProducts.map(p => (
-                        <SelectItem key={p.id} value={p.id} disabled={p.stock <= 0 || !isFinite(p.price) || p.price <= 0}>
-                          {p.name} ({appSettings.currencySymbol}{(isFinite(p.price) ? p.price : 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}, Stock: {p.stock})
-                          {(!isFinite(p.price) || p.price <= 0) && <span className="text-destructive text-xs ml-2">(Precio Inválido)</span>}
+                        <SelectItem key={p.id} value={p.id} disabled={p.stock <= 0 || !isFinite(Number(p.price)) || Number(p.price) <= 0}>
+                          {p.name} ({appSettings.currencySymbol}{(isFinite(Number(p.price)) ? Number(p.price) : 0).toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}, Stock: {p.stock})
+                          {(!isFinite(Number(p.price)) || Number(p.price) <= 0) && <span className="text-destructive text-xs ml-2">(Precio Inválido)</span>}
                         </SelectItem>
                       ))}
                     </SelectContent>
