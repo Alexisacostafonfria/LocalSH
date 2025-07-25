@@ -42,7 +42,8 @@ const ANONYMOUS_CUSTOMER_VALUE = "__ANONYMOUS__";
 const denominations = [1000, 500, 200, 100, 50, 20, 10, 5, 2, 1] as const;
 
 interface CurrentTransactionCustomerData {
-  id?: string;
+  id?: string; // UUID
+  db_id?: number; // Numeric DB ID
   name: string;
   phone?: string;
   email?: string;
@@ -148,6 +149,7 @@ export default function SaleDialog({
       if (cust) {
         setCurrentTransactionCustomer({
           id: cust.id,
+          db_id: cust.db_id, // Important: Carry over the numeric ID
           name: cust.name,
           phone: cust.phone || '',
           email: cust.email || '',
@@ -401,6 +403,7 @@ export default function SaleDialog({
     }
     const customerToAddToSystem: Customer = {
       id: crypto.randomUUID(),
+      db_id: 0, // Placeholder, will be set by the DB
       name: currentTransactionCustomer.name,
       phone: currentTransactionCustomer.phone || undefined,
       email: currentTransactionCustomer.email || undefined,
@@ -500,6 +503,7 @@ export default function SaleDialog({
       operationalDate: accountingSettings.currentOperationalDate!,
       origin: 'pos',
       customerId: currentTransactionCustomer?.id, 
+      customerDbId: currentTransactionCustomer?.db_id, // Use the numeric DB ID
       customerName: currentTransactionCustomer?.name || 'Consumidor Final', 
       items: saleItems,
       subTotal: isFinite(subTotal) ? subTotal : 0,
@@ -609,7 +613,7 @@ export default function SaleDialog({
                 </div>
               </div>
 
-              <div className="text-center text-sm text-muted-foreground my-2">O añadir manualmente:</div>
+              <div className="text-center text-sm text-muted-foreground my-2">O añadir manually:</div>
               
               <div className="flex gap-2 items-end">
                 <div className="flex-grow">

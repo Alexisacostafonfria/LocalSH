@@ -17,13 +17,14 @@ export async function getSales(): Promise<Sale[]> {
             s.created_at as timestamp,
             s.operational_date as operationalDate,
             s.origin,
-            s.customer_id as customerId,
+            s.customer_id as customerDbId,
             c.name as customerName,
+            c.customer_uuid as customerId,
             s.sub_total as subTotal,
             s.total_amount as totalAmount,
             s.payment_method as paymentMethod,
             s.payment_details as paymentDetails,
-            s.user_id as userId
+            s.user_id as userDbId
          FROM sales s
          LEFT JOIN customers c ON s.customer_id = c.id
          ORDER BY s.created_at DESC`
@@ -53,6 +54,8 @@ export async function getSales(): Promise<Sale[]> {
     if (sales.length > 0) {
         const saleIds = sales.map(s => s.id);
         const placeholders = saleIds.map(() => '?').join(',');
+        
+        // Correctly query sale_items which should have a string-based sale_uuid
         const [itemsRows] = await db.execute<RowDataPacket[]>(
             `SELECT sale_uuid as saleId, product_id as productId, product_name as productName, quantity, unit_price as unitPrice, total_price as totalPrice FROM sale_items WHERE sale_uuid IN (${placeholders})`,
             saleIds
@@ -91,8 +94,8 @@ export async function createSale(sale: Sale): Promise<Sale> {
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 sale.id,
-                sale.customerId ?? null, // Correctly handle undefined -> null
-                sale.userId ?? null,      // Correctly handle undefined -> null
+                sale.customerDbId ?? null,      // Use the numeric customer ID
+                sale.userDbId ?? null,          // Use the numeric user ID
                 sale.origin,
                 sale.subTotal,
                 sale.totalAmount,
@@ -105,6 +108,7 @@ export async function createSale(sale: Sale): Promise<Sale> {
 
         // 2. Insert sale items
         if (sale.items.length > 0) {
+            // Assuming sale_items uses the sale_uuid (string)
             const itemValues = sale.items.map(item => [sale.id, item.productId, item.productName, item.quantity, item.unitPrice, item.totalPrice]);
             await db.query(
                 'INSERT INTO sale_items (sale_uuid, product_id, product_name, quantity, unit_price, total_price) VALUES ?',
@@ -112,13 +116,13 @@ export async function createSale(sale: Sale): Promise<Sale> {
             );
         }
         
-        // 3. Update product stock
+        // 3. Update product stock using the string UUID (product_uuid)
         for (const item of sale.items) {
             await db.execute(
-                'UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?',
+                'UPDATE products SET stock = stock - ? WHERE product_uuid = ? AND stock >= ?',
                 [item.quantity, item.productId, item.quantity]
             );
-            const [checkStock] = await db.execute<RowDataPacket[]>('SELECT stock FROM products WHERE id = ?', [item.productId]);
+            const [checkStock] = await db.execute<RowDataPacket[]>('SELECT stock FROM products WHERE product_uuid = ?', [item.productId]);
             if (checkStock.length > 0 && checkStock[0].stock < 0) {
                 // This check is a safeguard, the WHERE clause should prevent this.
                 throw new Error(`Stock for product ${item.productName} would become negative.`);

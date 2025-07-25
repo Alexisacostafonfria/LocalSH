@@ -11,7 +11,7 @@ import { RowDataPacket } from 'mysql2';
 export async function getCustomers(): Promise<Customer[]> {
   const db = await getDbConnection();
   const [rows] = await db.execute<RowDataPacket[]>(
-    'SELECT customer_uuid as id, name, phone, email, address, personal_id as personalId, card_number as cardNumber FROM customers ORDER BY name ASC'
+    'SELECT id as db_id, customer_uuid as id, name, phone, email, address, personal_id as personalId, card_number as cardNumber FROM customers ORDER BY name ASC'
   );
   return rows as Customer[];
 }
@@ -35,9 +35,9 @@ export async function createCustomer(customer: Customer): Promise<Customer> {
 export async function updateCustomer(id: string, customerData: Partial<Customer>): Promise<Customer | null> {
     const db = await getDbConnection();
     
-    const fields = Object.keys(customerData).filter(key => key !== 'id' && customerData[key as keyof typeof customerData] !== undefined);
+    const fields = Object.keys(customerData).filter(key => key !== 'id' && key !== 'db_id' && customerData[key as keyof typeof customerData] !== undefined);
     if (fields.length === 0) {
-        const [rows] = await db.execute<RowDataPacket[]>('SELECT customer_uuid as id, name, phone, email, address, personal_id as personalId, card_number as cardNumber FROM customers WHERE customer_uuid = ?', [id]);
+        const [rows] = await db.execute<RowDataPacket[]>('SELECT id as db_id, customer_uuid as id, name, phone, email, address, personal_id as personalId, card_number as cardNumber FROM customers WHERE customer_uuid = ?', [id]);
         return rows[0] as Customer || null;
     }
 
@@ -55,7 +55,7 @@ export async function updateCustomer(id: string, customerData: Partial<Customer>
         [...values, id]
     );
 
-    const [updatedRows] = await db.execute<RowDataPacket[]>('SELECT customer_uuid as id, name, phone, email, address, personal_id as personalId, card_number as cardNumber FROM customers WHERE customer_uuid = ?', [id]);
+    const [updatedRows] = await db.execute<RowDataPacket[]>('SELECT id as db_id, customer_uuid as id, name, phone, email, address, personal_id as personalId, card_number as cardNumber FROM customers WHERE customer_uuid = ?', [id]);
     return updatedRows[0] as Customer || null;
 }
 

@@ -13,7 +13,8 @@ export interface Product {
 }
 
 export interface Customer {
-  id: string;
+  id: string; // This is the customer_uuid
+  db_id: number; // This is the auto-incrementing integer primary key
   name: string;
   phone?: string;
   email?: string;
@@ -89,7 +90,8 @@ export interface Sale {
   timestamp: string; // ISO string
   orderId?: string; // Link to the original order
   origin: 'pos' | 'order'; // Where the sale originated from
-  customerId?: string;
+  customerId?: string; // The UUID of the customer
+  customerDbId?: number; // The numeric ID of the customer from the DB
   customerName?: string;
   items: SaleItem[];
   subTotal: number;
@@ -99,6 +101,7 @@ export interface Sale {
   paymentMethod: 'cash' | 'transfer' | 'invoice';
   paymentDetails: PaymentDetails;
   userId?: string; // ID of the user who made the sale
+  userDbId?: number; // The numeric ID of the user from the DB
   operationalDate?: string; // ISO string (date part only) for accounting
 }
 
@@ -225,6 +228,7 @@ export type UserRole = 'admin' | 'cashier';
 
 export interface User {
   id: string;
+  db_id?: number; // The auto-incrementing integer primary key from the DB
   username: string; // For login
   name: string; // Display name
   role: UserRole;
