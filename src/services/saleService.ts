@@ -50,12 +50,26 @@ export async function getSales(): Promise<Sale[]> {
         } as unknown as Sale;
     });
 
-    for (const sale of sales) {
-         const [itemsRows] = await db.execute<RowDataPacket[]>(
-            'SELECT product_uuid as productId, product_name as productName, quantity, unit_price as unitPrice, total_price as totalPrice FROM sale_items WHERE sale_uuid = ?',
-            [sale.id]
+    if (sales.length > 0) {
+        const saleIds = sales.map(s => s.id);
+        const placeholders = saleIds.map(() => '?').join(',');
+        const [itemsRows] = await db.execute<RowDataPacket[]>(
+            `SELECT sale_uuid as saleId, product_id as productId, product_name as productName, quantity, unit_price as unitPrice, total_price as totalPrice FROM sale_items WHERE sale_uuid IN (${placeholders})`,
+            saleIds
         );
-        sale.items = itemsRows as SaleItem[];
+        
+        const itemsBySaleId = itemsRows.reduce((acc, item) => {
+            const saleId = item.saleId;
+            if (!acc[saleId]) {
+                acc[saleId] = [];
+            }
+            acc[saleId].push(item as SaleItem);
+            return acc;
+        }, {} as Record<string, SaleItem[]>);
+
+        sales.forEach(sale => {
+            sale.items = itemsBySaleId[sale.id] || [];
+        });
     }
 
     return sales;
@@ -77,8 +91,8 @@ export async function createSale(sale: Sale): Promise<Sale> {
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 sale.id,
-                sale.customerId, // Should be the numeric ID or null
-                sale.userId, // Should be the numeric ID or null
+                sale.customerId ?? null, // Correctly handle undefined -> null
+                sale.userId ?? null,      // Correctly handle undefined -> null
                 sale.origin,
                 sale.subTotal,
                 sale.totalAmount,
@@ -93,7 +107,7 @@ export async function createSale(sale: Sale): Promise<Sale> {
         if (sale.items.length > 0) {
             const itemValues = sale.items.map(item => [sale.id, item.productId, item.productName, item.quantity, item.unitPrice, item.totalPrice]);
             await db.query(
-                'INSERT INTO sale_items (sale_uuid, product_uuid, product_name, quantity, unit_price, total_price) VALUES ?',
+                'INSERT INTO sale_items (sale_uuid, product_id, product_name, quantity, unit_price, total_price) VALUES ?',
                 [itemValues]
             );
         }
@@ -101,11 +115,12 @@ export async function createSale(sale: Sale): Promise<Sale> {
         // 3. Update product stock
         for (const item of sale.items) {
             await db.execute(
-                'UPDATE products SET stock = stock - ? WHERE product_uuid = ? AND stock >= ?',
+                'UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?',
                 [item.quantity, item.productId, item.quantity]
             );
-            const [checkStock] = await db.execute<RowDataPacket[]>('SELECT stock FROM products WHERE product_uuid = ?', [item.productId]);
+            const [checkStock] = await db.execute<RowDataPacket[]>('SELECT stock FROM products WHERE id = ?', [item.productId]);
             if (checkStock.length > 0 && checkStock[0].stock < 0) {
+                // This check is a safeguard, the WHERE clause should prevent this.
                 throw new Error(`Stock for product ${item.productName} would become negative.`);
             }
         }
