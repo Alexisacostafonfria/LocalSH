@@ -1,5 +1,3 @@
-
-
 // src/components/sales/SaleDialog.tsx
 "use client";
 
@@ -75,6 +73,7 @@ export default function SaleDialog({
   const [selectedProduct, setSelectedProduct] = useState<string>('');
   const [quantity, setQuantity] = useState<number>(1);
   const [barcodeInputValue, setBarcodeInputValue] = useState<string>('');
+  const [barcodeQuantity, setBarcodeQuantity] = useState<number>(1);
   const barcodeInputRef = useRef<HTMLInputElement>(null);
   
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer' | 'invoice'>('cash');
@@ -371,7 +370,9 @@ export default function SaleDialog({
       return;
     }
 
-    addProductToSaleItems(product, 1);
+    if (addProductToSaleItems(product, barcodeQuantity)) {
+        setBarcodeQuantity(1); // Reset quantity to 1 after successful scan
+    }
   };
 
   const handleBarcodeKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -538,6 +539,7 @@ export default function SaleDialog({
     setSelectedProduct('');
     setQuantity(1);
     setBarcodeInputValue('');
+    setBarcodeQuantity(1);
     setPaymentMethod('cash'); 
     setCashDetails(initialCashDetails);
     setTransferDetails(initialTransferDetails); 
@@ -597,23 +599,38 @@ export default function SaleDialog({
             <CardHeader><CardTitle className="text-lg font-headline">Añadir Productos</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="barcodeInput" className="sr-only">Código de Barras</Label>
-                <div className="relative">
-                  <ScanLine className="absolute left-2.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <Input
-                    id="barcodeInput"
-                    ref={barcodeInputRef}
-                    type="text"
-                    placeholder="Escanear o ingresar código de barras y presionar Enter..."
-                    value={barcodeInputValue}
-                    onChange={(e) => setBarcodeInputValue(e.target.value)}
-                    onKeyDown={handleBarcodeKeyDown}
-                    className="pl-10 text-base"
-                  />
+                <div className="flex gap-2 items-end">
+                    <div className="w-24">
+                        <Label htmlFor="barcodeQuantity">Cantidad</Label>
+                        <Input
+                            id="barcodeQuantity"
+                            type="number"
+                            value={barcodeQuantity}
+                            onChange={(e) => setBarcodeQuantity(Math.max(1, Number(e.target.value)))}
+                            min="1"
+                            className="text-center text-lg"
+                        />
+                    </div>
+                    <div className="flex-grow">
+                        <Label htmlFor="barcodeInput">Escanear Código de Barras (y presionar Enter)</Label>
+                        <div className="relative">
+                            <ScanLine className="absolute left-2.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <Input
+                                id="barcodeInput"
+                                ref={barcodeInputRef}
+                                type="text"
+                                placeholder="Escanear código..."
+                                value={barcodeInputValue}
+                                onChange={(e) => setBarcodeInputValue(e.target.value)}
+                                onKeyDown={handleBarcodeKeyDown}
+                                className="pl-10 text-base"
+                            />
+                        </div>
+                    </div>
                 </div>
               </div>
 
-              <div className="text-center text-sm text-muted-foreground my-2">O añadir manually:</div>
+              <div className="text-center text-sm text-muted-foreground my-2">O añadir manualmente:</div>
               
               <div className="flex gap-2 items-end">
                 <div className="flex-grow">
