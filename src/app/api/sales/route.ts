@@ -16,13 +16,12 @@ export async function GET() {
     return NextResponse.json(sales);
   } catch (error) {
     console.error('API Error fetching sales:', error);
-    if (error instanceof Error && error.message.includes("connect ECONNREFUSED")) {
-       return NextResponse.json({ message: 'Database connection refused.' }, { status: 500 });
-    }
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+
     if (error instanceof Error && error.message.toLowerCase().includes("doesn't exist")) {
-        return NextResponse.json({ message: "Una de las tablas de ventas no existe en la base de datos." }, { status: 500 });
+        return NextResponse.json({ message: "Una de las tablas de ventas (sales, sale_items) no existe en la base de datos." }, { status: 500 });
     }
-    return NextResponse.json({ message: 'Error fetching sales from API' }, { status: 500 });
+    return NextResponse.json({ message: `Error fetching sales from API: ${errorMessage}` }, { status: 500 });
   }
 }
 
@@ -37,6 +36,7 @@ export async function POST(request: Request) {
     return NextResponse.json(newSale, { status: 201 });
   } catch (error) {
     console.error('API Error creating sale:', error);
-    return NextResponse.json({ message: 'Error creating sale in API' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+    return NextResponse.json({ message: `Error creating sale in API: ${errorMessage}` }, { status: 500 });
   }
 }

@@ -15,11 +15,8 @@ export async function GET() {
     return NextResponse.json(products);
   } catch (error) {
     console.error('API Error fetching products:', error);
-    // Check if the error is a known connection error to provide a better message
-    if (error instanceof Error && error.message.includes("connect ECONNREFUSED")) {
-       return NextResponse.json({ message: 'Database connection refused. Is the database server running and configured correctly?' }, { status: 500 });
-    }
-    return NextResponse.json({ message: 'Error fetching products from API' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+    return NextResponse.json({ message: `Error fetching products from API: ${errorMessage}` }, { status: 500 });
   }
 }
 
@@ -35,6 +32,7 @@ export async function POST(request: Request) {
     return NextResponse.json(newProduct, { status: 201 });
   } catch (error) {
     console.error('API Error creating product:', error);
-    return NextResponse.json({ message: 'Error creating product in API' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+    return NextResponse.json({ message: `Error creating product in API: ${errorMessage}` }, { status: 500 });
   }
 }

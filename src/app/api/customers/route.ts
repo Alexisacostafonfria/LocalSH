@@ -16,13 +16,12 @@ export async function GET() {
     return NextResponse.json(customers);
   } catch (error) {
     console.error('API Error fetching customers:', error);
-    if (error instanceof Error && error.message.includes("connect ECONNREFUSED")) {
-       return NextResponse.json({ message: 'Database connection refused.' }, { status: 500 });
-    }
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+
     if (error instanceof Error && error.message.includes("doesn't exist")) {
         return NextResponse.json({ message: "La tabla 'customers' no existe en la base de datos." }, { status: 500 });
     }
-    return NextResponse.json({ message: 'Error fetching customers from API' }, { status: 500 });
+    return NextResponse.json({ message: `Error fetching customers from API: ${errorMessage}` }, { status: 500 });
   }
 }
 
@@ -37,7 +36,8 @@ export async function POST(request: Request) {
     return NextResponse.json(newCustomer, { status: 201 });
   } catch (error) {
     console.error('API Error creating customer:', error);
-    return NextResponse.json({ message: 'Error creating customer in API' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+    return NextResponse.json({ message: `Error creating customer in API: ${errorMessage}` }, { status: 500 });
   }
 }
 

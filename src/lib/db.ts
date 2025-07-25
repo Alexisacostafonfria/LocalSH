@@ -14,21 +14,25 @@ const dbConfig = {
   // ssl: {"rejectUnauthorized":true}
 };
 
-let connection: mysql.Connection | null = null;
-
+/**
+ * Creates and returns a new database connection.
+ * It's crucial to close the connection after use.
+ */
 export async function getDbConnection() {
-  // This basic connection management is for demonstration.
-  // In a production serverless environment, you might manage connections differently.
-  if (connection && connection.connection.stream.readable) {
-    return connection;
-  }
   try {
-    console.log("Creating new database connection...");
-    connection = await mysql.createConnection(dbConfig);
-    console.log("Database connection successful.");
+    const connection = await mysql.createConnection(dbConfig);
+    // console.log("Database connection successful.");
     return connection;
   } catch (error) {
     console.error("Database connection failed:", error);
-    throw new Error("Could not connect to the database.");
+    if (error instanceof Error) {
+        if ('code' in error && error.code === 'ETIMEDOUT') {
+            throw new Error('Connection to the database timed out. Please check your DB_HOST in .env and ensure the database server is accessible and not blocked by a firewall.');
+        }
+        if ('code' in error && error.code === 'ECONNREFUSED') {
+            throw new Error('Connection refused. Please check if your database server is running and the credentials in .env are correct.');
+        }
+    }
+    throw new Error("Could not connect to the database. Verify all DB settings in your .env file.");
   }
 }
