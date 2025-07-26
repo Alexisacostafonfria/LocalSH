@@ -427,8 +427,18 @@ export default function SaleDialog({
 
         const newCustomerFromDb: Customer = await response.json();
         
-        const updatedCustomersList = [...customers, newCustomerFromDb];
-        onUpdateCustomers(updatedCustomersList); // Update parent state
+        onUpdateCustomers([...customers, newCustomerFromDb]); 
+        
+        setCurrentTransactionCustomer({
+            id: newCustomerFromDb.id,
+            db_id: newCustomerFromDb.db_id,
+            name: newCustomerFromDb.name,
+            phone: newCustomerFromDb.phone,
+            email: newCustomerFromDb.email,
+            personalId: newCustomerFromDb.personalId,
+            cardNumber: newCustomerFromDb.cardNumber,
+        });
+
         setSelectedCustomerId(newCustomerFromDb.id); 
         setIsAddingNewSystemCustomer(false); 
         toast({ title: "Cliente Guardado", description: `${newCustomerFromDb.name} ha sido añadido a la base de datos.` });

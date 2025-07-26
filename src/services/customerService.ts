@@ -3,7 +3,7 @@
 // src/services/customerService.ts
 import { getDbConnection } from '@/lib/db';
 import { Customer } from '@/types';
-import { RowDataPacket } from 'mysql2';
+import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 /**
  * Fetches all customers from the database.
@@ -21,19 +21,26 @@ export async function getCustomers(): Promise<Customer[]> {
 }
 
 /**
- * Creates a new customer in the database.
+ * Creates a new customer in the database and returns the full customer object including the new db_id.
  */
-export async function createCustomer(customer: Customer): Promise<Customer> {
+export async function createCustomer(customer: Omit<Customer, 'db_id'>): Promise<Customer> {
   const db = await getDbConnection();
   try {
     const { id, name, phone, email, address, personalId, cardNumber } = customer;
-    await db.execute(
+    const [result] = await db.execute<ResultSetHeader>(
       'INSERT INTO customers (customer_uuid, name, phone, email, address, personal_id, card_number) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [id, name, phone || null, email || null, address || null, personalId || null, cardNumber || null]
     );
-    // Fetch the created customer to get the db_id
-    const [rows] = await db.execute<RowDataPacket[]>('SELECT id as db_id FROM customers WHERE customer_uuid = ?', [id]);
-    return { ...customer, db_id: rows[0].db_id };
+    
+    const insertedId = result.insertId;
+
+    const [rows] = await db.execute<RowDataPacket[]>('SELECT id as db_id, customer_uuid as id, name, phone, email, address, personal_id as personalId, card_number as cardNumber FROM customers WHERE id = ?', [insertedId]);
+    
+    if (rows.length === 0) {
+      throw new Error('Failed to retrieve newly created customer.');
+    }
+    
+    return rows[0] as Customer;
   } finally {
     await db.end();
   }
