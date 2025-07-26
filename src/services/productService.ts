@@ -3,17 +3,17 @@
 // src/services/productService.ts
 import { getDbConnection } from '@/lib/db';
 import { Product } from '@/types';
-import { RowDataPacket } from 'mysql2';
+import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 /**
  * Fetches all products from the database.
- * Now includes imageUrl.
+ * Now includes imageUrl and db_id.
  */
 export async function getProducts(): Promise<Product[]> {
   const db = await getDbConnection();
   try {
     const [rows] = await db.execute<RowDataPacket[]>(
-      'SELECT product_uuid as id, name, category, price, cost_price as costPrice, stock, unit_of_measure as unitOfMeasure, description, image_url as imageUrl FROM products ORDER BY name ASC'
+      'SELECT id as db_id, product_uuid as id, name, category, price, cost_price as costPrice, stock, unit_of_measure as unitOfMeasure, description, image_url as imageUrl FROM products ORDER BY name ASC'
     );
     return rows as Product[];
   } finally {
@@ -25,15 +25,25 @@ export async function getProducts(): Promise<Product[]> {
  * Creates a new product in the database.
  * Now includes imageUrl.
  */
-export async function createProduct(product: Product): Promise<Product> {
+export async function createProduct(product: Omit<Product, 'db_id'>): Promise<Product> {
   const db = await getDbConnection();
   try {
     const { id, name, category, price, costPrice, stock, unitOfMeasure, description, imageUrl } = product;
-    await db.execute(
+    const [result] = await db.execute<ResultSetHeader>(
       'INSERT INTO products (product_uuid, name, category, price, cost_price, stock, unit_of_measure, description, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [id, name, category, price, costPrice, stock, unitOfMeasure || null, description || null, imageUrl || null]
     );
-    return product;
+
+    const insertedId = result.insertId;
+
+    const [rows] = await db.execute<RowDataPacket[]>('SELECT id as db_id, product_uuid as id, name, category, price, cost_price as costPrice, stock, unit_of_measure as unitOfMeasure, description, image_url as imageUrl FROM products WHERE id = ?', [insertedId]);
+    
+    if (rows.length === 0) {
+      throw new Error('Failed to retrieve newly created product.');
+    }
+    
+    return rows[0] as Product;
+
   } finally {
     await db.end();
   }
@@ -46,9 +56,9 @@ export async function createProduct(product: Product): Promise<Product> {
 export async function updateProduct(id: string, productData: Partial<Product>): Promise<Product | null> {
     const db = await getDbConnection();
     try {
-      const fields = Object.keys(productData).filter(key => key !== 'id' && productData[key as keyof typeof productData] !== undefined);
+      const fields = Object.keys(productData).filter(key => key !== 'id' && key !== 'db_id' && productData[key as keyof typeof productData] !== undefined);
       if (fields.length === 0) {
-          const [rows] = await db.execute<RowDataPacket[]>('SELECT product_uuid as id, name, category, price, cost_price as costPrice, stock, unit_of_measure as unitOfMeasure, description, image_url as imageUrl FROM products WHERE product_uuid = ?', [id]);
+          const [rows] = await db.execute<RowDataPacket[]>('SELECT id as db_id, product_uuid as id, name, category, price, cost_price as costPrice, stock, unit_of_measure as unitOfMeasure, description, image_url as imageUrl FROM products WHERE product_uuid = ?', [id]);
           return rows[0] as Product || null;
       }
 
@@ -67,7 +77,7 @@ export async function updateProduct(id: string, productData: Partial<Product>): 
           [...values, id]
       );
 
-      const [updatedRows] = await db.execute<RowDataPacket[]>('SELECT product_uuid as id, name, category, price, cost_price as costPrice, stock, unit_of_measure as unitOfMeasure, description, image_url as imageUrl FROM products WHERE product_uuid = ?', [id]);
+      const [updatedRows] = await db.execute<RowDataPacket[]>('SELECT id as db_id, product_uuid as id, name, category, price, cost_price as costPrice, stock, unit_of_measure as unitOfMeasure, description, image_url as imageUrl FROM products WHERE product_uuid = ?', [id]);
       return updatedRows[0] as Product || null;
     } finally {
         await db.end();

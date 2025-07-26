@@ -1,7 +1,8 @@
 
 
 export interface Product {
-  id: string;
+  id: string; // This is the product_uuid
+  db_id: number; // This is the auto-incrementing integer primary key
   name: string;
   category: string;
   price: number;
@@ -24,7 +25,8 @@ export interface Customer {
 }
 
 export interface SaleItem {
-  productId: string;
+  productId: string; // This is the product_uuid
+  productDbId: number; // This is the numeric product id
   productName: string;
   quantity: number;
   unitPrice: number;
@@ -86,7 +88,8 @@ export interface InvoicePaymentDetails {
 export type PaymentDetails = CashPaymentDetails | TransferPaymentDetails | InvoicePaymentDetails;
 
 export interface Sale {
-  id: string;
+  id: string; // This is the sale_uuid
+  db_id?: number; // The numeric ID from the DB
   timestamp: string; // ISO string
   orderId?: string; // Link to the original order
   origin: 'pos' | 'order'; // Where the sale originated from
@@ -245,6 +248,7 @@ export const DEFAULT_ADMIN_USER_ID = 'default-admin-001';
 export const DEFAULT_USERS_STATE: User[] = [
   {
     id: DEFAULT_ADMIN_USER_ID,
+    db_id: 1, // Assuming the first user is ID 1
     username: 'admin',
     name: 'Administrador Principal',
     role: 'admin',

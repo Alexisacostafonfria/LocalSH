@@ -14,8 +14,8 @@ export async function getSales(): Promise<Sale[]> {
     try {
       const [salesRows] = await db.execute<RowDataPacket[]>(
           `SELECT 
-              s.sale_uuid as id,
               s.id as db_id,
+              s.sale_uuid as id,
               s.created_at as timestamp,
               s.operational_date as operationalDate,
               s.origin,
@@ -54,25 +54,28 @@ export async function getSales(): Promise<Sale[]> {
       });
 
       if (sales.length > 0) {
-          const saleUuids = sales.map(s => s.id);
-          const placeholders = saleUuids.map(() => '?').join(',');
+          const saleDbIds = sales.map(s => s.db_id).filter(id => id != null);
           
-          const [itemsRows] = await db.execute<RowDataPacket[]>(
-              `SELECT sale_id as saleId, product_id as productId, product_name as productName, quantity, unit_price as unitPrice, total_price as totalPrice FROM sale_items WHERE sale_id IN (SELECT id FROM sales WHERE sale_uuid IN (${placeholders}))`,
-              saleUuids
-          );
-          
-          const salesMap = new Map(sales.map(s => [s.db_id, s]));
+          if (saleDbIds.length > 0) {
+            const placeholders = saleDbIds.map(() => '?').join(',');
+            
+            const [itemsRows] = await db.execute<RowDataPacket[]>(
+                `SELECT sale_id as saleDbId, product_id as productDbId, product_name as productName, quantity, unit_price as unitPrice, total_price as totalPrice FROM sale_items WHERE sale_id IN (${placeholders})`,
+                saleDbIds
+            );
+            
+            const salesMap = new Map(sales.map(s => [s.db_id, s]));
 
-          itemsRows.forEach(item => {
-              const sale = salesMap.get(item.saleId);
-              if (sale) {
-                  if (!sale.items) {
-                      sale.items = [];
-                  }
-                  sale.items.push(item as SaleItem);
-              }
-          });
+            itemsRows.forEach(item => {
+                const sale = salesMap.get(item.saleDbId);
+                if (sale) {
+                    if (!sale.items) {
+                        sale.items = [];
+                    }
+                    sale.items.push(item as SaleItem);
+                }
+            });
+          }
       }
 
       return sales;
@@ -111,10 +114,10 @@ export async function createSale(sale: Sale): Promise<Sale> {
         
         const newSaleDbId = result.insertId;
 
-        // 2. Insert sale items using the newly created numeric sale ID
+        // 2. Insert sale items using the newly created numeric sale ID and product ID
         if (sale.items.length > 0) {
-            // Map items to include the new numeric sale_id
-            const itemValues = sale.items.map(item => [newSaleDbId, item.productId, item.productName, item.quantity, item.unitPrice, item.totalPrice]);
+            // Map items to include the new numeric sale_id and numeric product_id
+            const itemValues = sale.items.map(item => [newSaleDbId, item.productDbId, item.productName, item.quantity, item.unitPrice, item.totalPrice]);
             await db.query(
                 'INSERT INTO sale_items (sale_id, product_id, product_name, quantity, unit_price, total_price) VALUES ?',
                 [itemValues]
@@ -124,10 +127,10 @@ export async function createSale(sale: Sale): Promise<Sale> {
         // 3. Update product stock using the string UUID (product_uuid)
         for (const item of sale.items) {
             await db.execute(
-                'UPDATE products SET stock = stock - ? WHERE product_uuid = ? AND stock >= ?',
-                [item.quantity, item.productId, item.quantity]
+                'UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?',
+                [item.quantity, item.productDbId, item.quantity]
             );
-            const [checkStock] = await db.execute<RowDataPacket[]>('SELECT stock FROM products WHERE product_uuid = ?', [item.productId]);
+            const [checkStock] = await db.execute<RowDataPacket[]>('SELECT stock FROM products WHERE id = ?', [item.productDbId]);
             if (checkStock.length > 0 && checkStock[0].stock < 0) {
                 // This check is a safeguard, the WHERE clause should prevent this.
                 throw new Error(`Stock for product ${item.productName} would become negative.`);

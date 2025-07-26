@@ -1,3 +1,4 @@
+
 // src/app/api/products/route.ts
 'use server';
 
@@ -16,6 +17,9 @@ export async function GET() {
   } catch (error) {
     console.error('API Error fetching products:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+     if (error instanceof Error && error.message.toLowerCase().includes("doesn't exist")) {
+        return NextResponse.json({ message: "La tabla 'products' no existe en la base de datos." }, { status: 500 });
+    }
     return NextResponse.json({ message: `Error fetching products from API: ${errorMessage}` }, { status: 500 });
   }
 }
@@ -26,7 +30,7 @@ export async function GET() {
  */
 export async function POST(request: Request) {
   try {
-    const productData: Product = await request.json();
+    const productData: Omit<Product, 'db_id'> = await request.json();
     // TODO: Add server-side validation here (e.g., with Zod)
     const newProduct = await productService.createProduct(productData);
     return NextResponse.json(newProduct, { status: 201 });
