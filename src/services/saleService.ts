@@ -3,7 +3,7 @@
 // src/services/saleService.ts
 import { getDbConnection } from '@/lib/db';
 import { Sale, SaleItem } from '@/types';
-import { RowDataPacket } from 'mysql2';
+import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 /**
  * Fetches all sales from the database with their details.
@@ -15,6 +15,7 @@ export async function getSales(): Promise<Sale[]> {
       const [salesRows] = await db.execute<RowDataPacket[]>(
           `SELECT 
               s.sale_uuid as id,
+              s.id as db_id,
               s.created_at as timestamp,
               s.operational_date as operationalDate,
               s.origin,
@@ -53,25 +54,24 @@ export async function getSales(): Promise<Sale[]> {
       });
 
       if (sales.length > 0) {
-          const saleIds = sales.map(s => s.id);
-          const placeholders = saleIds.map(() => '?').join(',');
+          const saleUuids = sales.map(s => s.id);
+          const placeholders = saleUuids.map(() => '?').join(',');
           
           const [itemsRows] = await db.execute<RowDataPacket[]>(
-              `SELECT sale_uuid as saleId, product_id as productId, product_name as productName, quantity, unit_price as unitPrice, total_price as totalPrice FROM sale_items WHERE sale_uuid IN (${placeholders})`,
-              saleIds
+              `SELECT sale_id as saleId, product_id as productId, product_name as productName, quantity, unit_price as unitPrice, total_price as totalPrice FROM sale_items WHERE sale_id IN (SELECT id FROM sales WHERE sale_uuid IN (${placeholders}))`,
+              saleUuids
           );
           
-          const itemsBySaleId = itemsRows.reduce((acc, item) => {
-              const saleId = item.saleId;
-              if (!acc[saleId]) {
-                  acc[saleId] = [];
-              }
-              acc[saleId].push(item as SaleItem);
-              return acc;
-          }, {} as Record<string, SaleItem[]>);
+          const salesMap = new Map(sales.map(s => [s.db_id, s]));
 
-          sales.forEach(sale => {
-              sale.items = itemsBySaleId[sale.id] || [];
+          itemsRows.forEach(item => {
+              const sale = salesMap.get(item.saleId);
+              if (sale) {
+                  if (!sale.items) {
+                      sale.items = [];
+                  }
+                  sale.items.push(item as SaleItem);
+              }
           });
       }
 
@@ -92,7 +92,7 @@ export async function createSale(sale: Sale): Promise<Sale> {
 
     try {
         // 1. Insert into sales table using correct column names from user's schema
-        await db.execute(
+        const [result] = await db.execute<ResultSetHeader>(
             `INSERT INTO sales (sale_uuid, customer_id, user_id, origin, sub_total, total_amount, payment_method, payment_details, operational_date, created_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
@@ -108,12 +108,15 @@ export async function createSale(sale: Sale): Promise<Sale> {
                 new Date(sale.timestamp)
             ]
         );
+        
+        const newSaleDbId = result.insertId;
 
-        // 2. Insert sale items
+        // 2. Insert sale items using the newly created numeric sale ID
         if (sale.items.length > 0) {
-            const itemValues = sale.items.map(item => [sale.id, item.productId, item.productName, item.quantity, item.unitPrice, item.totalPrice]);
+            // Map items to include the new numeric sale_id
+            const itemValues = sale.items.map(item => [newSaleDbId, item.productId, item.productName, item.quantity, item.unitPrice, item.totalPrice]);
             await db.query(
-                'INSERT INTO sale_items (sale_uuid, product_id, product_name, quantity, unit_price, total_price) VALUES ?',
+                'INSERT INTO sale_items (sale_id, product_id, product_name, quantity, unit_price, total_price) VALUES ?',
                 [itemValues]
             );
         }
@@ -132,7 +135,8 @@ export async function createSale(sale: Sale): Promise<Sale> {
         }
 
         await db.commit();
-        return sale;
+        // Return the original sale object, as it's what the frontend expects
+        return { ...sale, db_id: newSaleDbId } as Sale;
     } catch (error) {
         await db.rollback();
         console.error("Error creating sale in transaction, rolled back.", error);
