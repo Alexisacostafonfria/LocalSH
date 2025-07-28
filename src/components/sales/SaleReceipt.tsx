@@ -81,8 +81,8 @@ const SaleReceipt: React.FC<SaleReceiptProps> = ({ sale, appSettings, businessSe
         <div className="col-span-3 text-right">Total</div>
       </div>
 
-      {sale.items.map((item: SaleItem) => (
-        <div key={item.productId} className="grid grid-cols-12 gap-1 py-0.5">
+      {sale.items.map((item: SaleItem, index: number) => (
+        <div key={`${item.productId}-${index}`} className="grid grid-cols-12 gap-1 py-0.5">
           <div className="col-span-1 text-left">{item.quantity}</div>
           <div className="col-span-6 text-left truncate" title={item.productName}>{item.productName}</div>
           <div className="col-span-2 text-right">{currencySymbol}{item.unitPrice.toLocaleString('es-ES', { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>

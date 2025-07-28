@@ -65,8 +65,8 @@ const SaleA4Layout: React.FC<SaleA4LayoutProps> = ({ sale, appSettings, business
             </div>
              <hr className="border-gray-300"/>
             {/* Body */}
-            {sale.items.map((item: SaleItem) => (
-            <div key={item.productId} className="flex py-1 border-b border-dashed">
+            {sale.items.map((item: SaleItem, index: number) => (
+            <div key={`${item.productId}-${index}`} className="flex py-1 border-b border-dashed">
                 <div className="w-6/12">{item.productName}</div>
                 <div className="w-2/12 text-right">{item.quantity}</div>
                 <div className="w-2/12 text-right">{currencySymbol}{item.unitPrice.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</div>

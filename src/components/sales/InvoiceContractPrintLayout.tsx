@@ -75,8 +75,8 @@ const InvoiceContractPrintLayout: React.FC<InvoiceContractPrintLayoutProps> = ({
                         <div className="col-span-1">Fecha Emisión</div>
                         <div className="col-span-1 text-right">Monto Original</div>
                     </div>
-                    {previousInvoices.map(inv => (
-                        <div key={inv.id} className="grid grid-cols-3 gap-1 p-1 border-b last:border-b-0">
+                    {previousInvoices.map((inv, index) => (
+                        <div key={`${inv.id}-${index}`} className="grid grid-cols-3 gap-1 p-1 border-b last:border-b-0">
                             <div className="col-span-1">{inv.id.substring(0, 8)}</div>
                             <div className="col-span-1">{format(parseISO(inv.timestamp), 'dd/MM/yyyy')}</div>
                             <div className="col-span-1 text-right">{currencySymbol}{inv.totalAmount.toLocaleString('es-ES', {minimumFractionDigits: 2})}</div>
@@ -98,8 +98,8 @@ const InvoiceContractPrintLayout: React.FC<InvoiceContractPrintLayoutProps> = ({
                 <div className="col-span-2 text-right">P. Unitario</div>
                 <div className="col-span-2 text-right">Total</div>
             </div>
-            {sale.items.map((item:SaleItem) => (
-                <div key={item.productId} className="grid grid-cols-10 gap-1 p-1 border-b last:border-b-0">
+            {sale.items.map((item:SaleItem, index: number) => (
+                <div key={`${item.productId}-${index}`} className="grid grid-cols-10 gap-1 p-1 border-b last:border-b-0">
                     <div className="col-span-5">{item.productName}</div>
                     <div className="col-span-1 text-right">{item.quantity}</div>
                     <div className="col-span-2 text-right">{currencySymbol}{item.unitPrice.toLocaleString('es-ES', {minimumFractionDigits: 2})}</div>
