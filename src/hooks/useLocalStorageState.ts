@@ -1,10 +1,24 @@
 // src/hooks/useLocalStorageState.ts
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+
+// Helper function to safely get value from localStorage
+const getStoredValue = <T>(key: string, defaultValue: T): T => {
+  if (typeof window === 'undefined') {
+    return defaultValue;
+  }
+  try {
+    const item = window.localStorage.getItem(key);
+    return item ? JSON.parse(item) : defaultValue;
+  } catch (error) {
+    console.warn(`Error reading localStorage key "${key}":`, error);
+    return defaultValue;
+  }
+};
 
 /**
- * A custom hook to manage state in localStorage.
+ * A custom hook to manage state in localStorage, ensuring it's synchronized with the browser's storage.
  * It returns the state, a setter function, and a boolean indicating if the state has been initialized from localStorage.
  * @param key The key to use in localStorage.
  * @param defaultValue The default value to use if no value is found in localStorage.
@@ -14,36 +28,33 @@ function useLocalStorageState<T>(
   key: string,
   defaultValue: T | (() => T)
 ): [T, React.Dispatch<React.SetStateAction<T>>, boolean] {
+  
   const [state, setState] = useState<T>(() => {
-    const initialVal = typeof defaultValue === 'function' ? (defaultValue as () => T)() : defaultValue;
-    return initialVal;
+    // We only want to access localStorage on the client, so we start with the default value
+    // and let the useEffect handle the hydration.
+    return typeof defaultValue === 'function' ? (defaultValue as () => T)() : defaultValue;
   });
+
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Effect to load the value from localStorage after the component has mounted.
+  // Load from localStorage on mount (client-side only)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const storedValue = window.localStorage.getItem(key);
-        if (storedValue !== null) {
-          setState(JSON.parse(storedValue) as T);
-        }
-      } catch (error) {
-        console.error(`[LocalStorage] Error reading or parsing localStorage key "${key}":`, error);
-      } finally {
+    if (!isInitialized) {
+        const storedValue = getStoredValue(key, typeof defaultValue === 'function' ? (defaultValue as () => T)() : defaultValue);
+        setState(storedValue);
         setIsInitialized(true);
-      }
     }
-  }, [key]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, isInitialized]); // Only run this once on mount
 
-  // Effect to save the state to localStorage whenever it changes, but only after initialization.
+  // Save to localStorage whenever state changes (client-side only)
   useEffect(() => {
+    // We only want to save to localStorage after the initial value has been loaded.
     if (isInitialized) {
       try {
-        const valueToStore = JSON.stringify(state);
-        window.localStorage.setItem(key, valueToStore);
+        window.localStorage.setItem(key, JSON.stringify(state));
       } catch (error) {
-        console.error(`[LocalStorage] Error writing to localStorage for key "${key}":`, error);
+        console.error(`Error writing to localStorage for key "${key}":`, error);
       }
     }
   }, [key, state, isInitialized]);
