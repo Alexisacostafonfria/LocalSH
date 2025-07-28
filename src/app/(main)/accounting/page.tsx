@@ -17,7 +17,7 @@ import useLocalStorageState from '@/hooks/useLocalStorageState';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, startOfDay, isValid, getYear, getMonth, set } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { CalendarIcon, AlertTriangle, Info, CheckCircle2, Clock, DollarSign, Package, TrendingUp, Coins, Landmark, ClipboardList, Printer, Lock, FileText, ChevronDown } from 'lucide-react';
+import { CalendarIcon, AlertTriangle, Info, CheckCircle2, Clock, DollarSign, Package, TrendingUp, Coins, Landmark, ClipboardList, Printer, Lock, FileText, ChevronDown, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import DailyClosureReportPrintLayout from '@/components/accounting/DailyClosureReportPrintLayout';
@@ -26,18 +26,17 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import MonthlyClosureReportPrintLayout from '@/components/accounting/MonthlyClosureReportPrintLayout';
 
-
-const ACCOUNTING_STORAGE_KEY = 'accountingSettings';
-const denominations = [1000, 500, 200, 100, 50, 20, 10, 5, 2] as const;
-
 export default function AccountingPage() {
-  const [accountingSettings, setAccountingSettings] = useLocalStorageState<AccountingSettings>(
-    ACCOUNTING_STORAGE_KEY,
-    DEFAULT_ACCOUNTING_SETTINGS
+  const [accountingSettings, setAccountingSettings, isAccountingInitialized] = useLocalStorageState<AccountingSettings>(
+    'accountingSettings',
+    DEFAULT_ACCOUNTING_SETTINGS,
+    'db' // Use database persistence for this critical setting
   );
+
+  // Still using local storage for these less critical or user-specific settings
   const [appSettings] = useLocalStorageState<AppSettings>('appSettings', DEFAULT_APP_SETTINGS);
   const [businessSettings] = useLocalStorageState<BusinessSettings>('businessSettings', DEFAULT_BUSINESS_SETTINGS);
-  const [sales] = useLocalStorageState<Sale[]>('sales', []);
+  const [sales, setSales] = useLocalStorageState<Sale[]>('sales', []);
   const [products] = useLocalStorageState<Product[]>('products', []);
   const [invoicePayments] = useLocalStorageState<InvoicePaymentRecord[]>('invoicePayments', []);
   const [authState] = useLocalStorageState<AuthState>('authData', DEFAULT_AUTH_STATE);
@@ -56,41 +55,11 @@ export default function AccountingPage() {
   const [reportYear, setReportYear] = useState<number>(getYear(today));
   const [reportMonth, setReportMonth] = useState<number>(getMonth(today) + 1);
 
-
   const { toast } = useToast();
   const isAdmin = authState.currentUser?.role === 'admin';
 
   useEffect(() => {
     setIsClientMounted(true);
-    // One-time migration for users with the old data structure
-    const migrateData = () => {
-        const oldData = accountingSettings as any;
-        if (oldData.lastClosureDetails && !oldData.dailyClosureHistory) {
-            console.log("Migrating accounting data structure...");
-            const oldClosure = oldData.lastClosureDetails;
-            const migratedClosure: DailyClosureReport = {
-                ...oldClosure,
-                totalCogs: 0,
-                grossProfit: oldClosure.totalRevenue || 0,
-            };
-            setAccountingSettings(prev => {
-                const newSettings = { ...(prev as any) };
-                delete newSettings.lastClosureDetails;
-                newSettings.dailyClosureHistory = [migratedClosure];
-                newSettings.monthlyClosureHistory = newSettings.monthlyClosureHistory || [];
-                return newSettings as AccountingSettings;
-            });
-            toast({ title: "Datos de contabilidad actualizados", description: "Se ha actualizado la estructura de datos interna." });
-        } else if (!oldData.dailyClosureHistory || !oldData.monthlyClosureHistory) {
-            setAccountingSettings(prev => ({
-                ...prev,
-                dailyClosureHistory: prev.dailyClosureHistory || [],
-                monthlyClosureHistory: prev.monthlyClosureHistory || [],
-            }));
-        }
-    };
-    migrateData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const { currentOperationalDate, isDayOpen, lastClosureDate } = accountingSettings;
@@ -417,6 +386,15 @@ export default function AccountingPage() {
          </div>
     </div>
   );
+  
+  if (!isAccountingInitialized) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full">
+        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+        <p className="text-muted-foreground">Cargando configuración contable desde la base de datos...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">

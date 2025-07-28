@@ -1,10 +1,14 @@
+
 // src/hooks/useLocalStorageState.ts
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
+import { useToast } from './use-toast';
 
-// Helper function to safely get value from localStorage
-const getStoredValue = <T>(key: string, defaultValue: T): T => {
+type StorageType = 'local' | 'db';
+
+// Helper to get value from localStorage
+const getStoredLocalValue = <T>(key: string, defaultValue: T): T => {
   if (typeof window === 'undefined') {
     return defaultValue;
   }
@@ -18,46 +22,88 @@ const getStoredValue = <T>(key: string, defaultValue: T): T => {
 };
 
 /**
- * A custom hook to manage state in localStorage, ensuring it's synchronized with the browser's storage.
- * It returns the state, a setter function, and a boolean indicating if the state has been initialized from localStorage.
- * @param key The key to use in localStorage.
- * @param defaultValue The default value to use if no value is found in localStorage.
+ * A custom hook to manage state, with persistence to either localStorage or a database via API.
+ * @param key The key for localStorage or the API endpoint path segment.
+ * @param defaultValue The default value to use initially.
+ * @param storageType 'local' for localStorage, 'db' for database.
  * @returns A tuple: [state, setState, isInitialized]
  */
 function useLocalStorageState<T>(
   key: string,
-  defaultValue: T | (() => T)
+  defaultValue: T | (() => T),
+  storageType: StorageType = 'local'
 ): [T, React.Dispatch<React.SetStateAction<T>>, boolean] {
   
-  const [state, setState] = useState<T>(() => {
-    // We only want to access localStorage on the client, so we start with the default value
-    // and let the useEffect handle the hydration.
-    return typeof defaultValue === 'function' ? (defaultValue as () => T)() : defaultValue;
-  });
-
+  const { toast } = useToast();
+  const [state, setState] = useState<T>(() => 
+    typeof defaultValue === 'function' ? (defaultValue as () => T)() : defaultValue
+  );
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Load from localStorage on mount (client-side only)
+  // Effect for initial data fetching (from localStorage or DB)
   useEffect(() => {
     if (!isInitialized) {
-        const storedValue = getStoredValue(key, typeof defaultValue === 'function' ? (defaultValue as () => T)() : defaultValue);
+      if (storageType === 'local') {
+        const storedValue = getStoredLocalValue(key, typeof defaultValue === 'function' ? (defaultValue as () => T)() : defaultValue);
         setState(storedValue);
         setIsInitialized(true);
+      } else if (storageType === 'db') {
+        const fetchFromDb = async () => {
+          try {
+            const response = await fetch(`/api/settings/${key}`);
+            if (response.ok) {
+              const data = await response.json();
+              setState(data.value);
+            } else if (response.status === 404) {
+              // If not found, use default value
+              setState(typeof defaultValue === 'function' ? (defaultValue as () => T)() : defaultValue);
+            } else {
+              throw new Error(`Failed to fetch setting: ${response.statusText}`);
+            }
+          } catch (error) {
+            console.error(`Error fetching DB setting for key "${key}":`, error);
+            toast({ title: `Error al Cargar Configuración (${key})`, description: (error as Error).message, variant: 'destructive' });
+          } finally {
+            setIsInitialized(true);
+          }
+        };
+        fetchFromDb();
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, isInitialized]); // Only run this once on mount
+  }, [key, isInitialized, storageType]);
 
-  // Save to localStorage whenever state changes (client-side only)
+  // Effect for saving data back to the chosen storage
   useEffect(() => {
-    // We only want to save to localStorage after the initial value has been loaded.
-    if (isInitialized) {
+    if (!isInitialized) {
+      return; // Do not save until initialized
+    }
+
+    if (storageType === 'local') {
       try {
         window.localStorage.setItem(key, JSON.stringify(state));
       } catch (error) {
         console.error(`Error writing to localStorage for key "${key}":`, error);
       }
+    } else if (storageType === 'db') {
+      const saveToDb = async () => {
+        try {
+          await fetch(`/api/settings`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key, value: state }),
+          });
+        } catch (error) {
+          console.error(`Error saving DB setting for key "${key}":`, error);
+          toast({ title: `Error al Guardar Configuración (${key})`, description: (error as Error).message, variant: 'destructive' });
+        }
+      };
+      // Debounce or use a specific trigger to avoid excessive writes
+      // For simplicity here, we save on every state change after initialization
+      // A more complex app might want to add a "Save" button to trigger this.
+      saveToDb();
     }
-  }, [key, state, isInitialized]);
+  }, [key, state, isInitialized, storageType, toast]);
 
   return [state, setState, isInitialized];
 }
