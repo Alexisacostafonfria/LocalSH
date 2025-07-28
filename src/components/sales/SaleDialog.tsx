@@ -317,7 +317,7 @@ export default function SaleDialog({
         toast({ title: "Stock Insuficiente", description: `Solo hay ${productToAdd.stock} unidades de ${productToAdd.name}. No se puede añadir ${quantityToAdd}.`, variant: "destructive" });
         return false;
       }
-      setSaleItems([...items, {
+      setSaleItems([...saleItems, {
         productId: productToAdd.id,
         productDbId: productToAdd.db_id, // Store numeric ID
         productName: productToAdd.name,
