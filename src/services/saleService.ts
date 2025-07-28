@@ -96,19 +96,25 @@ export async function createSale(sale: Sale): Promise<Sale> {
     await db.beginTransaction();
 
     try {
+        // Ensure paymentDetails is an object and add the dailyReceiptNumber to it
+        const paymentDetailsWithReceipt = {
+            ...(sale.paymentDetails || {}),
+            dailyReceiptNumber: sale.dailyReceiptNumber
+        };
+
         // 1. Insert into sales table using correct column names from user's schema
         const [result] = await db.execute<ResultSetHeader>(
             `INSERT INTO sales (sale_uuid, customer_id, user_id, origin, sub_total, total_amount, payment_method, payment_details, operational_date, created_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 sale.id,
-                sale.customerDbId ?? null,      // Use the numeric customer ID
-                sale.userDbId ?? null,          // Use the numeric user ID
+                sale.customerDbId ?? null,
+                sale.userDbId ?? null,
                 sale.origin,
                 sale.subTotal,
                 sale.totalAmount,
                 sale.paymentMethod,
-                JSON.stringify(sale.paymentDetails),
+                JSON.stringify(paymentDetailsWithReceipt), // Store the enriched payment details
                 sale.operationalDate ? new Date(sale.operationalDate) : new Date(),
                 new Date(sale.timestamp)
             ]
@@ -118,7 +124,6 @@ export async function createSale(sale: Sale): Promise<Sale> {
 
         // 2. Insert sale items using the newly created numeric sale ID and product ID
         if (sale.items.length > 0) {
-            // Map items to include the new numeric sale_id and numeric product_id
             const itemValues = sale.items.map(item => [newSaleDbId, item.productDbId, item.productName, item.quantity, item.unitPrice, item.totalPrice]);
             await db.query(
                 'INSERT INTO sale_items (sale_id, product_id, product_name, quantity, unit_price, total_price) VALUES ?',
@@ -126,7 +131,7 @@ export async function createSale(sale: Sale): Promise<Sale> {
             );
         }
         
-        // 3. Update product stock using the string UUID (product_uuid)
+        // 3. Update product stock using the numeric product ID
         for (const item of sale.items) {
             await db.execute(
                 'UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?',
