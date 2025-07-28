@@ -22,6 +22,7 @@ export async function getSales(): Promise<Sale[]> {
               s.customer_id as customerDbId,
               c.name as customerName,
               c.customer_uuid as customerId,
+              u.name as username,
               s.sub_total as subTotal,
               s.total_amount as totalAmount,
               s.payment_method as paymentMethod,
@@ -29,6 +30,7 @@ export async function getSales(): Promise<Sale[]> {
               s.user_id as userDbId
            FROM sales s
            LEFT JOIN customers c ON s.customer_id = c.id
+           LEFT JOIN users u on s.user_id = u.id
            ORDER BY s.created_at DESC`
       );
 

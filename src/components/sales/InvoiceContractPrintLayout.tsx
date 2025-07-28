@@ -1,4 +1,3 @@
-
 // src/components/sales/InvoiceContractPrintLayout.tsx
 "use client";
 
@@ -19,6 +18,9 @@ interface InvoiceContractPrintLayoutProps {
 const InvoiceContractPrintLayout: React.FC<InvoiceContractPrintLayoutProps> = ({ sale, customer, appSettings, businessSettings, previousInvoices }) => {
   const { currencySymbol, invoicePaymentFeePercentage, latePaymentFeePercentage } = appSettings;
   const invoiceDetails = sale.paymentDetails as InvoicePaymentDetails;
+  const paymentDetails = sale.paymentDetails as any;
+  const dailyReceiptNumber = paymentDetails?.dailyReceiptNumber;
+
   
   const hasPreviousDebt = previousInvoices && previousInvoices.length > 0;
   const totalPreviousDebt = hasPreviousDebt ? previousInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0) : 0;
@@ -31,6 +33,7 @@ const InvoiceContractPrintLayout: React.FC<InvoiceContractPrintLayoutProps> = ({
           {hasPreviousDebt ? "CONTRATO DE RENEGOCIACIÓN Y CONSOLIDACIÓN DE DEUDA" : "CONTRATO DE APERTURA DE CRÉDITO Y FACTURACIÓN"}
         </h1>
         <p className="text-sm">Contrato No: {sale.id.substring(0, 8)}</p>
+        {dailyReceiptNumber && <p className="text-sm">Operación Diaria Nº: {String(dailyReceiptNumber).padStart(4, '0')}</p>}
       </header>
 
       <section className="mb-6 text-xs">

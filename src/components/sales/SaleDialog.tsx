@@ -1,4 +1,3 @@
-
 // src/components/sales/SaleDialog.tsx
 "use client";
 
@@ -10,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Product, Customer, Sale, SaleItem, AppSettings, CashPaymentDetails, TransferPaymentDetails, AccountingSettings, DEFAULT_ACCOUNTING_SETTINGS, InvoicePaymentDetails } from '@/types';
+import { Product, Customer, Sale, SaleItem, AppSettings, CashPaymentDetails, TransferPaymentDetails, AccountingSettings, DEFAULT_ACCOUNTING_SETTINGS, InvoicePaymentDetails, AuthState, DEFAULT_AUTH_STATE } from '@/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { X, Plus, Trash2, UserPlus, AlertCircle, Coins, ArrowLeft, ArrowRight, CheckCircle2, AlertTriangle, ScanLine, FileText, Calendar as CalendarIcon, ClipboardCheck, Loader2, Save } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
@@ -19,7 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import useLocalStorageState from '@/hooks/useLocalStorageState';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Calendar } from '../ui/calendar';
-import { format, addDays, parseISO } from 'date-fns';
+import { format, addDays, parseISO, startOfDay, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 interface SaleDialogProps {
@@ -90,6 +89,7 @@ export default function SaleDialog({
   const [isSavingCustomer, setIsSavingCustomer] = useState(false);
   
   const [accountingSettings] = useLocalStorageState<AccountingSettings>('accountingSettings', DEFAULT_ACCOUNTING_SETTINGS);
+  const [authState] = useLocalStorageState<AuthState>('authData', DEFAULT_AUTH_STATE);
   
   // Use a local state for sales to check for debt, avoiding dependency on the parent's potentially stale state
   const [sales, setSales] = useState<Sale[]>([]);
@@ -470,6 +470,10 @@ export default function SaleDialog({
         return;
     }
     
+    // Get sales count for current operational day to generate receipt number
+    const salesForDay = sales.filter(s => s.operationalDate && isSameDay(parseISO(s.operationalDate), parseISO(accountingSettings.currentOperationalDate!)));
+    const dailyReceiptNumber = salesForDay.length + 1;
+
     let finalPaymentDetails: PaymentDetails;
     let fees: { description: string; amount: number; }[] | undefined;
 
@@ -489,7 +493,8 @@ export default function SaleDialog({
           amountReceived: finalAmountReceived,
           changeGiven: isFinite(cashDetails.changeGiven) ? cashDetails.changeGiven : 0,
           tip: finalTip,
-          breakdown: cashDetails.breakdown || {} 
+          breakdown: cashDetails.breakdown || {},
+          dailyReceiptNumber,
       };
 
     } else if (paymentMethod === 'transfer') {
@@ -512,7 +517,8 @@ export default function SaleDialog({
             personalId: personalId,
             mobileNumber: mobileNumber,
             cardNumber: cardNumber,
-            customerId: currentTransactionCustomer?.id
+            customerId: currentTransactionCustomer?.id,
+            dailyReceiptNumber,
         };
     } else { // Invoice
         if (selectedCustomerId === ANONYMOUS_CUSTOMER_VALUE || isAddingNewSystemCustomer) {
@@ -526,7 +532,8 @@ export default function SaleDialog({
         finalPaymentDetails = {
             invoiceNumber: saleId,
             dueDate: invoiceDueDate.toISOString(),
-            status: 'pending'
+            status: 'pending',
+            dailyReceiptNumber,
         };
         if (invoiceFee > 0) {
             fees = [{ description: 'Cargo por Servicio de Factura', amount: invoiceFee }];
@@ -541,12 +548,14 @@ export default function SaleDialog({
       customerId: currentTransactionCustomer?.id, 
       customerDbId: currentTransactionCustomer?.db_id, // Use the numeric DB ID
       customerName: currentTransactionCustomer?.name || 'Consumidor Final', 
+      username: authState.currentUser?.name || 'Sistema',
       items: saleItems,
       subTotal: isFinite(subTotal) ? subTotal : 0,
       totalAmount: isFinite(totalAmount) ? totalAmount : 0,
       fees,
       paymentMethod,
       paymentDetails: finalPaymentDetails,
+      dailyReceiptNumber,
     };
     
     try {

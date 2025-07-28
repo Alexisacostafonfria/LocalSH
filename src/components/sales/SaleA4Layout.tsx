@@ -1,4 +1,3 @@
-
 // src/components/sales/SaleA4Layout.tsx
 "use client";
 
@@ -18,6 +17,9 @@ const SaleA4Layout: React.FC<SaleA4LayoutProps> = ({ sale, appSettings, business
   const { currencySymbol } = appSettings;
   const isInvoice = sale.paymentMethod === 'invoice';
   const documentTitle = isInvoice ? 'FACTURA' : 'COMPROBANTE DE VENTA';
+  const paymentDetails = sale.paymentDetails as any;
+  const dailyReceiptNumber = paymentDetails?.dailyReceiptNumber;
+
 
   return (
     <div className="p-8 bg-white text-black text-sm font-sans">
@@ -35,8 +37,11 @@ const SaleA4Layout: React.FC<SaleA4LayoutProps> = ({ sale, appSettings, business
         </div>
         <div className="text-right">
           <h2 className="text-2xl font-bold uppercase">{documentTitle}</h2>
-          <p><strong>Nº:</strong> {sale.id.substring(0, 12)}</p>
-          <p><strong>Fecha:</strong> {format(parseISO(sale.timestamp), 'dd MMMM yyyy, HH:mm', { locale: es })}</p>
+          {dailyReceiptNumber && <p><strong>Operación Diaria Nº:</strong> {String(dailyReceiptNumber).padStart(4, '0')}</p>}
+          <p><strong>Nº de Venta:</strong> {sale.id.substring(0, 12)}</p>
+          <p><strong>Fecha Venta:</strong> {format(parseISO(sale.timestamp), 'dd MMMM yyyy, HH:mm', { locale: es })}</p>
+          {sale.operationalDate && <p><strong>Fecha Contable:</strong> {format(parseISO(sale.operationalDate), 'dd MMMM yyyy', { locale: es })}</p>}
+          {sale.username && <p><strong>Operador:</strong> {sale.username}</p>}
         </div>
       </header>
 

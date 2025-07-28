@@ -62,6 +62,7 @@ export interface CashPaymentDetails {
   changeGiven: number;
   tip?: number;
   breakdown?: { [denomination: string]: number };
+  dailyReceiptNumber?: number; // Added for tracking
 }
 
 export interface TransferPaymentDetails {
@@ -71,6 +72,7 @@ export interface TransferPaymentDetails {
   personalId?: string;
   mobileNumber?: string;
   cardNumber?: string;
+  dailyReceiptNumber?: number; // Added for tracking
 }
 
 export type InvoiceStatus = 'pending' | 'paid' | 'overdue';
@@ -83,6 +85,7 @@ export interface InvoicePaymentDetails {
   paidAmount?: number;
   paidMethod?: 'cash' | 'transfer';
   paymentNotes?: string;
+  dailyReceiptNumber?: number; // Added for tracking
 }
 
 export type PaymentDetails = CashPaymentDetails | TransferPaymentDetails | InvoicePaymentDetails;
@@ -96,6 +99,7 @@ export interface Sale {
   customerId?: string; // The UUID of the customer
   customerDbId?: number; // The numeric ID of the customer from the DB
   customerName?: string;
+  username?: string; // Name of the user who performed the sale
   items: SaleItem[];
   subTotal: number;
   discount?: number;
@@ -106,6 +110,7 @@ export interface Sale {
   userId?: string; // ID of the user who made the sale
   userDbId?: number; // The numeric ID of the user from the DB
   operationalDate?: string; // ISO string (date part only) for accounting
+  dailyReceiptNumber?: number; // Daily consecutive number
 }
 
 export interface InvoicePaymentRecord {

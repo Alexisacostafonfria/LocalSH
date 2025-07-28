@@ -1,4 +1,3 @@
-
 // src/components/sales/SaleReceipt.tsx
 "use client";
 
@@ -16,6 +15,8 @@ interface SaleReceiptProps {
 
 const SaleReceipt: React.FC<SaleReceiptProps> = ({ sale, appSettings, businessSettings }) => {
   const { currencySymbol } = appSettings;
+  const paymentDetails = sale.paymentDetails as any;
+  const dailyReceiptNumber = paymentDetails?.dailyReceiptNumber;
 
   const getMaskedCardNumber = (cardNumber?: string): string => {
     if (!cardNumber) return 'N/A';
@@ -59,9 +60,15 @@ const SaleReceipt: React.FC<SaleReceiptProps> = ({ sale, appSettings, businessSe
         <p className="text-sm mt-1 font-bold">{sale.paymentMethod === 'invoice' ? 'FACTURA' : 'RECIBO DE VENTA'}</p>
       </div>
 
+       <div className="mb-2 text-center border-y border-dashed border-black py-1">
+          {dailyReceiptNumber && <p className="font-bold text-lg">OPERACIÓN DIARIA Nº {String(dailyReceiptNumber).padStart(4, '0')}</p>}
+       </div>
+
       <div className="mb-2">
         <p>{sale.paymentMethod === 'invoice' ? 'Factura Nº' : 'ID Venta'}: {sale.id.substring(0, 12)}...</p>
-        <p>Fecha: {format(new Date(sale.timestamp), "dd/MM/yyyy HH:mm:ss", { locale: es })}</p>
+        <p>Fecha Venta: {format(new Date(sale.timestamp), "dd/MM/yyyy HH:mm:ss", { locale: es })}</p>
+        {sale.operationalDate && <p>Fecha Contable: {format(parseISO(sale.operationalDate), "dd/MM/yyyy", { locale: es })}</p>}
+        {sale.username && <p>Operador: {sale.username}</p>}
         {sale.customerName && <p>Cliente: {sale.customerName}</p>}
       </div>
 
