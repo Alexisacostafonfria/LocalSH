@@ -9,8 +9,8 @@ import * as settingsService from '@/services/settingsService';
  * GET /api/settings/[key]
  * Fetches a specific setting from the database.
  */
-export async function GET(request: Request, context: { params: { key: string } }) {
-  const { key } = context.params;
+export async function GET(request: Request, { params }: { params: { key: string } }) {
+  const { key } = params;
   if (!key) {
     return NextResponse.json({ message: 'Setting key is required' }, { status: 400 });
   }
