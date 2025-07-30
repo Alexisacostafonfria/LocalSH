@@ -26,6 +26,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import MonthlyClosureReportPrintLayout from '@/components/accounting/MonthlyClosureReportPrintLayout';
 
+const denominations = [50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1];
+
 export default function AccountingPage() {
   const [accountingSettings, setAccountingSettings, isAccountingInitialized] = useLocalStorageState<AccountingSettings>(
     'accountingSettings',
@@ -538,3 +540,5 @@ export default function AccountingPage() {
     </div>
   );
 }
+
+    
