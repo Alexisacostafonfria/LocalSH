@@ -13,14 +13,19 @@ export async function getSetting<T>(key: string): Promise<T | null> {
   const db = await getDbConnection();
   try {
     const [rows] = await db.execute<RowDataPacket[]>(
-      'SELECT setting_value FROM system_settings WHERE setting_key = ?',
+      'SELECT setting_value FROM settings WHERE setting_key = ?',
       [key]
     );
     if (rows.length === 0) {
       return null;
     }
-    // The value is stored as a JSON string in the DB
-    return rows[0].setting_value;
+    // The value is stored as a JSON string (in a TEXT column), so we need to parse it.
+    try {
+        return JSON.parse(rows[0].setting_value);
+    } catch (e) {
+        // If it's not a valid JSON (e.g., a simple string was stored), return as is.
+        return rows[0].setting_value;
+    }
   } finally {
     await db.end();
   }
@@ -37,7 +42,7 @@ export async function setSetting<T>(key: string, value: T): Promise<void> {
     const jsonValue = JSON.stringify(value);
     // Use INSERT ... ON DUPLICATE KEY UPDATE to handle both creation and update
     await db.execute(
-      `INSERT INTO system_settings (setting_key, setting_value) 
+      `INSERT INTO settings (setting_key, setting_value) 
        VALUES (?, ?) 
        ON DUPLICATE KEY UPDATE setting_value = ?`,
       [key, jsonValue, jsonValue]
