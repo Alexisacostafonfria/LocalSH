@@ -18,6 +18,9 @@ export async function GET(request: Request, { params }: { params: { key: string 
   try {
     const value = await settingsService.getSetting(key);
     if (value === null) {
+      // For accountingSettings, if it's not in the DB, it's not a 404 error but a first-time setup.
+      // The frontend will use the default value. Returning a 404 could be misinterpreted as a server error.
+      // We'll let the hook handle the default value logic.
       return NextResponse.json({ message: `Setting '${key}' not found` }, { status: 404 });
     }
     return NextResponse.json({ key, value });
